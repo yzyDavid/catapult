@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/column-head.html">
+
+<dom-module id="pivot-table">
+  <template>
+    <style>
+    </style>
+
+    <table id="table">
+      <thead id="head">
+        <tr>
+          <th>
+            <column-head name="Name"
+                         sort-column="[[sortColumn]]"
+                         sort-descending="[[sortDescending]]"
+                         on-tap="sort_">
+              Name
+            </column-head>
+          </th>
+
+          <template is="dom-repeat" items="[[columns]]" as="column" index-as="columnIndex">
+            <th>
+              <column-head name="[[column.name]]"
+                           sort-column="[[sortColumn]]"
+                           sort-descending="[[sortDescending]]"
+                           on-tap="sort_">
+                [[column.name]]
+              </column-head>
+            </th>
+          </template>
+        </tr>
+
+        <template is="dom-repeat" items="[[commonDiagnostics]]" as="diagnosticName"
+                                                                index-as="diagnosticIndex">
+          <tr>
+            <th>
+              [[diagnosticName]]
+            </th>
+            <template is="dom-repeat" items="[[columns]]" as="column" index-as="columnIndex">
+              <td>
+                <diagnostic-span diagnostic="[[getCommonDiagnostic_(diagnosticName, column)]]">
+                </diagnostic-span>
+              </td>
+            </template>
+          </tr>
+        </template>
+      </thead>
+
+      <tbody id="body">
+        <template is="dom-repeat" items="[[visibleRows_(rows)]]" as="row" index-as="rowIndex">
+          <tr>
+            <td>
+              <pivot-name table-state-path="[[statePath]]"
+                          row-state-path="[[statePath]].rows.[[row.id]]"
+                          style$="margin-left: calc(16px * row.depth);">
+              </pivot-name>
+            </td>
+
+            <template is="dom-repeat" items="[[columnStateKeys]]" as="columnStateKey" index-as="columnIndex">
+              <td>
+                <pivot-cell table-state-path="[[statePath]]"
+                            row-state-path="[[statePath]].rows.[[row.id]]"
+                            cell-state-path="[[statePath]].rows.[[row.id]].columns.[[columnStateKey]]">
+                </pivot-cell>
+              </td>
+            </template>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/pivot-table.js"></script>

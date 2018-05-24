@@ -13,6 +13,7 @@ from dashboard import email_template
 from dashboard.common import request_handler
 from dashboard.common import utils
 from dashboard.models import anomaly
+from dashboard.models import bug_label_patterns
 from dashboard.models import sheriff
 
 _MAX_ANOMALIES_TO_COUNT = 5000
@@ -149,42 +150,50 @@ def GetAnomalyDict(anomaly_entity, bisect_status=None):
   Returns:
     A dictionary which is safe to be encoded as JSON.
   """
-  alert_dict = _AlertDict(anomaly_entity)
-  alert_dict.update({
+  test_key = anomaly_entity.GetTestMetadataKey()
+  test_path = utils.TestPath(test_key)
+  test_path_parts = test_path.split('/')
+  dashboard_link = email_template.GetReportPageLink(
+      test_path, rev=anomaly_entity.end_revision, add_protocol_and_host=False)
+
+  bug_labels = set()
+  bug_components = set()
+  if anomaly_entity.internal_only:
+    bug_labels.add('Restrict-View-Google')
+  tags = bug_label_patterns.GetBugLabelsForTest(test_key)
+  tags += anomaly_entity.sheriff.get().labels
+  for tag in tags:
+    if tag.startswith('Cr-'):
+      bug_components.add(tag.replace('Cr-', '').replace('-', '>'))
+    else:
+      bug_labels.add(tag)
+
+  return {
+      'absolute_delta': '%s' % anomaly_entity.GetDisplayAbsoluteChanged(),
+      'bisect_status': bisect_status,
+      'bot': test_path_parts[1],
+      'bug_components': list(bug_components),
+      'bug_labels': list(bug_labels),
+      'bug_id': anomaly_entity.bug_id,
+      'dashboard_link': dashboard_link,
+      'date': str(anomaly_entity.timestamp.date()),
+      'display_end': anomaly_entity.display_end,
+      'display_start': anomaly_entity.display_start,
+      'end_revision': anomaly_entity.end_revision,
+      'improvement': anomaly_entity.is_improvement,
+      'key': anomaly_entity.key.urlsafe(),
+      'master': test_path_parts[0],
       'median_after_anomaly': anomaly_entity.median_after_anomaly,
       'median_before_anomaly': anomaly_entity.median_before_anomaly,
       'percent_changed': '%s' % anomaly_entity.GetDisplayPercentChanged(),
-      'absolute_delta': '%s' % anomaly_entity.GetDisplayAbsoluteChanged(),
-      'improvement': anomaly_entity.is_improvement,
-      'bisect_status': bisect_status,
       'recovered': anomaly_entity.recovered,
       'ref_test': anomaly_entity.GetRefTestPath(),
+      'start_revision': anomaly_entity.start_revision,
+      'test': '/'.join(test_path_parts[3:]),
+      'testsuite': test_path_parts[2],
+      'timestamp': anomaly_entity.timestamp.isoformat(),
       'type': 'anomaly',
       'units': anomaly_entity.units,
-  })
-  return alert_dict
-
-
-def _AlertDict(alert_entity):
-  """Returns a base dictionary with properties common to all alerts."""
-  test_path = utils.TestPath(alert_entity.GetTestMetadataKey())
-  test_path_parts = test_path.split('/')
-  dashboard_link = email_template.GetReportPageLink(
-      test_path, rev=alert_entity.end_revision, add_protocol_and_host=False)
-  return {
-      'key': alert_entity.key.urlsafe(),
-      'start_revision': alert_entity.start_revision,
-      'end_revision': alert_entity.end_revision,
-      'date': str(alert_entity.timestamp.date()),
-      'timestamp': alert_entity.timestamp.isoformat(),
-      'master': test_path_parts[0],
-      'bot': test_path_parts[1],
-      'testsuite': test_path_parts[2],
-      'test': '/'.join(test_path_parts[3:]),
-      'bug_id': alert_entity.bug_id,
-      'dashboard_link': dashboard_link,
-      'display_start': alert_entity.display_start,
-      'display_end': alert_entity.display_end,
   }
 
 

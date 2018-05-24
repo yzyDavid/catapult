@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="/bower_components/neon-animation/neon-animations.html">
+<link rel="import" href="/bower_components/neon-animation/web-animations.html">
+<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="/bower_components/paper-radio-button/paper-radio-button.html">
+<link rel="import" href="/bower_components/paper-radio-group/paper-radio-group.html">
+<link rel="import" href="/bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="/dashboard/spa/chart-parameter.html">
+<link rel="import" href="/dashboard/spa/chart-timeseries.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/expand-button.html">
+<link rel="import" href="/dashboard/spa/test-suite-descriptors.html">
+<link rel="import" href="/dashboard/spa/test-suites.html">
+<link rel="import" href="/dashboard/static/memory_related_names.html">
+
+<dom-module id="chart-pair">
+  <template>
+    <style>
+      #minimap,
+      #chart {
+        width: 100%;
+      }
+
+      #minimap {
+        max-height: 75px;
+        --chart-placeholder: {
+          max-height: 0;
+        };
+      }
+
+      :host {
+        flex-grow: 1;
+        margin-right: 8px;
+        min-width: 500px;
+      }
+
+      #chart {
+        --chart-placeholder: {
+          height: 310px;
+        }
+      }
+
+      #options {
+        color: var(--paper-indigo-500);
+        height: 30px;
+        max-height: 30px;
+        padding: 0;
+      }
+
+      #options_container {
+        position: absolute;
+        margin-top: 20px;
+      }
+
+      paper-dialog {
+        margin: 0;
+      }
+
+      paper-dialog div {
+        display: flex;
+      }
+
+      .column {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #toggles {
+        margin: 0 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        white-space: nowrap;
+      }
+
+      paper-toggle-button {
+        padding: 4px;
+      }
+
+      paper-radio-group {
+        display: flex;
+        flex-direction: column;
+        --paper-radio-group-item-padding: 4px;
+      }
+    </style>
+
+    <iron-collapse opened="[[isExpanded]]">
+      <span
+          id="options_container"
+          hidden$="[[hideOptions_(minimapLayout)]]">
+        <!-- TODO show when isLoading || !_empty(lines) -->
+        <paper-icon-button
+            id="options"
+            icon="settings"
+            style$="width: calc([[chartLayout.yAxisWidth]]px - 8px);"
+            on-tap="onOptionsToggle_">
+        </paper-icon-button>
+
+        <paper-dialog
+            opened="[[isShowingOptions]]"
+            horizontal-align="left"
+            vertical-align="top"
+            entry-animation="slide-from-left-animation"
+            exit-animation="slide-left-animation"
+            on-iron-overlay-canceled="onOptionsToggle_">
+          <div>
+            <div id="toggles" class="column">
+              <b>Options</b>
+              <paper-toggle-button
+                  checked$="[[isLinked]]"
+                  on-change="onToggleLinked_">
+                Link to other charts
+              </paper-toggle-button>
+              <paper-toggle-button
+                  checked$="[[zeroYAxis]]"
+                  on-change="onToggleZeroYAxis_">
+                Zero Y-Axis
+              </paper-toggle-button>
+              <paper-toggle-button
+                  checked$="[[fixedXAxis]]"
+                  on-change="onToggleFixedXAxis_">
+                Fixed X-Axis
+              </paper-toggle-button>
+            </div>
+            <div class="column">
+              <b>Mode</b>
+              <paper-radio-group
+                  selected="[[mode]]"
+                  on-selected-changed="onModeChange_">
+                <paper-radio-button name="normalizeUnit">
+                  Normalize per unit
+                </paper-radio-button>
+                <paper-radio-button name="normalizeLine">
+                  Normalize per line
+                </paper-radio-button>
+                <paper-radio-button name="center">
+                  Center
+                </paper-radio-button>
+                <paper-radio-button name="delta">
+                  Delta
+                </paper-radio-button>
+              </paper-radio-group>
+            </div>
+          </div>
+        </paper-dialog>
+      </span>
+
+      <chart-timeseries
+          id="minimap"
+          state-path="[[statePath]].minimapLayout"
+          on-brush="onMinimapBrush_">
+      </chart-timeseries>
+    </iron-collapse>
+
+    <chart-timeseries
+        id="chart"
+        state-path="[[statePath]].chartLayout"
+        on-chart-click="onChartClick_"
+        on-dot-click="onDotClick_"
+        on-dot-mouseover="onDotMouseOver_"
+        on-dot-mouseout="onDotMouseOut_"
+        on-brush="onBrush_">
+      <slot></slot>
+    </chart-timeseries>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/chart-pair.js"></script>

@@ -183,6 +183,39 @@ class FileBugHandler(request_handler.RequestHandler):
     self.RenderHtml('bug_result.html', template_params)
 
 
+def FileBug(http, keys, summary, description, labels, components, owner, cc):
+  alerts = ndb.get_multi([ndb.Key(urlsafe=k) for k in keys])
+  if not description:
+    description = 'See the link to graphs below.'
+  milestone_label = _MilestoneLabel(alerts)
+  if milestone_label:
+    labels.append(milestone_label)
+
+  user_issue_tracker_service = issue_tracker_service.IssueTrackerService(http)
+  new_bug_response = user_issue_tracker_service.NewBug(
+      summary, description, labels=labels, components=components, owner=owner,
+      cc=cc)
+  if 'error' in new_bug_response:
+    return new_bug_response
+
+  bug_id = new_bug_response['bug_id']
+  bug_data.Bug(id=bug_id).put()
+  for a in alerts:
+    a.bug_id = bug_id
+  ndb.put_multi(alerts)
+
+  comment_body = _AdditionalDetails(bug_id, alerts)
+  # Add the bug comment with the service account, so that there are no
+  # permissions issues.
+  dashboard_issue_tracker_service = issue_tracker_service.IssueTrackerService(
+      utils.ServiceAccountHttp())
+  dashboard_issue_tracker_service.AddBugComment(bug_id, comment_body)
+
+  bisect_result = auto_bisect.StartNewBisectForBug(bug_id)
+  bisect_result['bug_id'] = bug_id
+  return bisect_result
+
+
 def _AdditionalDetails(bug_id, alerts):
   """Returns a message with additional information to add to a bug."""
   base_url = '%s/group_report' % _GetServerURL()

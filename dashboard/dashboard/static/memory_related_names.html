@@ -72,29 +72,29 @@ tr.exportTo('d', function() {
   /* eslint-disable max-len */
   for (const browser of BROWSERS) {
     for (const process of PROCESSES) {
-      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:gpu_memory:proportional_resident_size_avg`);
-      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:code_and_metadata_size_avg`);
-      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:shim_allocated_objects_size_avg`);
+      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:gpu_memory:proportional_resident_size`);
+      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:code_and_metadata_size`);
+      MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:shim_allocated_objects_size`);
       for (const gpu of GPUS) {
-        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:gpu_memory:${gpu}:proportional_resident_size_avg`);
+        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:gpu_memory:${gpu}:proportional_resident_size`);
       }
       for (const systemValue of SYSTEM_VALUES) {
-        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:${systemValue}_avg`);
-        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:system_memory:${systemValue}_avg`);
+        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:${systemValue}`);
+        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:system_memory:${systemValue}`);
         for (const system of SYSTEMS) {
-          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:system_memory:${system}:${systemValue}_avg`);
+          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_os:system_memory:${system}:${systemValue}`);
         }
       }
       for (const value of VALUES) {
-        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:${value}_avg`);
+        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:${value}`);
         for (const component of COMPONENTS) {
-          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:${component}:${value}_avg`);
+          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:${component}:${value}`);
         }
-        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${value}_avg`);
+        MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${value}`);
         for (const v8Component of V8_COMPONENTS) {
-          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${v8Component}:${value}_avg`);
+          MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${v8Component}:${value}`);
           for (const sub of V8_SUBCOMPONENTS) {
-            MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${v8Component}:${sub}:${value}_avg`);
+            MEMORY_NAMES.add(`memory:${browser}:${process}:reported_by_chrome:v8:${v8Component}:${sub}:${value}`);
           }
         }
       }

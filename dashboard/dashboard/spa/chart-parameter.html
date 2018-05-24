@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/dropdown-input.html">
+
+<dom-module id="chart-parameter">
+  <template>
+    <style include="paper-material-styles">
+      paper-checkbox {
+        margin-top: 8px;
+      }
+
+      #dropdown_extra {
+        align-items: center;
+        border-right: 1px solid black;
+        display: flex;
+        flex-direction: column;
+        padding-right: 8px;
+      }
+
+      #tag_head {
+        padding: 4px;
+        color: var(--paper-grey-500);
+        font-weight: bold;
+      }
+    </style>
+
+    <dropdown-input state-path="[[statePath]]">
+      <template is="dom-if" if="[[!_empty(tags.options)]]">
+        <div id="dropdown_extra" slot="dropdown_extra">
+          <span id="tag_head">
+            Tags
+          </span>
+          <option-group
+              state-path="[[statePath]].tags"
+              root-state-path="[[statePath]].tags">
+          </option-group>
+        </div>
+      </template>
+    </dropdown-input>
+
+    <paper-checkbox
+        id="aggregate"
+        disabled$="[[!isMultiple_(selectedOptions]]"
+        checked="[[isAggregated]]"
+        hidden$="[[!canAggregate]]"
+        on-change="onAggregateChange_">
+      Aggregate
+    </paper-checkbox>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/chart-parameter.js"></script>

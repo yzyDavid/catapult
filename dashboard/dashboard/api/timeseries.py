@@ -10,10 +10,6 @@ from dashboard.common import utils
 from dashboard.models import graph_data
 
 
-class BadRequestError(Exception):
-  pass
-
-
 class TimeseriesHandler(api_request_handler.ApiRequestHandler):
   """API handler for getting timeseries data."""
 

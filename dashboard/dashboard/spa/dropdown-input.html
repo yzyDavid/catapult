@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/option-group.html">
+
+<dom-module id="dropdown-input">
+  <template>
+    <style include="paper-material-styles">
+      #input {
+        --paper-input-container: {
+          padding: 0;
+        }
+        --paper-input-container-input: {
+          font-size: 12px;
+        };
+      }
+
+      #input[required] {
+        /* Leave space for the error message */
+        padding-bottom: 16px;
+      }
+
+      #input_clear {
+        width: 32px;
+        height: 32px;
+        padding: 4px;
+      }
+
+      #dropdown {
+        @apply --paper-material-elevation-2;
+        background-color: white;
+        font-size: 12px;
+        max-height: 600px;
+        overflow: auto;
+        padding-right: 8px;
+        position: absolute;
+        z-index: 100;
+      }
+
+      #dropdown iron-collapse {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #recommended, #columns {
+        border-bottom: 1px solid var(--paper-indigo-500);
+        display: flex;
+        padding-bottom: 4px;
+      }
+
+      .column {
+        max-height: 143px;
+        overflow-y: auto;
+      }
+
+      paper-checkbox {
+        align-items: center;
+        display: flex;
+        flex-shrink: 0;
+        margin-top: 4px;
+      }
+
+      #mundane {
+        display: flex;
+      }
+    </style>
+
+    <paper-input
+        id="input"
+        autofocus="[[isFocused]]"
+        disabled$="[[isDisabled_(alwaysEnabled, options)]]"
+        label="[[label]]"
+        required$="[[required]]"
+        error-message="[[errorMessage]]"
+        invalid="[[!isValid_(selectedOptions)]]"
+        tabindex="1"
+        value="[[getInputValue_(isFocused, query, selectedOptions)]]"
+        on-blur="onBlur_"
+        on-focus="onFocus_"
+        on-keyup="onKeyup_">
+      <paper-icon-button
+          id="input_clear"
+          slot="suffix"
+          icon="clear"
+          title="clear"
+          alt="clear"
+          on-tap="onClear_">
+      </paper-icon-button>
+    </paper-input>
+
+    <div id="dropdown">
+      <iron-collapse opened="[[isFocused]]">
+        <template is="dom-if" if="[[showRecommended_(recommended, query)]]">
+          <b style="margin: 4px;">Recommended</b>
+          <div id="recommended">
+            <option-group
+                state-path="[[statePath]].recommended"
+                root-state-path="[[statePath]]">
+            </option-group>
+          </div>
+        </template>
+
+        <template is="dom-if" if="[[showColumns_(columns, query)]]">
+          <b style="margin: 4px;">Memory Components</b>
+          <div id="columns">
+            <template is="dom-repeat" items="[[columns]]" as="column" index-as="columnIndex">
+              <div class="column">
+                <option-group
+                    state-path="[[statePath]].columns.[[columnIndex]]"
+                    root-state-path="[[statePath]].columns.[[columnIndex]]"
+                    on-option-select="onColumnSelect_">
+                </option-group>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div id="mundane">
+          <slot name="dropdown_extra"></slot>
+
+          <option-group
+              state-path="[[statePath]]"
+              root-state-path="[[statePath]]">
+          </option-group>
+        </div>
+      </iron-collapse>
+    </div>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/dropdown-input.js"></script>

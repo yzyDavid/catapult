@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/expand-button.html">
+
+<dom-module id="option-group">
+  <template>
+    <style>
+      :host {
+        display: flex;
+        flex-direction: column;
+      }
+
+      row {
+        display: flex;
+        align-items: center;
+        min-height: 26px;
+        height: 26px;
+        margin-left: 8px;
+      }
+
+      row[indent] {
+        margin-left: 74px;
+      }
+
+      option-group {
+        margin-left: 28px;
+      }
+
+      expand-button {
+        --paper-button: {
+          border-radius: 0;
+          height: 100%;
+          justify-content: space-between;
+          margin: 0;
+          min-width: 0;
+          padding: 0 8px 0 16px;
+          width: 66px;
+          --paper-button-ink-color: var(--paper-indigo-300);
+          flex-shrink: 0;
+        };
+        --iron-icon: {
+          height: 20px;
+          width: 20px;
+        };
+      }
+
+      paper-checkbox {
+        align-items: center;
+        display: flex;
+        flex-grow: 1;
+        flex-shrink: 0;
+        height: 100%;
+      }
+    </style>
+
+    <template is="dom-repeat" items="[[options]]" as="option" index-as="optionIndex">
+      <template is="dom-if" if="[[matches_(option, query)]]">
+        <row indent$="[[indentRow_(option)]]">
+          <template is="dom-if" if="[[option.options]]">
+            <expand-button state-path="[[statePath]].options.[[optionIndex]]">
+              [[countDescendents_(option.options)]]
+            </expand-button>
+          </template>
+
+          <paper-checkbox
+              checked="[[isSelected_(option, selectedOptions)]]"
+              disabled="[[option.disabled]]"
+              on-change="onSelect_">
+            [[label_(option)]]
+          </paper-checkbox>
+        </row>
+
+        <template is="dom-if" if="[[shouldStampSubOptions_(option, query)]]">
+          <iron-collapse opened="[[isExpanded_(option, query)]]">
+            <option-group
+                state-path="[[statePath]].options.[[optionIndex]]"
+                root-state-path="[[rootStatePath]]">
+            </option-group>
+          </iron-collapse>
+        </template>
+      </template>
+    </template>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/option-group.js"></script>

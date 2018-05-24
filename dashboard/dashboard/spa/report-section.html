@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/dropdown-input.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/scalar-span.html">
+<link rel="import" href="/dashboard/spa/team-filter.html">
+<link rel="import" href="/dashboard/spa/test-suites.html">
+
+<dom-module id="report-section">
+  <template>
+    <style include="paper-material-styles">
+      #controls {
+        display: flex;
+        align-items: center;
+      }
+
+      paper-progress {
+        --paper-progress-active-color: var(--paper-indigo-500);
+        --paper-progress-container-color: white;
+        width: 100%;
+      }
+
+      #controls paper-button {
+        @apply --paper-material-elevation-1;
+        background-color: var(--paper-indigo-50);
+        border-radius: 24px;
+        color: var(--paper-indigo-500);
+        font-size: larger;
+        margin: 0 16px;
+        padding: 4px;
+      }
+
+      #controls paper-button[disabled] {
+        background-color: var(--paper-grey-100);
+        color: var(--paper-grey-500);
+      }
+
+      #min_revision {
+        margin-right: 16px;
+      }
+
+      #add_alerts {
+        height: 34px;
+        margin: 0;
+      }
+
+      #close {
+        align-self: flex-start;
+        flex-shrink: 0;
+      }
+
+      #tables {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-evenly;
+      }
+
+      .report {
+        margin: 8px;
+      }
+
+      .report_name {
+        display: flex;
+        justify-content: center;
+        margin: 0;
+      }
+
+      table {
+        border-collapse: collapse;
+      }
+
+      table[placeholder] {
+        color: var(--paper-grey-500);
+      }
+
+      h2 {
+        text-align: center;
+        margin: 0;
+      }
+
+      .name_column {
+        text-align: left;
+      }
+
+      td, th {
+        padding: 4px;
+        vertical-align: top;
+      }
+
+      #spacer {
+        flex-grow: 1;
+      }
+
+      #edit, #documentation {
+        color: var(--paper-indigo-500);
+        flex-shrink: 0;
+        margin: 0 0 0 8px;
+        padding: 0;
+        width: 25px;
+        height: 25px;
+      }
+
+      .report_name span {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .edit_form {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .edit_form table paper-input {
+        --paper-input-container: {
+          padding: 0;
+        };
+        --paper-input-container-input: {
+          font-size: 12px;
+        };
+      }
+
+      .edit_form table paper-input div[slot="suffix"] {
+        height: 32px;
+      }
+
+      .edit_form_controls {
+        display: flex;
+        justify-content: space-evenly;
+      }
+
+      .edit_form_controls paper-input {
+        flex-grow: 1;
+      }
+
+      .edit_form_controls dropdown-input:not(:last-child),
+      .edit_form_controls paper-input:not(:last-child) {
+        margin-right: 16px;
+      }
+
+      .edit_form_controls paper-button iron-icon {
+        margin: 0 4px;
+      }
+
+      .edit_form_controls paper-button[disabled] {
+        background-color: var(--paper-grey-500);
+      }
+
+      .template_cancel, .template_save {
+        background-color: var(--paper-indigo-500);
+        color: white;
+        padding: 4px;
+        text-align: center;
+        white-space: nowrap;
+        width: 30%;
+      }
+
+      .template_row_button {
+        vertical-align: middle;
+        width: 40px;
+      }
+
+      paper-dialog {
+        margin: 0;
+      }
+    </style>
+
+    <div id="controls">
+      <dropdown-input
+          id="source"
+          state-path="[[statePath]].source"
+          on-option-select="onSelectSource_">
+      </dropdown-input>
+
+      <span id="spacer">&nbsp;</span>
+
+      <paper-button
+          disabled$="[[!isPreviousMilestone_(milestone)]]"
+          on-tap="onPreviousMilestone_">
+        M[[_add(milestone, -2)]]
+        <iron-icon icon="chevron-left"></iron-icon>
+      </paper-button>
+
+      <paper-input
+          id="min_revision"
+          value="[[minRevisionInput]]"
+          size="6"
+          on-keyup="onMinRevisionKeyup_">
+      </paper-input>
+
+      <paper-input
+          value="[[maxRevisionInput]]"
+          size="6"
+          on-keyup="onMaxRevisionKeyup_">
+      </paper-input>
+
+      <paper-button
+          disabled$="[[!isNextMilestone_(milestone)]]"
+          on-tap="onNextMilestone_">
+        <iron-icon icon="chevron-right"></iron-icon>
+        M[[_add(milestone, 1)]]
+      </paper-button>
+
+      <template is="dom-if" if="[[anyAlerts]]">
+        <paper-button
+            id="add_alerts"
+            on-tap="onAddAlertsSection_">
+          Alerts
+        </paper-button>
+      </template>
+
+      <span id="spacer">&nbsp;</span>
+
+      <paper-icon-button
+          id="close"
+          icon="close"
+          on-tap="onCloseSection_">
+      </paper-icon-button>
+    </div>
+
+    <paper-progress indeterminate="[[isLoading]]">
+    </paper-progress>
+
+    <div id="tables">
+      <template is="dom-repeat" items="[[tables]]" as="table" index-as="tableIndex">
+        <template is="dom-if" if="[[canEdit_(table, userEmail)]]">
+          <iron-collapse horizontal opened="[[table.isEditing]]">
+            <iron-collapse class="edit_form" opened="[[table.isEditing]]">
+              <div class="edit_form_controls">
+                <paper-input
+                    label="Report Name"
+                    value="[[table.name]]"
+                    required
+                    auto-validate
+                    error-message="required"
+                    on-keyup="onTemplateNameKeyUp_">
+                </paper-input>
+
+                <paper-input
+                    label="Owners"
+                    required
+                    auto-validate
+                    error-message="comma-separate list of complete email addresses"
+                    value="[[table.owners]]"
+                    on-keyup="onTemplateOwnersKeyUp_">
+                </paper-input>
+
+                <dropdown-input
+                    state-path="[[statePath]].tables.[[tableIndex]].statistic">
+                </dropdown-input>
+
+                <paper-input
+                    label="Documentation"
+                    value="[[table.url]]"
+                    on-keyup="onTemplateUrlKeyUp_">
+                </paper-input>
+              </div>
+
+              <table>
+                <tbody>
+                  <template is="dom-repeat" items="[[table.rows]]" as="row" index-as="rowIndex">
+                    <tr>
+                      <td>
+                        <paper-input
+                            label="Label"
+                            required
+                            error-message="required"
+                            auto-validate
+                            value="[[row.label]]"
+                            on-keyup="onTemplateRowLabelKeyUp_">
+                          <div slot="suffix">
+                            &nbsp;
+                          </div>
+                        </paper-input>
+                      </td>
+                      <td>
+                        <dropdown-input
+                            state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testSuite"
+                            on-option-select="onTestSuiteSelect_">
+                        </dropdown-input>
+                      </td>
+                      <td>
+                        <dropdown-input
+                            state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].measurement">
+                        </dropdown-input>
+                      </td>
+                      <td>
+                        <dropdown-input
+                            state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].bot">
+                        </dropdown-input>
+                      </td>
+                      <td>
+                        <dropdown-input
+                            state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase">
+                          <!-- TODO tags -->
+                        </dropdown-input>
+                      </td>
+                      <td class="template_row_button">
+                        <paper-icon-button
+                            icon="add"
+                            on-tap="onTemplateAddRow_">
+                        </paper-icon-button>
+                      </td>
+                      <td class="template_row_button">
+                        <template is="dom-if" if="[[!isLastRow_(table.rows)]]">
+                          <paper-icon-button
+                              icon="remove"
+                              on-tap="onTemplateRemoveRow_">
+                          </paper-icon-button>
+                        </template>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+
+              <div class="edit_form_controls">
+                <paper-button
+                    class="template_cancel"
+                    icon="close"
+                    on-tap="onToggleEditing_">
+                  <iron-icon icon="cancel">
+                  </iron-icon>
+                  Cancel
+                </paper-button>
+                <paper-button
+                    class="template_save"
+                    disabled="[[!isValid_(table)]]"
+                    raised
+                    on-tap="onTemplateSave_">
+                  <iron-icon icon="save">
+                  </iron-icon>
+                  Save
+                </paper-button>
+              </div>
+            </iron-collapse>
+          </iron-collapse>
+        </template>
+
+        <iron-collapse horizontal opened="[[!table.isEditing]]">
+          <iron-collapse class="report" opened="[[!table.isEditing]]">
+            <div class="report_name">
+              <h2>[[table.name]]</h2>
+              <template is="dom-if" if="[[table.url]]">
+                <a id="documentation"
+                    href="[[table.url]]"
+                    target="_blank"
+                    title="Documentation">
+                  <iron-icon icon="help">
+                  </iron-icon>
+                </a>
+              </template>
+
+              <template is="dom-if" if="[[canEdit_(table, userEmail)]]">
+                <paper-icon-button
+                    id="edit"
+                    icon="editor:mode-edit"
+                    on-tap="onToggleEditing_">
+                </paper-icon-button>
+              </template>
+            </div>
+
+            <table placeholder$="[[table.isPlaceholder]]">
+              <thead>
+                <tr>
+                  <th colspan$="[[table.maxLabelParts]]">&nbsp;</th>
+                  <th colspan$="[[_len(table.statistics)]]">
+                    M[[_add(milestone, -1)]]
+                    <br>
+                    [[minRevision]]
+                  </th>
+                  <th colspan$="[[_len(table.statistics)]]">
+                    M[[milestone]]
+                    <br>
+                    [[maxRevision]]
+                  </th>
+                  <th colspan$="[[numChangeColumns_(table.statistics)]]">Change</th>
+                </tr>
+                <template is="dom-if" if="[[_multiple(table.statistics)]]">
+                  <tr>
+                    <th colspan$="[[table.maxLabelParts]]">&nbsp;</th>
+                    <template is="dom-repeat" items="[[table.statistics]]" as="statistic" index-as="statisticIndex">
+                      <th>[[statistic]]</th>
+                    </template>
+                    <template is="dom-repeat" items="[[table.statistics]]" as="statistic" index-as="statisticIndex">
+                      <th>[[statistic]]</th>
+                    </template>
+                    <template is="dom-repeat" items="[[table.statistics]]" as="statistic" index-as="statisticIndex">
+                      <th colspan="2">[[statistic]]</th>
+                    </template>
+                  </tr>
+                </template>
+              </thead>
+
+              <tbody>
+                <template is="dom-repeat" items="[[table.rows]]" as="row">
+                  <tr>
+                    <template is="dom-repeat" items="[[row.labelParts]]" as="labelPart" index-as="labelPartIndex">
+                      <template is="dom-if" if="[[labelPart.isFirst]]">
+                        <td row-span="[[labelPart.rowCount]]">
+                          <a href="[[labelPart.href]]"
+                              on-tap="onOpenChart_">
+                            [[labelPart.label]]
+                          </a>
+                        </td>
+                      </template>
+                    </template>
+
+                    <template is="dom-repeat" items="[[row.scalars]]" as="scalar" index-as="scalarIndex">
+                      <td>
+                        <scalar-span
+                            unit="[[scalar.unit]]"
+                            unit-prefix="[[scalar.unitPrefix]]"
+                            value="[[scalar.value]]">
+                        </scalar-span>
+                      </td>
+                    </template>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </iron-collapse>
+        </iron-collapse>
+      </template>
+    </div>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/report-section.js"></script>

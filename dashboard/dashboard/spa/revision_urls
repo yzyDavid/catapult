@@ -1,0 +1,21 @@
+r_android_base_version: {url: "https://googleplex-android.googlesource.com/platform/frameworks/base/+/{{R1}}..{{R2}}", name: "Android Base Version"}
+r_arc: {url: "https://chrome-internal.googlesource.com/arc/arc/+log/{{R1}}..{{R2}}", name: "ARC Revision"}
+r_chrome_version: {url: "https://omahaproxy.appspot.com/changelog?old_version={{R1}}&new_version={{R2}}", name: "Chrome Version"}
+r_chromium: {url: "https://chromium.googlesource.com/chromium/src/+log/{{R1}}..{{R2}}", name: "Chromium Git Hash"}
+r_chromium_commit_pos: {url: "http://test-results.appspot.com/revision_range?start={{R1}}&end={{R2}}", name: "Chromium Commit Position"}
+r_chromium_git: {url: "https://chromium.googlesource.com/chromium/src/+log/{{R1}}..{{R2}}", name: "Chromium Git Hash"}
+r_chromium_rev: {url: "https://chromium.googlesource.com/chromium/src/+log/{{R1}}..{{R2}}", name: "Chromium Git Hash"}
+r_clang_rev: {url: "http://llvm.org/viewvc/llvm-project?view=revision&revision={{R2}}#start={{R1}}", name: "Clang Revision"}
+r_clank: {url: "https://chrome-internal.googlesource.com/clank/internal/apps/+log/{{R1}}..{{R2}}", name: "Clank Apps Git Hash"}
+r_commit_pos: {url: "http://test-results.appspot.com/revision_range?start={{R1}}&end={{R2}}&n={{n}}", name: "Chromium Commit Position"}
+r_cros_version: {url: "https://crosland.corp.google.com/log/{{R1_trim}}..{{R2_trim}}", name: "ChromeOS Version"}
+r_deps: {url: "https://chrome-internal.googlesource.com/clank/internal/deps/+log/{{R1}}..{{R2}}", name: "Clank Deps Git Hash"}
+r_infra_infra_git: {url: "https://chromium.googlesource.com/infra/infra/+log/{{R1}}..{{R2}}", name: "Infra/Infra Git Hash"}
+r_lbshell: {url: "https://lbshell-internal.googlesource.com/lbshell/+/{{R1}}..{{R2}}", name: "Leanback Shell Revision"}
+r_mojo: {url: "https://chromium.googlesource.com/external/mojo/+log/{{R1}}..{{R2}}", name: "Mojo Git Hash"}
+r_v8_git: {url: "https://chromium.googlesource.com/v8/v8/+log/{{R1}}..{{R2}}", name: "V8 Git Hash"}
+r_v8_js_comp_milestone: {url: "", name: "Milestone"}
+r_v8_rev: {url: "https://chromium.googlesource.com/v8/v8/+log/{{R1}}..{{R2}}", name: "V8 Commit Position"}
+r_v8_revision: {url: "https://chromium.googlesource.com/v8/v8/+log/{{R1}}..{{R2}}", name: "V8 Git Hash"}
+r_webrtc_git: {url: "https://webrtc.googlesource.com/src/+log/{{R1}}..{{R2}}", name: "WebRTC Git Hash"}
+r_webrtc_subtree_git: {url: "https://webrtc.googlesource.com/src/webrtc/+log/{{R1}}..{{R2}}", name: "WebRTC Git Hash"}

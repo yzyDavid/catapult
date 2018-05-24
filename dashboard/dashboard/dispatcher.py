@@ -37,7 +37,6 @@ from dashboard import layered_cache
 from dashboard import list_monitored_tests
 from dashboard import list_tests
 from dashboard import load_from_prod
-from dashboard import main
 from dashboard import mark_recovered_alerts
 from dashboard import memory_report
 from dashboard import migrate_test_names
@@ -56,6 +55,11 @@ from dashboard.api import alerts as api_alerts
 from dashboard.api import bugs
 from dashboard.api import list_timeseries
 from dashboard.api import timeseries
+from dashboard.api import timeseries2
+from dashboard.api import test_suites
+from dashboard.api import describe
+from dashboard.api import report_names
+from dashboard.api import report as api_report
 
 
 _URL_MAPPING = [
@@ -68,6 +72,11 @@ _URL_MAPPING = [
     (r'/api/bugs/(.*)', bugs.BugsHandler),
     (r'/api/list_timeseries/(.*)', list_timeseries.ListTimeseriesHandler),
     (r'/api/timeseries/(.*)', timeseries.TimeseriesHandler),
+    (r'/api/describe/(.*)', describe.DescribeHandler),
+    (r'/api/report', api_report.ReportHandler),
+    (r'/api/timeseries2', timeseries2.Timeseries2Handler),
+    (r'/api/report_names', report_names.ReportNamesHandler),
+    (r'/api/test_suites', test_suites.TestSuitesHandler),
     ('/associate_alerts', associate_alerts.AssociateAlertsHandler),
     ('/bug_details', bug_details.BugDetailsHandler),
     (r'/buildbucket_job_status/(\d+)',
@@ -94,7 +103,6 @@ _URL_MAPPING = [
     ('/list_monitored_tests', list_monitored_tests.ListMonitoredTestsHandler),
     ('/list_tests', list_tests.ListTestsHandler),
     ('/load_from_prod', load_from_prod.LoadFromProdHandler),
-    ('/', main.MainHandler),
     ('/mark_recovered_alerts',
      mark_recovered_alerts.MarkRecoveredAlertsHandler),
     ('/memory_report', memory_report.MemoryReportHandler),

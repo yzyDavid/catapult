@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="triage-new">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      paper-dialog {
+        margin: 0;
+        position: absolute !important;
+        width: 600px;
+      }
+
+      paper-checkbox {
+        display: block;
+      }
+
+      paper-input,
+      paper-textarea {
+        margin: 0 16px;
+        padding: 0;
+      }
+
+      paper-button {
+        background-color: var(--paper-indigo-50);
+        color: var(--paper-indigo-500);
+        display: flex;
+        font-weight: bold;
+        margin: 16px;
+        padding: 8px;
+      }
+    </style>
+
+    <paper-dialog
+        id="dialog"
+        opened="[[isOpen]]"
+        horizontal-align="right"
+        vertical-align="top"
+        no-overlap
+        on-iron-overlay-canceled="onCancel_">
+      <paper-input
+          label="Summary"
+          value="[[summary]]"
+          on-change="onSummary_">
+      </paper-input>
+
+      <paper-textarea
+          autofocus
+          label="Description"
+          value="[[description]]"
+          on-keyup="onDescription_">
+      </paper-textarea>
+
+      <template is="dom-repeat" items="[[labels]]" as="label" index-as="labelIndex">
+        <paper-checkbox
+            checked="[[label.isEnabled]]"
+            on-change="onLabel_">
+          [[label.name]]
+        </paper-checkbox>
+      </template>
+
+      <template is="dom-repeat" items="[[components]]" as="component" index-as="componentIndex">
+        <paper-checkbox
+            checked="[[component.isEnabled]]"
+            on-change="onComponent_">
+          [[component.name]]
+        </paper-checkbox>
+      </template>
+
+      <paper-input
+          label="Owner"
+          value="[[owner]]"
+          on-change="onOwner_">
+      </paper-input>
+
+      <paper-input
+          label="CC"
+          value="[[cc]]"
+          on-change="onCC_">
+      </paper-input>
+
+      <paper-button on-tap="onSubmit_">
+        Submit
+      </paper-button>
+    </paper-dialog>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/triage-new.js"></script>

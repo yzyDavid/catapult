@@ -4,7 +4,10 @@
 
 """Base classes for Model classes that can be internal-only."""
 
+import logging
+
 from google.appengine.ext import ndb
+from google.appengine.api import users
 
 from dashboard.common import datastore_hooks
 
@@ -21,6 +24,7 @@ class InternalOnlyModel(ndb.Model):
     # Internal-only objects should never be accessed by non-internal accounts!
     if (getattr(entity, 'internal_only', False) and
         not datastore_hooks.IsUnalteredQueryPermitted()):
+      logging.error('Non-internal user: %s', users.get_current_user())
       # Keep info about the fact that we're doing an access check out of the
       # callstack in case app engine shows it to the user.
       assert False

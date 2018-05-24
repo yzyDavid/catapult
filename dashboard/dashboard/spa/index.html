@@ -16,9 +16,23 @@ found in the LICENSE file.
 // Use native shadow DOM to encapsulate web components instead of the slower
 // shady DOM.
 window.Polymer = {dom: 'shadow'};
+window.addEventListener('load', () => {
+  const loadTimes = Object.entries(performance.timing.toJSON()).filter(p =>
+    p[1] > 0);
+  loadTimes.sort((a, b) => a[1] - b[1]);
+  const start = loadTimes.shift()[1];
+  for (const [name, timeStamp] of loadTimes) {
+    tr.b.Timing.mark('load', name, start).end(timeStamp);
+  }
+});
 </script>
 <link rel="import" href="/bower_components/polymer/polymer.html" data-suppress-import-order>
 <link rel="import" href="/tracing/base/base.html" data-suppress-import-order>
+<script src="/dashboard/spa/measure_element.js"></script>
+<script src="/dashboard/spa/measure_text.js"></script>
+<script src="/dashboard/spa/generate-colors.js"></script>
 <script src="/redux.min.js"></script>
 <link rel="import" href="/bower_components/polymer-redux/polymer-redux.html">
-Coming soon!
+<script src="/dashboard/spa/polymer-svg-template.js"></script><!-- TODO Remove this after https://github.com/Polymer/polymer/issues/1976 -->
+<link rel="import" href="/dashboard/spa/chromeperf-app.html" data-suppress-import-order>
+<chromeperf-app state-path="chromeperfApp"></chromeperf-app>

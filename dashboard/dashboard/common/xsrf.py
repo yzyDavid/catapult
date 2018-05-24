@@ -6,7 +6,7 @@
 
 import os
 
-from google.appengine.api import users
+from dashboard.common import utils
 from google.appengine.ext import ndb
 
 from oauth2client import xsrfutil
@@ -46,7 +46,7 @@ def TokenRequired(handler_method):
   """A decorator to require that the XSRF token be validated for the handler."""
 
   def CheckToken(self, *args, **kwargs):
-    user = users.get_current_user()
+    user = utils.GetUserEmail()
     token = str(self.request.get('xsrf_token'))
     if not user or not _ValidateToken(token, user):
       self.abort(403)

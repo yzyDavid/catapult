@@ -27,7 +27,7 @@ class ListTimeseriesHandler(api_request_handler.ApiRequestHandler):
     query = query.filter(graph_data.TestMetadata.suite_name == benchmark)
     query = query.filter(graph_data.TestMetadata.has_rows == True)
     query = query.filter(graph_data.TestMetadata.deprecated == False)
-    if sheriff_name != 'all':
+    if sheriff_name:
       sheriff = ndb.Key('Sheriff', sheriff_name)
       query = query.filter(graph_data.TestMetadata.sheriff == sheriff)
     keys = query.fetch(keys_only=True)

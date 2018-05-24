@@ -13,6 +13,7 @@ from dashboard.api import api_auth
 _ALLOWED_ORIGINS = [
     'chromiumdash.appspot.com',
     'chromiumdash-staging.googleplex.com',
+    'v2spa-dot-chromeperf.appspot.com',
 ]
 
 

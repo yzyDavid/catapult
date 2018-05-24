@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="expand-button">
+  <template>
+    <style>
+      paper-button {
+        @apply --paper-button;
+      }
+      iron-icon {
+        @apply --iron-icon;
+      }
+    </style>
+
+    <paper-button on-tap="toggle_">
+      <iron-icon icon="[[icon_(isExpanded)]]">
+      </iron-icon>
+      <slot></slot>
+    </paper-button>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/expand-button.js"></script>

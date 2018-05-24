@@ -14,6 +14,7 @@ import urllib
 from apiclient import discovery
 from apiclient import errors
 from google.appengine.api import memcache
+from google.appengine.api import oauth
 from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_errors
 from google.appengine.api import users
@@ -335,9 +336,26 @@ def MinimumRange(ranges):
   return start, end
 
 
+OAUTH_SCOPES = (
+    'https://www.googleapis.com/auth/userinfo.email',
+)
+
+
+def GetUserEmail():
+  user = users.get_current_user()
+  if user:
+    return user.email()
+  try:
+    user = oauth.get_current_user(OAUTH_SCOPES)
+    if user:
+      return user.email()
+  except (oauth.InvalidOAuthTokenError, oauth.InvalidOAuthParametersError):
+    pass
+
+
 def IsInternalUser():
   """Checks whether the user should be able to see internal-only data."""
-  username = users.get_current_user()
+  username = GetUserEmail()
   if not username:
     return False
   cached = GetCachedIsInternalUser(username)
@@ -383,6 +401,7 @@ def IsGroupMember(identity, group):
     response = request.execute()
     is_member = response['is_member']
     SetCachedIsGroupMember(identity, group, is_member)
+    logging.info('IsGroupMember %r %r %s', identity, group, is_member)
     return is_member
   except (errors.HttpError, KeyError, AttributeError) as e:
     logging.error('Failed to check membership of %s: %s', identity, e)
@@ -422,14 +441,14 @@ def ServiceAccountHttp(scope=EMAIL_SCOPE, timeout=None):
 
 def IsValidSheriffUser():
   """Checks whether the user should be allowed to triage alerts."""
-  user = users.get_current_user()
+  user = GetUserEmail()
+  if not user:
+    return False
   sheriff_domains = stored_object.Get(SHERIFF_DOMAINS_KEY)
-  if user:
-    domain_matched = sheriff_domains and any(
-        user.email().endswith('@' + domain) for domain in sheriff_domains)
-    return domain_matched or IsGroupMember(
-        identity=user, group='project-chromium-tryjob-access')
-  return False
+  domain_matched = sheriff_domains and any(
+      user.endswith('@' + domain) for domain in sheriff_domains)
+  return domain_matched or IsGroupMember(
+      identity=user, group='project-chromium-tryjob-access')
 
 
 def GetIpWhitelist():

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="/bower_components/neon-animation/neon-animations.html">
+<link rel="import" href="/bower_components/neon-animation/web-animations.html">
+<link rel="import" href="/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="/bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="/dashboard/spa/chart-legend.html">
+<link rel="import" href="/dashboard/spa/chart-pair.html">
+<link rel="import" href="/dashboard/spa/chart-parameter.html">
+<link rel="import" href="/dashboard/spa/chart-timeseries.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/expand-button.html">
+<link rel="import" href="/dashboard/spa/test-suite-descriptors.html">
+<link rel="import" href="/dashboard/spa/test-suites.html">
+<link rel="import" href="/dashboard/static/memory_related_names.html">
+
+<dom-module id="chart-section">
+  <template>
+    <style>
+      #controls {
+        align-items: center;
+        display: flex;
+        margin-bottom: 8px;
+      }
+
+      #controls_inner {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #parameters {
+        display: flex;
+      }
+
+      chart-parameter:not(:first-of-type) {
+        margin-left: 8px;
+      }
+
+      #title {
+        flex-grow: 1;
+        --paper-input-container: {
+          padding: 0 !important;
+        }
+      }
+
+      #spacer {
+        flex-grow: 1;
+      }
+
+      paper-progress {
+        --paper-progress-active-color: var(--paper-indigo-500);
+        --paper-progress-container-color: white;
+        width: 100%;
+      }
+
+      #minimap,
+      #chart {
+        width: 100%;
+      }
+
+      #minimap {
+        max-height: 75px;
+        --chart-placeholder: {
+          max-height: 0;
+        };
+      }
+
+      #toggle_chart_only {
+        align-self: flex-start;
+        flex-shrink: 0;
+        margin: 0;
+        min-width: 0;
+        padding: 8px;
+        --paper-button: {
+          margin: 0;
+          min-width: 0;
+          padding: 0;
+        };
+        --iron-icon: {
+          height: 24px;
+          width: 24px;
+        };
+      }
+
+      #close {
+        align-self: flex-start;
+        flex-shrink: 0;
+      }
+
+      #chart_container {
+        display: flex;
+      }
+
+      #chart_inner {
+        flex-grow: 1;
+        margin-right: 8px;
+        min-width: 500px;
+      }
+
+      chart-legend {
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      #legend_container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-height: 311px;
+      }
+
+      #related_tabstrip {
+        color: var(--paper-indigo-500);
+        display: flex;
+        margin-top: 8px;
+        background-color: var(--paper-indigo-50);
+        align-items: center;
+      }
+
+      #related_tabstrip paper-tabs {
+        flex-grow: 1;
+        text-align: left;
+        height: 24px;
+        --paper-tabs-selection-bar-color: var(--paper-indigo-500);
+      }
+
+      #related_tabstrip paper-tab {
+        flex-grow: 0;
+      }
+
+      .related_tab {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: 324px;
+        overflow: auto;
+        background-color: var(--paper-indigo-50);
+      }
+
+      .sparkline_tile {
+        background: white;
+        cursor: pointer;
+        margin: 4px;
+        width: 300px;
+      }
+
+      .sparkline_tile[empty] {
+        display: none;
+      }
+
+      .sparkline_name {
+        display: flex;
+        justify-content: center;
+        padding: 8px;
+        padding-top: 0;
+      }
+
+      #documentation {
+        align-self: center;
+        color: var(--paper-indigo-500);
+      }
+
+      #options {
+        background: var(--paper-indigo-500);
+        border-radius: 3px;
+        color: white;
+        height: 30px;
+        max-height: 30px;
+        padding: 0;
+      }
+
+      #options_container {
+        position: absolute;
+        margin-top: 15px;
+      }
+
+      paper-dialog {
+        margin: 0;
+      }
+
+      .sparkline_container {
+        display: flex;
+        flex-wrap: wrap;
+        /*TODO min-height: 251px; */
+      }
+    </style>
+
+    <div id="controls">
+      <div id="controls_inner">
+        <iron-collapse id="parameters"
+                       opened="[[isExpanded]]">
+          <chart-parameter
+              state-path="[[statePath]].testSuite"
+              on-option-select="onTestSuiteSelect_"
+              on-aggregate="onTestSuiteAggregate_">
+          </chart-parameter>
+
+          <a id="documentation" target="_blank" title="Documentation"
+             href="[[testSuiteHref_(testSuite.selectedOptions)]]">
+            <paper-icon-button icon="help"></paper-icon-button>
+          </a>
+
+          <chart-parameter
+              state-path="[[statePath]].measurement"
+              on-option-select="onMeasurementSelect_">
+          </chart-parameter>
+
+          <chart-parameter
+              state-path="[[statePath]].bot"
+              on-option-select="onBotSelect_"
+              on-aggregate="onBotAggregate_">
+          </chart-parameter>
+
+          <chart-parameter
+              state-path="[[statePath]].testCase"
+              on-option-select="onTestCaseSelect_"
+              on-aggregate="onTestCaseAggregate_">
+          </chart-parameter>
+
+          <chart-parameter
+              state-path="[[statePath]].statistic"
+              on-option-select="onStatisticSelect_">
+          </chart-parameter>
+        </iron-collapse>
+
+        <iron-collapse opened="[[!isExpanded]]">
+          <paper-input id="title"
+                       value="[[title]]"
+                       label="Title"
+                       on-keyup="onTitleKeyup_">
+          </paper-input>
+        </iron-collapse>
+      </div>
+
+      <span id="spacer">&nbsp;</span>
+
+      <expand-button
+          id="toggle_chart_only"
+          state-path="[[statePath]]">
+      </expand-button>
+
+      <paper-icon-button
+          id="close"
+          icon="close"
+          on-tap="onClose_">
+      </paper-icon-button>
+    </div>
+
+    <paper-progress indeterminate="[[isLoading_(isLoading, minimapLayout, chartLayout)]]">
+    </paper-progress>
+
+    <div id="chart_container">
+      <chart-pair
+          state-path="[[statePath]]"
+          linked-state-path="[[linkedStatePath]]"
+          on-line-count-change="onLineCountChange_">
+        <!--
+              on-chart-click="onChartClick_"
+              on-dot-click="onDotClick_"
+              on-dot-mouseover="onDotMouseOver_"
+              on-dot-mouseout="onDotMouseOut_"
+              on-brush="onBrush_">
+        -->
+        Select at least one Test suite and Measurement above.
+      </chart-pair>
+
+      <iron-collapse
+          id="legend_container"
+          horizontal
+          opened="[[isLegendOpen_(isExpanded, legend, histograms)]]"
+          on-tap="onLegendTap_">
+        <chart-legend
+            items="[[legend]]"
+            on-leaf-mouseover="onLegendMouseOver_"
+            on-leaf-mouseout="onLegendMouseOut_"
+            on-leaf-tap="onLegendLeafTap_">
+        </chart-legend>
+      </iron-collapse>
+    </div>
+
+    <iron-collapse opened="[[isShowingPivotTable_(histograms, isExpanded)]]">
+      <pivot-table
+          state-path="[[statePath]].pivotTable">
+      </pivot-table>
+    </iron-collapse>
+
+    <template is="dom-if" if="[[!_empty(relatedTabs)]]">
+      <iron-collapse id="related_tabs"
+                     opened="[[isExpanded]]">
+        <div id="related_tabstrip">
+          <paper-tabs selected="[[selectedRelatedTabIndex]]">
+            <template is="dom-repeat" items="[[relatedTabs]]" as="tab" index-as="tabIndex">
+              <paper-tab on-tap="onRelatedTabTap_">
+                [[tab.name]]
+              </paper-tab>
+            </template>
+          </paper-tabs>
+        </div>
+
+        <template is="dom-repeat" items="[[relatedTabs]]" as="tab" index-as="tabIndex">
+          <iron-collapse
+              opened="[[_eq(tabIndex, selectedRelatedTabIndex)]]"
+              class="related_tab">
+            <div class="sparkline_container">
+              <template is="dom-repeat" items="[[tab.renderedSparklines]]" as="sparkline" index-as="sparklineIndex">
+                <div
+                    class="sparkline_tile"
+                    empty$="[[_empty(sparkline.layout.lines)]]"
+                    on-tap="onSparklineTap_">
+                  <div class="sparkline_name">[[sparkline.name]]</div>
+                  <chart-timeseries
+                      state-path="[[statePath]].relatedTabs.[[tabIndex]].renderedSparklines.[[sparklineIndex]].layout">
+                  </chart-timeseries>
+                </div>
+              </template>
+            </div>
+          </iron-collapse>
+        </template>
+      </iron-collapse>
+    </template>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/chart-section.js"></script>

@@ -6,7 +6,6 @@
 
 import json
 
-from google.appengine.api import users
 from google.appengine.ext import ndb
 
 from dashboard import start_try_job
@@ -173,7 +172,7 @@ def PinpointParamsFromPerfTryParams(params):
     'error' field.
   """
   if not utils.IsValidSheriffUser():
-    user = users.get_current_user()
+    user = utils.GetUserEmail()
     raise InvalidParamsError('User "%s" not authorized.' % user)
 
   test_path = params['test_path']
@@ -193,7 +192,7 @@ def PinpointParamsFromPerfTryParams(params):
 
   extra_test_args = params['extra_test_args']
 
-  email = users.get_current_user().email()
+  email = utils.GetUserEmail()
   job_name = 'Job on [%s/%s] for [%s]' % (bot_name, suite, email)
 
   return {
@@ -226,7 +225,7 @@ def PinpointParamsFromBisectParams(params):
     'error' field.
   """
   if not utils.IsValidSheriffUser():
-    user = users.get_current_user()
+    user = utils.GetUserEmail()
     raise InvalidParamsError('User "%s" not authorized.' % user)
 
   test_path = params['test_path']
@@ -259,7 +258,7 @@ def PinpointParamsFromBisectParams(params):
   start_git_hash = ResolveToGitHash(start_commit)
   end_git_hash = ResolveToGitHash(end_commit)
 
-  email = users.get_current_user().email()
+  email = utils.GetUserEmail()
   job_name = 'Job on [%s/%s/%s] for [%s]' % (bot_name, suite, chart_name, email)
 
   # Histogram names don't include the statistic, so split these

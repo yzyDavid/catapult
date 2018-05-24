@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="triage-existing">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      paper-dialog {
+        margin: 0;
+      }
+
+      #controls {
+        display: flex;
+        margin: 0;
+        padding: 0;
+      }
+
+      paper-input {
+        margin: 0 0 0 16px;
+        padding: 0;
+      }
+
+      paper-button:not([disabled]) {
+        color: var(--paper-indigo-500);
+        font-weight: bold;
+      }
+
+      #controls paper-button {
+        background-color: var(--paper-indigo-50);
+        display: flex;
+        margin: 16px;
+        padding: 8px;
+      }
+
+      #controls paper-button[disabled] {
+        background-color: unset;
+        font-weight: normal;
+      }
+
+      .spacer {
+        flex-grow: 1;
+      }
+
+      paper-toggle-button {
+        margin-right: 16px;
+      }
+
+      #table_container {
+        max-height: 500px;
+        overflow: auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin: 16px 0;
+        width: 100%;
+      }
+
+      tbody {
+        border-width: 0;
+      }
+
+      tbody tr:hover {
+        background: #eee;
+      }
+
+      table paper-button {
+        background-color: unset;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+      }
+
+      td:nth-of-type(4) {
+        max-width: 500px;
+      }
+    </style>
+
+    <paper-dialog
+        id="dialog"
+        opened="[[isOpen]]"
+        horizontal-align="right"
+        vertical-align="top"
+        no-overlap
+        on-iron-overlay-canceled="onCancel_">
+      <div id="controls">
+        <paper-input
+            autofocus
+            label="Bug Number"
+            value="[[bugId]]"
+            on-keyup="onIdKeyup_">
+        </paper-input>
+
+        <paper-button
+            disabled="[[!isIdValid_(bugId)]]"
+            on-tap="onSubmit_">
+          Submit
+        </paper-button>
+
+        <span class="spacer">&nbsp;</span>
+
+        <paper-toggle-button
+            checked$="[[onlyIntersectingBugs]]"
+            on-change="onToggleOnlyIntersectingBugs_">
+          Intersecting Bugs Only
+        </paper-toggle-button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Bug #</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <template is="dom-repeat" items="[[filterBugs_(recentPerformanceBugs, onlyIntersectingBugs, selectedRange)]]" as="bug" index-as="bugIndex">
+            <tr>
+              <td>
+                <paper-button on-tap="onRecentPerformanceBugTap_">
+                  [[bug.id]]
+                </paper-button>
+              </td>
+
+              <td>[[bug.status]]</td>
+              <td>[[bug.owner]]</td>
+              <td>[[bug.summary]]</td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </paper-dialog>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/triage-existing.js"></script>
