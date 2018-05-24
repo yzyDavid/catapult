@@ -60,7 +60,6 @@ class InternalOnlyError(ApiAuthException):
     super(InternalOnlyError, self).__init__('User does not have access')
 
 
-
 def Authorize():
   try:
     user = oauth.get_current_user(OAUTH_SCOPES)
@@ -72,6 +71,25 @@ def Authorize():
 
   try:
     if not user.email().endswith('.gserviceaccount.com'):
+      # For non-service account, need to verify that the OAuth client ID
+      # is in our whitelist.
+      client_id = oauth.get_client_id(OAUTH_SCOPES)
+      if client_id not in OAUTH_CLIENT_ID_WHITELIST:
+        logging.info('OAuth client id %s for user %s not in whitelist',
+                     client_id, user.email())
+        user = None
+        raise OAuthError
+  except oauth.Error:
+    raise OAuthError
+
+  logging.info('OAuth user logged in as: %s', user.email())
+  if utils.IsGroupMember(user.email(), 'chromeperf-access'):
+    datastore_hooks.SetPrivilegedRequest()
+
+def AuthorizeOauthUser():
+  try:
+    user = GetCurrentUser()
+    if user and not user.email().endswith('.gserviceaccount.com'):
       # For non-service account, need to verify that the OAuth client ID
       # is in our whitelist.
       client_id = oauth.get_client_id(OAUTH_SCOPES)
@@ -114,6 +132,12 @@ def AuthorizeOauthUser():
 
 def Email():
   """Retrieves the email address of the logged-in user.
+=======
+def Authorize(function_to_wrap):
+  @functools.wraps(function_to_wrap)
+  def Wrapper(*args, **kwargs):
+    AuthorizeOauthUser()
+>>>>>>> Add /third_party/polymer2/.
 
   Returns:
     The email address, as a string or None if there is no user logged in.

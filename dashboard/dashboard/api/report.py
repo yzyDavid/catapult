@@ -179,7 +179,6 @@ def GetStatisticsForDescriptor(descriptor, revision, statistics, results):
       if row_min is not None:
         results['min'] = min(results['min'], row_min)
 
-
 @ndb.tasklet
 def GetStatisticsForRow(template_row, statistics, revision):
   test_cases = template_row['testCases'] or [None]
@@ -194,7 +193,6 @@ def GetStatisticsForRow(template_row, statistics, revision):
       descriptor, revision, statistics, template_row[revision].setdefault(descriptor, {}))
       for descriptor in descriptors]
   raise ndb.Return()
-
 
 @ndb.tasklet
 def RenderRow(row, statistics, revisions):
