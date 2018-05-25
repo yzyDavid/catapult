@@ -10,6 +10,9 @@ tr.exportTo('cp', () => {
   const MS_PER_DAY = 24 * MS_PER_HOUR;
   const MS_PER_MONTH = 30 * MS_PER_DAY;
 
+  const RECOMMENDED_SHERIFFS = [
+    'Chromium Perf Sheriff',
+  ];
   const SHERIFFS = [
     'ARC Perf Sheriff',
     'Angle Perf Sheriff',
@@ -1315,6 +1318,7 @@ tr.exportTo('cp', () => {
         options: SHERIFFS,
         query: '',
         selectedOptions: options.sheriffs || [],
+        recommended: {options: RECOMMENDED_SHERIFFS},
       },
       bug: {
         alwaysEnabled: true,

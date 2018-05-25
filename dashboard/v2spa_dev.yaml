@@ -8,6 +8,9 @@ handlers:
   static_files: dashboard/static/favicon.ico
   upload: dashboard/static/favicon.ico
 
+- url: /dashboard/spa
+  static_dir: dashboard/spa/
+
 - url: /
   static_files: dashboard/spa/index.html
   upload: dashboard/spa/index.html
@@ -22,6 +25,13 @@ handlers:
 - url: /redux.min.js
   static_files: redux/redux.min.js
   upload: redux/redux\.min\.js
+
+- url: /gl-matrix-min.js
+  static_files: gl-matrix-min.js
+  upload: gl-matrix-min\.js
+
+- url: /mannwhitneyu
+  static_dir: mannwhitneyu
 
 - url: /tracing/(.*)/(.*\.(html|js|css))$
   static_files: tracing/\1/\2
