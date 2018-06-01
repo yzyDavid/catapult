@@ -60,9 +60,6 @@ class InternalOnlyError(ApiAuthException):
     super(InternalOnlyError, self).__init__('User does not have access')
 
 
-def GetCurrentUser():
-  return oauth.get_current_user(OAUTH_SCOPES)
-
 
 def Authorize():
   try:
@@ -90,6 +87,11 @@ def Authorize():
   if utils.IsGroupMember(user.email(), 'chromeperf-access'):
     datastore_hooks.SetPrivilegedRequest()
 
+
+def GetCurrentUser():
+  return oauth.get_current_user(OAUTH_SCOPES)
+
+
 def AuthorizeOauthUser():
   try:
     user = GetCurrentUser()
@@ -112,12 +114,6 @@ def AuthorizeOauthUser():
 
 def Email():
   """Retrieves the email address of the logged-in user.
-=======
-def Authorize(function_to_wrap):
-  @functools.wraps(function_to_wrap)
-  def Wrapper(*args, **kwargs):
-    AuthorizeOauthUser()
->>>>>>> Add /third_party/polymer2/.
 
   Returns:
     The email address, as a string or None if there is no user logged in.

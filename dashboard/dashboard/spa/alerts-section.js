@@ -27,6 +27,7 @@ tr.exportTo('cp', () => {
     'Chromium Perf Sheriff',
     'CloudView Perf Sheriff',
     'Cronet Perf Sheriff',
+    'Fuchsia Perf Sheriff',
     'Histogram FYI',
     'Jochen',
     'Mojo Perf Sheriff',

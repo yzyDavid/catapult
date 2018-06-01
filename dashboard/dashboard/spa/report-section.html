@@ -7,6 +7,7 @@ found in the LICENSE file.
 
 <link rel="import" href="/bower_components/paper-progress/paper-progress.html">
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/scalar-span.html">
@@ -98,7 +99,9 @@ found in the LICENSE file.
         flex-grow: 1;
       }
 
-      #edit, #documentation {
+      #edit,
+      #copy,
+      #documentation {
         color: var(--paper-indigo-500);
         flex-shrink: 0;
         margin: 0 0 0 8px;
@@ -169,6 +172,12 @@ found in the LICENSE file.
 
       paper-dialog {
         margin: 0;
+      }
+
+      #scratch {
+        opacity: 0;
+        position: absolute;
+        z-index: -100;
       }
     </style>
 
@@ -358,6 +367,13 @@ found in the LICENSE file.
                 </a>
               </template>
 
+              <paper-icon-button
+                  id="copy"
+                  icon="content-copy"
+                  title="Copy measurements"
+                  on-tap="onCopy_">
+              </paper-icon-button>
+
               <template is="dom-if" if="[[canEdit_(table, userEmail)]]">
                 <paper-icon-button
                     id="edit"
@@ -429,6 +445,13 @@ found in the LICENSE file.
           </iron-collapse>
         </iron-collapse>
       </template>
+    </div>
+
+    <paper-toast opened="[[copiedMeasurements]]">
+      Copied measurements!
+    </paper-toast>
+
+    <div id="scratch">
     </div>
   </template>
 </dom-module>

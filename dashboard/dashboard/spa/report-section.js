@@ -184,6 +184,33 @@ tr.exportTo('cp', () => {
           this.milestone + 1);
     }
 
+    async onCopy_(event) {
+      // TODO maybe use the template to render this table?
+      const table = document.createElement('table');
+      const statisticsCount = event.model.table.statistics.length;
+      for (const row of event.model.table.rows) {
+        const tr = document.createElement('tr');
+        table.appendChild(tr);
+        for (let scalarIndex = 0; scalarIndex < 2 * statisticsCount; ++scalarIndex) {
+          const td = document.createElement('td');
+          tr.appendChild(td);
+          const scalar = row.scalars[scalarIndex];
+          td.innerText = scalar.unit.format(scalar.value, {
+            unitPrefix: scalar.unitPrefix,
+          }).match(/^(-?[,0-9]+\.?[0-9]*)/)[0];
+        }
+      }
+      this.$.scratch.appendChild(table);
+      const range = document.createRange();
+      range.selectNodeContents(this.$.scratch)
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.execCommand('copy');
+      await this.dispatch('toastCopied', this.statePath, true);
+      this.$.scratch.innerText = '';
+    }
+
     async onOpenChart_(event) {
       // The user may have clicked a link for an individual row (in which case
       // labelPartIndex = labelParts.length - 1) or a group of rows (in which
@@ -342,6 +369,7 @@ tr.exportTo('cp', () => {
   ReportSection.properties = {
     ...cp.ElementBase.statePathProperties('statePath', {
       anyAlerts: {type: Boolean},
+      copiedMeasurements: {type: Boolean},
       isLoading: {type: Boolean},
       milestone: {type: Number},
       minRevision: {type: Number},
@@ -705,6 +733,17 @@ tr.exportTo('cp', () => {
         }));
         dispatch(ReportSection.actions.loadReports(statePath));
       },
+
+    toastCopied: statePath => async(dispatch, getState) => {
+      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        copiedMeasurements: true,
+      }));
+      await cp.ElementBase.timeout(5000);
+      // TODO return if a different table was copied during the timeout.
+      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        copiedMeasurements: false,
+      }));
+    },
   };
 
   ReportSection.reducers = {
