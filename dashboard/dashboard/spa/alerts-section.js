@@ -1499,6 +1499,7 @@ tr.exportTo('cp', () => {
   };
 
   AlertsSection.isEmpty = state => (
+    state &&
     state.sheriff.selectedOptions.length === 0 &&
     state.bug.selectedOptions.length === 0);
 

@@ -132,19 +132,19 @@ tr.exportTo('cp', () => {
   TriageNew.summarize = alerts => {
     const pctDeltaRange = new tr.b.math.Range();
     const revisionRange = new tr.b.math.Range();
-    let testSuites = new Set();
-    // TODO handle non-numeric revisions
+    let measurements = new Set();
     for (const alert of alerts) {
       if (!alert.improvement) {
         pctDeltaRange.addValue(Math.abs(100 * alert.percentDeltaValue));
       }
+      // TODO handle non-numeric revisions
       revisionRange.addValue(alert.startRevision);
       revisionRange.addValue(alert.endRevision);
-      testSuites.add(alert.testSuite);
+      measurements.add(alert.measurement);
     }
-    testSuites = Array.from(testSuites);
-    testSuites.sort((x, y) => x.localeCompare(y));
-    testSuites = testSuites.join(',');
+    measurements = Array.from(measurements);
+    measurements.sort((x, y) => x.localeCompare(y));
+    measurements = measurements.join(',');
 
     let pctDeltaString = pctDeltaRange.min.toLocaleString(undefined, {
       maximumFractionDigits: 1,
@@ -160,7 +160,7 @@ tr.exportTo('cp', () => {
       revisionString += ':' + revisionRange.max;
     }
 
-    return `${pctDeltaString} regression in ${testSuites} at ${revisionString}`;
+    return `${pctDeltaString} regression in ${measurements} at ${revisionString}`;
   };
 
   TriageNew.collectLabels = alerts => {
