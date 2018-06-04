@@ -944,12 +944,13 @@ tr.exportTo('cp', () => {
         statistics: routeParams.get('stat') ? routeParams.getAll('stat') :
           ['avg'],
       },
+      isExpanded: !routeParams.has('compact'),
       minRevision: parseInt(routeParams.get('minRev')) || undefined,
       maxRevision: parseInt(routeParams.get('maxRev')) || undefined,
       selectedRelatedTabName: routeParams.get('spark') || '',
       mode: routeParams.get('mode') || undefined,
-      fixedXAxis: routeParams.get('natural') === null,
-      zeroYAxis: routeParams.get('zeroY') !== null,
+      fixedXAxis: !routeParams.has('natural'),
+      zeroYAxis: routeParams.has('zeroY'),
       selectedLineDescriptorHash: routeParams.get('select'),
     };
   };
@@ -1280,6 +1281,9 @@ tr.exportTo('cp', () => {
         state.relatedTabs[state.selectedRelatedTabIndex]) {
       routeParams.set('spark',
           state.relatedTabs[state.selectedRelatedTabIndex].name);
+    }
+    if (!state.isExpanded) {
+      routeParams.set('compact', '');
     }
     return routeParams;
   };

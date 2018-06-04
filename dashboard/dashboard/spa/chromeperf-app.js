@@ -85,10 +85,11 @@ tr.exportTo('cp', () => {
     }
 
     showBottomButtons_(
-        showingReportSection, alertsSectionIds, chartSectionIds) {
-      return (showingReportSection ||
-              !this._empty(alertsSectionIds) ||
-              !this._empty(chartSectionIds));
+        enableNav, showingReportSection, alertsSectionIds, chartSectionIds) {
+      return enableNav && (
+          showingReportSection ||
+          !this._empty(alertsSectionIds) ||
+          !this._empty(chartSectionIds));
     }
 
     observeReduxRoute_() {
@@ -197,6 +198,7 @@ tr.exportTo('cp', () => {
 
   ChromeperfApp.properties = {
     ...cp.ElementBase.statePathProperties('statePath', {
+      enableNav: {type: Boolean},
       isLoading: {type: Boolean},
       readied: {type: Boolean},
       reportSection: {
@@ -375,6 +377,10 @@ tr.exportTo('cp', () => {
         dispatch(cp.ElementBase.actions.updateObject('', {teamName}));
       }
 
+      if (routeParams.has('nonav')) {
+        dispatch(cp.ElementBase.actions.updateObject(statePath, {enableNav: false}));
+      }
+
       const sessionId = routeParams.get('session');
       if (sessionId) {
         await dispatch(ChromeperfApp.actions.restoreSessionState(
@@ -482,6 +488,10 @@ tr.exportTo('cp', () => {
         routeParams.set('team', rootState.teamName);
       }
 
+      if (!state.enableNav) {
+        routeParams.set('nonav', '');
+      }
+
       dispatch(cp.ElementBase.actions.updateObject(statePath, {
         reduxRoutePath: routeParams.toString(),
       }));
@@ -565,6 +575,7 @@ tr.exportTo('cp', () => {
       }
       return {
         ...state,
+        enableNav: true,
         isLoading: true,
         readied: false,
         reportSection: {
@@ -773,6 +784,7 @@ tr.exportTo('cp', () => {
     }
 
     return {
+      enableNav: state.enableNav,
       showingReportSection: state.showingReportSection,
       reportSection: cp.ReportSection.getSessionState(
           state.reportSection),

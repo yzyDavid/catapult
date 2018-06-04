@@ -136,103 +136,105 @@ found in the LICENSE file.
     <app-route route="{{route}}"></app-route>
     <app-location route="{{route}}" use-hash-as-path></app-location>
 
-    <div id="nav">
-      <a href="/" id="title" on-tap="onReset_">
-        Chromium Performance
-      </a>
+    <template is="dom-if" if="[[enableNav]]">
+      <div id="nav">
+        <a href="/" id="title" on-tap="onReset_">
+          Chromium Performance
+        </a>
 
-      <span class="spacer"></span>
+        <span class="spacer"></span>
 
-      <div class="buttons">
-        <paper-button
-            raised
-            title="Open Report"
-            disabled="[[showingReportSection]]"
-            on-tap="onShowReportSection_">
-          <iron-icon icon="communication:business">
-          </iron-icon>
-          Report
-        </paper-button>
+        <div class="buttons">
+          <paper-button
+              raised
+              title="Open Report"
+              disabled="[[showingReportSection]]"
+              on-tap="onShowReportSection_">
+            <iron-icon icon="communication:business">
+            </iron-icon>
+            Report
+          </paper-button>
 
-        <paper-button
-            raised
-            title="New Alerts section"
-            on-tap="onNewAlertsSection_">
-          <iron-icon icon="add-alert">
-          </iron-icon>
-          <span class="nav_button_label">
-            Alerts
-          </span>
-        </paper-button>
+          <paper-button
+              raised
+              title="New Alerts section"
+              on-tap="onNewAlertsSection_">
+            <iron-icon icon="add-alert">
+            </iron-icon>
+            <span class="nav_button_label">
+              Alerts
+            </span>
+          </paper-button>
 
-        <paper-button
-            raised
-            title="New Chart"
-            on-tap="onNewChart_">
-          <iron-icon icon="editor:show-chart">
-          </iron-icon>
-          <span class="nav_button_label">
-            New Chart
-          </span>
-        </paper-button>
+          <paper-button
+              raised
+              title="New Chart"
+              on-tap="onNewChart_">
+            <iron-icon icon="editor:show-chart">
+            </iron-icon>
+            <span class="nav_button_label">
+              New Chart
+            </span>
+          </paper-button>
 
-        <paper-button
-            raised
-            title="Close all charts"
-            disabled="[[!_multiple(chartSectionIds)]]"
-            on-tap="onCloseAllCharts_">
-          <iron-icon icon="close">
-          </iron-icon>
-          <span class="nav_button_label">
-            Close charts
-          </span>
-        </paper-button>
-      </div>
+          <paper-button
+              raised
+              title="Close all charts"
+              disabled="[[!_multiple(chartSectionIds)]]"
+              on-tap="onCloseAllCharts_">
+            <iron-icon icon="close">
+            </iron-icon>
+            <span class="nav_button_label">
+              Close charts
+            </span>
+          </paper-button>
+        </div>
 
-      <span class="spacer"></span>
+        <span class="spacer"></span>
 
-      <a href="https://github.com/catapult-project/catapult/tree/master/dashboard"
-         target="_blank"
-         title="Documentation">
-        <paper-icon-button icon="help">
-        </paper-icon-button>
-      </a>
-
-      <template is="dom-if" if="[[isInternal_(userEmail)]]">
-        <a href="http://go/chromeperf-v2-status"
-           target="_blank"
-           title="Status of this prototype">
-          <paper-icon-button icon="update">
+        <a href="https://github.com/catapult-project/catapult/tree/master/dashboard"
+          target="_blank"
+          title="Documentation">
+          <paper-icon-button icon="help">
           </paper-icon-button>
         </a>
-      </template>
 
-      <a href$="https://bugs.chromium.org/p/chromium/issues/entry?description=Describe+the+problem:+%0A%0A%0AURL:+[[escapedUrl_(route.path)]]&components=Speed%3EDashboard&summary=[chromeperf2]+"
-         target="_blank"
-         title="File a bug">
-        <paper-icon-button icon="feedback">
-        </paper-icon-button>
-      </a>
-
-      <template is="dom-if" if="[[isProduction]]">
-        <template is="dom-if" if="[[!userEmail]]">
-          <span id="please_signin">
-            Some features require signing in:
-          </span>
+        <template is="dom-if" if="[[isInternal_(userEmail)]]">
+          <a href="http://go/chromeperf-v2-status"
+            target="_blank"
+            title="Status of this prototype">
+            <paper-icon-button icon="update">
+            </paper-icon-button>
+          </a>
         </template>
-        [[userEmail]]
 
-        <google-signin
-            id="signin"
-            client-id="[[clientId]]"
-            height="short"
-            theme="dark"
-            scopes="email"
-            on-google-signin-success="onSignin_"
-            on-google-signed-out="onSignout_">
-        </google-signin>
-      </template>
-    </div>
+        <a href$="https://bugs.chromium.org/p/chromium/issues/entry?description=Describe+the+problem:+%0A%0A%0AURL:+[[escapedUrl_(route.path)]]&components=Speed%3EDashboard&summary=[chromeperf2]+"
+          target="_blank"
+          title="File a bug">
+          <paper-icon-button icon="feedback">
+          </paper-icon-button>
+        </a>
+
+        <template is="dom-if" if="[[isProduction]]">
+          <template is="dom-if" if="[[!userEmail]]">
+            <span id="please_signin">
+              Some features require signing in:
+            </span>
+          </template>
+          [[userEmail]]
+
+          <google-signin
+              id="signin"
+              client-id="[[clientId]]"
+              height="short"
+              theme="dark"
+              scopes="email"
+              on-google-signin-success="onSignin_"
+              on-google-signed-out="onSignout_">
+          </google-signin>
+        </template>
+      </div>
+    </template>
 
     <paper-progress indeterminate="[[isLoading]]">
     </paper-progress>
@@ -269,7 +271,7 @@ found in the LICENSE file.
       </chart-section>
     </template>
 
-    <template is="dom-if" if="[[showBottomButtons_(showingReportSection, alertsSectionIds, chartSectionIds)]]">
+    <template is="dom-if" if="[[showBottomButtons_(enableNav, showingReportSection, alertsSectionIds, chartSectionIds)]]">
       <div class="buttons bottom">
         <span class="spacer"></span>
 
