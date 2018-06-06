@@ -25,11 +25,11 @@ CACHE_SECONDS = 60 * 60 * 24 * 7 * 7
 
 
 @ndb.tasklet
-def GetSuffixedValue(key, statistic, revision):
-  test = yield timeseries2.FindTest(*(list(key) + [statistic, 'test']))
+def GetSuffixedValue(descriptor, statistic, revision):
+  test = yield timeseries2.FindTest(*(list(descriptor) + [statistic, 'test']))
   if not test:
     raise ndb.Return(None)
-  if test.key.id().find('/' + key[1] + '_' + statistic) < 0:
+  if test.key.id().find('/' + descriptor[1] + '_' + statistic) < 0:
     raise ndb.Return(None)
   row = utils.GetRowKey(test.key, revision).get()
   if not row:
@@ -132,10 +132,11 @@ def FindRow(test, revision, probe=False):
 
 
 @ndb.tasklet
-def GetStatisticsForKey(key, revision, statistics, results):
-  avg_test, avg_row = yield GetRow(key, revision)
+def GetStatisticsForDescriptor(descriptor, revision, statistics, results):
+  avg_test, avg_row = yield GetRow(descriptor, revision)
   logging.info('avg_row %r', avg_row)
   if not avg_row:
+    results.clear()
     raise ndb.Return()
 
   results['units'] = avg_test.units
@@ -143,106 +144,127 @@ def GetStatisticsForKey(key, revision, statistics, results):
     results['units'] += IMPROVEMENT_DIRECTION_SUFFIXES[
         avg_test.improvement_direction]
 
-  results['avgs'][key] = avg_row.value
-  results['stds'][key] = avg_row.error
-  results['max_value'] = max(results['max_value'], avg_row.value)
-  results['min_value'] = min(results['min_value'], avg_row.value)
+  # TODO use RunningStatistics
+  results['avg'] = avg_row.value
+  results['std'] = avg_row.error
+  results['max'] = avg_row.value
+  results['min'] = avg_row.value
 
   avg_row_dict = avg_row.to_dict()
   if 'd_count' in avg_row_dict:
-    results['counts'][key] = avg_row_dict['d_count']
-  elif key[0] == 'memory.top_10_mobile':
-    results['counts'][key] = 5
+    results['count'] = avg_row_dict['d_count']
+  elif descriptor[0] == 'memory.top_10_mobile':
+    results['count'] = 5
   else:
-    results['counts'][key] = 1
+    results['count'] = 1
   if 'd_max' in avg_row_dict:
-    results['max_value'] = max(results['max_value'], avg_row_dict['d_max'])
+    results['max'] = max(results['max'], avg_row_dict['d_max'])
   if 'd_min' in avg_row_dict:
-    results['min_value'] = min(results['min_value'], avg_row_dict['d_min'])
+    results['min'] = min(results['min'], avg_row_dict['d_min'])
 
-  if avg_test.key.id().find('/' + key[1] + '_avg') >= 0:
+  if avg_test.key.id().find('/' + descriptor[1] + '_avg') >= 0:
     # TODO parallelize with avg_row
-    count = yield GetSuffixedValue(key, 'count', avg_row.revision)
+    count = yield GetSuffixedValue(descriptor, 'count', avg_row.revision)
     if count is not None:
-      results['counts'][key] = count
+      results['count'] = count
 
     if 'max' in statistics:
-      row_max = yield GetSuffixedValue(key, 'max', avg_row.revision)
+      row_max = yield GetSuffixedValue(descriptor, 'max', avg_row.revision)
       if row_max is not None:
-        results['max_value'] = max(results['max_value'], row_max)
+        results['max'] = max(results['max'], row_max)
 
     if 'min' in statistics:
-      row_min = yield GetSuffixedValue(key, 'min', avg_row.revision)
+      row_min = yield GetSuffixedValue(descriptor, 'min', avg_row.revision)
       if row_min is not None:
-        results['min_value'] = min(results['min_value'], row_min)
+        results['min'] = min(results['min'], row_min)
 
 
 @ndb.tasklet
 def GetStatisticsForRow(template_row, statistics, revision):
   test_cases = template_row['testCases'] or [None]
-  keys = [
+  descriptors = [
       (test_suite, template_row['measurement'], bot, test_case)
       for test_suite in template_row['testSuites']
       for bot in template_row['bots']
       for test_case in test_cases
   ]
 
-  # TODO use RunningStatistics
-  results = {
-      'counts': {},
-      'avgs': {},
-      'stds': {},
-      'max_value': -float('inf'),
-      'min_value': float('inf'),
-      'units': None,
-  }
-  yield [GetStatisticsForKey(key, revision, statistics, results)
-         for key in keys]
-
-  count = sum(results['counts'].itervalues())
-  avg = None
-  std = None
-  if count > 0:
-    avg = sum(results['avgs'][key] * results['counts'][key]
-              for key in results['avgs'].iterkeys()) / count
-    if all(results['counts'].get(key, 0) > 1 for key in results['stds']):
-      # Pooled standard deviation
-      numerator = sum(
-          (results['counts'][key] - 1) * results['stds'][key] *
-          results['stds'][key]
-          for key in results['stds']
-      )
-      denominator = max(1, sum(
-          results['counts'].itervalues()) - len(results['counts']))
-      std = math.sqrt(numerator / denominator)
-    else:
-      std = sum(results['stds'][key]
-                for key in results['stds']) / len(results['stds'])
-
-  if math.isinf(results['max_value']):
-    results['max_value'] = None
-  if math.isinf(results['min_value']):
-    results['min_value'] = None
-
-  statistics = {
-      'avg': avg,
-      'count': count,
-      'max': results['max_value'],
-      'min': results['min_value'],
-      'std': std,
-  }
-  # TODO other statistics
-  template_row[revision] = statistics
-  if results['units']:
-    template_row['units'] = results['units']
+  yield [GetStatisticsForDescriptor(
+      descriptor, revision, statistics, template_row[revision].setdefault(descriptor, {}))
+      for descriptor in descriptors]
+  raise ndb.Return()
 
 
 @ndb.tasklet
 def RenderRow(row, statistics, revisions):
   row = dict(row)
-  futures = [GetStatisticsForRow(row, statistics, revision)
-             for revision in revisions]
-  yield futures
+  for revision in revisions:
+    row[revision] = {}  # timeseries_descriptor: statistics
+  yield [GetStatisticsForRow(row, statistics, revision)
+         for revision in revisions]
+
+  rowmerged = {}
+  for revision in revisions:
+    # TODO merge Histograms
+    merged = {
+        'count': 0,
+        'avg': 0,
+        'min': float('inf'),
+        'max': -float('inf'),
+        'std': 0,
+        'descriptors': [],
+    }
+    rowmerged[revision] = merged
+    frames = []
+
+    for descriptor, statistics in row[revision].iteritems():
+      if not statistics:
+        # GetStatisticsForDescriptor clears this dict when it doesn't find a
+        # timeseries for the descriptor.
+        continue
+
+      # Merge statistics for a descriptor only if that descriptor is present for
+      # all other revisions. If a test case is added or removed between
+      # revisions, then do not factor it in.
+      if not all(row[other_revision][descriptor] for other_revision in revisions):
+        continue
+
+      if statistics['units']:
+        row['units'] = statistics['units']
+
+      assert statistics['count'] > 0, descriptor
+      merged['descriptors'].append({
+          'testSuite': descriptor[0],
+          'bot': descriptor[2],
+          'testCase': descriptor[3],
+      })
+      merged['min'] = min(merged['min'], statistics['min'])
+      merged['max'] = max(merged['max'], statistics['max'])
+      merged['count'] += statistics['count']
+      frames.append(statistics)
+
+    if merged['count'] == 0:
+      merged['avg'] = None
+      merged['std'] = None
+    else:
+      merged['avg'] = sum(frame['avg'] * frame['count']
+                          for frame in frames) / merged['count']
+      if all(frame['count'] > 1 for frame in frames):
+        # Pooled standard deviation
+        numerator = sum(
+            (frame['count'] - 1) * frame['std'] * frame['std']
+            for frame in frames)
+        denominator = max(1, merged['count'] - len(frames))
+        std = math.sqrt(numerator / denominator)
+      else:
+        std = sum(frame['std'] for frame in frames) / len(frames)
+
+    if math.isinf(merged['max']):
+      merged['max'] = None
+    if math.isinf(merged['min']):
+      merged['min'] = None
+  for revision in revisions:
+    row[revision] = rowmerged[revision]
   raise ndb.Return(row)
 
 
