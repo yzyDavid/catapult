@@ -17,7 +17,9 @@ from dashboard.api import test_suites
 from dashboard.common import request_handler
 from dashboard.common import utils
 from dashboard.models import anomaly
-from dashboard.services import issue_tracker_service
+
+
+ISO_8601_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 
 def ParseISO8601(s):
