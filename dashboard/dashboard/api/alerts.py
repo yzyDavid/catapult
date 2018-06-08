@@ -4,9 +4,8 @@
 
 import datetime
 import httplib2
-import logging
 
-from google.appengine.datastore.datastore_query import Cursor
+from google.appengine.datastore import datastore_query
 from google.appengine.ext import ndb
 
 from dashboard import alerts
@@ -18,7 +17,9 @@ from dashboard.api import test_suites
 from dashboard.common import request_handler
 from dashboard.common import utils
 from dashboard.models import anomaly
-from dashboard.services import issue_tracker_service
+
+
+ISO_8601_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 
 class AlertsHandler(api_request_handler.ApiRequestHandler):
@@ -95,84 +96,60 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
       Alerts data; see README.md.
     """
     alert_list = None
-    list_type = args[0]
-    more = False
-    cursor = None
+    response = {}
     try:
-      if list_type.startswith('bug_id'):
-        bug_id = list_type.replace('bug_id/', '')
-        alert_list = group_report.GetAlertsWithBugId(bug_id)
-      elif list_type.startswith('keys'):
-        keys = list_type.replace('keys/', '').split(',')
-        alert_list = group_report.GetAlertsForKeys(keys)
-      elif list_type.startswith('rev'):
-        rev = list_type.replace('rev/', '')
-        alert_list = group_report.GetAlertsAroundRevision(rev)
-      elif list_type == 'new_bug':
-        return self._FileBug()
-      elif list_type == 'recent_bugs':
-        return self._RecentBugs()
-      elif list_type == 'existing_bug':
-        return self._ExistingBug()
-      elif list_type.startswith('history'):
-        query = anomaly.Anomaly.query()
-
-        sheriff_name = self.request.get('sheriff', 'Chromium Perf Sheriff')
-        if sheriff_name:
-          sheriff_key = ndb.Key('Sheriff', sheriff_name)
-          sheriff = sheriff_key.get()
-          if sheriff:
-            logging.info('sheriff %s', sheriff_name)
-            query = query.filter(anomaly.Anomaly.sheriff == sheriff_key)
+      if len(args) == 0:
+        is_improvement = self.request.get('is_improvement', None)
+        assert is_improvement in [None, 'true', 'false'], is_improvement
+        if is_improvement:
+          is_improvement = is_improvement == 'true'
+        recovered = self.request.get('recovered', None)
+        assert recovered in [None, 'true', 'false'], recovered
+        if recovered:
+          recovered = recovered == 'true'
+        start_cursor = self.request.get('cursor', None)
+        if start_cursor:
+          start_cursor = datastore_query.Cursor(urlsafe=start_cursor)
+        min_timestamp = self.request.get('min_timestamp', None)
+        if min_timestamp:
+          min_timestamp = datetime.datetime.strptime(
+              min_timestamp, ISO_8601_FORMAT)
+        max_timestamp = self.request.get('max_timestamp', None)
+        if max_timestamp:
+          max_timestamp = datetime.datetime.strptime(
+              max_timestamp, ISO_8601_FORMAT)
 
         try:
-          days = int(list_type.replace('history/', ''))
-        except ValueError:
-          days = 7
-        if days > 0:
-          logging.info('days %d', days)
-          cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
-          query = query.filter(anomaly.Anomaly.timestamp > cutoff)
-
-        limit = self.request.get('limit', None)
-        if limit:
-          limit = int(limit)
-
-        start_cursor = self.request.get('start_cursor', None)
-        if start_cursor:
-          start_cursor = Cursor(urlsafe=start_cursor)
-
-        include_triaged = bool(self.request.get('triaged'))
-        if not include_triaged:
-          logging.info('untriaged')
-          query = query.filter(anomaly.Anomaly.bug_id == None)
-
-        include_recovered = bool(self.request.get('recovered'))
-        if not include_recovered:
-          logging.info('unrecovered')
-          query = query.filter(anomaly.Anomaly.recovered == False)
-
-        include_improvements = bool(self.request.get('improvements'))
-        if not include_improvements:
-          logging.info('regressions')
-          query = query.filter(anomaly.Anomaly.is_improvement == False)
-
-        filter_for_benchmark = self.request.get('benchmark')
-        if filter_for_benchmark:
-          logging.info('benchmark %s', filter_for_benchmark)
-          query = query.filter(
-              anomaly.Anomaly.benchmark_name == filter_for_benchmark)
-
-        query = query.order(-anomaly.Anomaly.timestamp)
-
-        if limit or start_cursor:
-          (alert_list, cursor, more) = query.fetch_page(
-              limit, start_cursor=start_cursor)
-        else:
-          alert_list = query.fetch()
+          alert_list, next_cursor, _ = anomaly.Anomaly.QueryAsync(
+              bot_name=self.request.get('bot', None),
+              bug_id=self.request.get('bug_id', None),
+              is_improvement=is_improvement,
+              key=self.request.get('key', None),
+              limit=int(self.request.get('limit', 100)),
+              master_name=self.request.get('master', None),
+              max_end_revision=self.request.get('max_end_revision', None),
+              max_start_revision=self.request.get('max_start_revision', None),
+              max_timestamp=max_timestamp,
+              min_end_revision=self.request.get('min_end_revision', None),
+              min_start_revision=self.request.get('min_start_revision', None),
+              min_timestamp=min_timestamp,
+              recovered=recovered,
+              sheriff=self.request.get('sheriff', None),
+              start_cursor=start_cursor,
+              test=self.request.get('test', None),
+              test_suite_name=self.request.get('test_suite', None)).get_result()
+        except AssertionError:
+          alert_list, next_cursor = [], None
+        if next_cursor:
+          response['next_cursor'] = next_cursor.urlsafe()
       else:
-        raise api_request_handler.BadRequestError(
-            'Invalid alert type %s' % list_type)
+        list_type = args[0]
+        if list_type == 'new_bug':
+          return self._FileBug()
+        elif list_type == 'recent_bugs':
+          return self._RecentBugs()
+        elif list_type == 'existing_bug':
+          return self._ExistingBug()
     except request_handler.InvalidInputError as e:
       raise api_request_handler.BadRequestError(e.message)
 
@@ -192,8 +169,5 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
         ad['statistic'] = ad['measurement'][len(stripped) + 1:]
         ad['measurement'] = stripped
 
-    response = {'anomalies': anomaly_dicts}
-    if more and cursor:
-      response['cursor'] = cursor.urlsafe()
-
+    response['anomalies'] = anomaly_dicts
     return response
