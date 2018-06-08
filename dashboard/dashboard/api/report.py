@@ -212,10 +212,10 @@ def RenderRow(row, statistics, revisions):
         'min': float('inf'),
         'max': -float('inf'),
         'std': 0,
-        'descriptors': [],
     }
     rowmerged[revision] = merged
     frames = []
+    row['descriptors'] = []
 
     for descriptor, statistics in row[revision].iteritems():
       if not statistics:
@@ -233,7 +233,7 @@ def RenderRow(row, statistics, revisions):
         row['units'] = statistics['units']
 
       assert statistics['count'] > 0, descriptor
-      merged['descriptors'].append({
+      row['descriptors'].append({
           'testSuite': descriptor[0],
           'bot': descriptor[2],
           'testCase': descriptor[3],

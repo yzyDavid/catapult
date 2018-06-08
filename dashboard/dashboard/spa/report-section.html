@@ -179,6 +179,18 @@ found in the LICENSE file.
         position: absolute;
         z-index: -100;
       }
+
+      #tooltip {
+        background-color: white;
+        border: 2px solid var(--paper-indigo-500);
+        padding: 8px;
+        position: absolute;
+        z-index: 100;
+      }
+
+      #tooltip td {
+        padding: 2px;
+      }
     </style>
 
     <div id="controls">
@@ -417,7 +429,7 @@ found in the LICENSE file.
 
               <tbody>
                 <template is="dom-repeat" items="[[table.rows]]" as="row">
-                  <tr>
+                  <tr on-mouseover="onOverRow_" on-mouseout="onOutRow_">
                     <template is="dom-repeat" items="[[row.labelParts]]" as="labelPart" index-as="labelPartIndex">
                       <template is="dom-if" if="[[labelPart.isFirst]]">
                         <td row-span="[[labelPart.rowCount]]">
@@ -442,6 +454,22 @@ found in the LICENSE file.
                 </template>
               </tbody>
             </table>
+
+            <div id="tooltip"
+                hidden$="[[!tooltip.rows]]"
+                style$="top: [[tooltip.top]]px; left: [[tooltip.left]]px;">
+              <table>
+                <tbody>
+                  <template is="dom-repeat" items="[[tooltip.rows]]" as="row" index-as="rowIndex">
+                    <tr>
+                      <template is="dom-repeat" items="[[row]]" as="cell" index-as="cellIndex">
+                        [[cell]]
+                      </template>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </iron-collapse>
         </iron-collapse>
       </template>

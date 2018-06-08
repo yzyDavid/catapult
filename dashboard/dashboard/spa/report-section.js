@@ -353,6 +353,29 @@ tr.exportTo('cp', () => {
     isNextMilestone_(milestone) {
       return milestone < CURRENT_MILESTONE;
     }
+
+    async onOverRow_(event) {
+      let tr;
+      for (const elem of event.path) {
+        if (elem.tagName === 'TR') {
+          tr = elem;
+          break;
+        }
+      }
+      if (!tr) return;
+      const td = tr.querySelectorAll('td')[event.model.row.labelParts.length]
+      const tdRect = await cp.measureElement(td);
+      await this.dispatch('showTooltip', this.statePath, {
+        rows: event.model.row.actualDescriptors.map(descriptor => [
+          descriptor.testSuite, descriptor.bot, descriptor.testCase]),
+        top: tdRect.bottom,
+        left: tdRect.left,
+      });
+    }
+
+    async onOutRow_(event) {
+      await this.dispatch('hideTooltip', this.statePath);
+    }
   }
 
   ReportSection.canEdit = (table, userEmail) =>
@@ -372,6 +395,7 @@ tr.exportTo('cp', () => {
       sectionId: {type: String},
       source: {type: Object},
       tables: {type: Array},
+      tooltip: {type: Array},
     }),
     userEmail: {
       type: String,
@@ -737,6 +761,14 @@ tr.exportTo('cp', () => {
         copiedMeasurements: false,
       }));
     },
+
+    showTooltip: (statePath, tooltip) => async(dispatch, getState) => {
+      dispatch(cp.ElementBase.actions.updateObject(statePath, {tooltip}));
+    },
+
+    hideTooltip: statePath => async(dispatch, getState) => {
+      dispatch(cp.ElementBase.actions.updateObject(statePath, {tooltip: {}}));
+    },
   };
 
   ReportSection.reducers = {
@@ -1038,6 +1070,7 @@ tr.exportTo('cp', () => {
       maxRevisionInput: options.maxRevision,
       anyAlerts: false,
       tables: [PLACEHOLDER_TABLE],
+      tooltip: {},
     };
   };
 
@@ -1132,6 +1165,7 @@ tr.exportTo('cp', () => {
       labelParts,
       scalars,
       label: row.label,
+      actualDescriptors: row.descriptors,
       testSuite: {
         errorMessage: 'required',
         label: `Test suites (${testSuites.count})`,
