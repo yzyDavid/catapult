@@ -5,20 +5,13 @@
 'use strict';
 tr.exportTo('cp', () => {
   const CHROMIUM_MILESTONES = {
-    54: [416640, 423768],
-    55: [433391, 433400],
-    56: [433400, 445288],
-    57: [447949, 454466],
-    58: [454523, 463842],
-    59: [465221, 474839],
-    60: [474952, 488392],
-    61: [488576, 498621],
-    62: [502840, 508578],
-    63: [508578, 520719],
-    64: [528754, 530282],
-    65: [530424, 540240],
-    66: [540302, 543346],
-    67: [550534, 554765],
+    // https://omahaproxy.appspot.com/
+    // Does not support M<=63
+    64: 520840,
+    65: 530369,
+    66: 540276,
+    67: 550428,
+    68: 561733,
   };
   const CURRENT_MILESTONE = tr.b.math.Statistics.max(
       Object.keys(CHROMIUM_MILESTONES));
@@ -354,7 +347,7 @@ tr.exportTo('cp', () => {
     }
 
     isPreviousMilestone_(milestone) {
-      return milestone > MIN_MILESTONE;
+      return milestone > (MIN_MILESTONE + 1);
     }
 
     isNextMilestone_(milestone) {
@@ -748,7 +741,8 @@ tr.exportTo('cp', () => {
 
   ReportSection.reducers = {
     selectMilestone: (state, action, rootState) => {
-      const [minRevision, maxRevision] = CHROMIUM_MILESTONES[action.milestone];
+      const maxRevision = CHROMIUM_MILESTONES[action.milestone];
+      const minRevision = CHROMIUM_MILESTONES[action.milestone - 1];
       return {
         ...state,
         minRevision,
@@ -1009,17 +1003,13 @@ tr.exportTo('cp', () => {
     if (options.milestone === undefined &&
         options.minRevision !== undefined &&
         options.maxRevision !== undefined) {
-      const paramRevisions = tr.b.math.Range.fromExplicitRange(
-          options.minRevision, options.maxRevision);
-      // Find the milestone that most intersects paramRevisions;
-      let largestIntersection = -1;
-      for (const [milestone, milestoneRevisions] of Object.entries(
+      for (const [milestone, milestoneRevision] of Object.entries(
           CHROMIUM_MILESTONES)) {
-        const intersection = paramRevisions.findIntersection(
-            tr.b.math.Range.fromExplicitRange(...milestoneRevisions)).range;
-        if (intersection < largestIntersection) break;
-        largestIntersection = intersection;
-        options.milestone = milestone;
+        if (milestoneRevision >= options.minRevision &&
+            options.maxRevision >= milestoneRevision) {
+          options.milestone = milestone;
+          break;
+        }
       }
     }
     return options;

@@ -676,8 +676,12 @@ tr.exportTo('cp', () => {
         if (action.options.mode) {
           linkedChartState.linkedMode = action.options.mode;
         }
-        linkedChartState.linkedFixedXAxis = action.options.fixedXAxis;
-        linkedChartState.linkedZeroYAxis = action.options.zeroYAxis;
+        if (action.options.fixedXAxis !== undefined) {
+          linkedChartState.linkedFixedXAxis = action.options.fixedXAxis;
+        }
+        if (action.options.zeroYAxis !== undefined) {
+          linkedChartState.linkedZeroYAxis = action.options.zeroYAxis;
+        }
         state = {...state, linkedChartState};
       }
       return {...state, chartSectionIds};
