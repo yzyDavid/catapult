@@ -16,6 +16,7 @@ from dashboard.api import describe
 from dashboard.api import test_suites
 from dashboard.common import request_handler
 from dashboard.models import anomaly
+from dashboard.services import issue_tracker_service
 
 
 def ParseISO8601(s):
