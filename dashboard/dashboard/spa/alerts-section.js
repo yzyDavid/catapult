@@ -166,7 +166,6 @@ tr.exportTo('cp', () => {
       this.bugId = options.body.bug;
       this.body_ = new URLSearchParams();
       for (const [key, value] of Object.entries(options.body)) {
-        if (key === 'bug') continue;
         if (value === undefined) continue;
         this.body_.set(key, value);
       }
@@ -175,10 +174,7 @@ tr.exportTo('cp', () => {
     }
 
     get url_() {
-      if (this.bugId) {
-        return '/api/alerts/bug_id/' + this.bugId;
-      }
-      return '/api/alerts/history/100';
+      return '/api/alerts';
     }
 
     async localhostResponse_() {
@@ -242,7 +238,7 @@ tr.exportTo('cp', () => {
           test: measurements[i] + '/' +
             testCases[parseInt(Math.random() * testCases.length)],
           testsuite: 'system_health.common_desktop',
-          units: 'ms',
+          units: measurements[i].startsWith('memory') ? 'sizeInBytes' : 'ms',
         });
       }
       alerts.sort((x, y) => x.start_revision - y.start_revision);
@@ -846,16 +842,18 @@ tr.exportTo('cp', () => {
       const errors = [];
       const sources = [
         ...state.sheriff.selectedOptions.map(sheriff => {
-          return {
-            recovered: '',
-            limit: 500,
-            improvements: state.showingImprovements ? 'true' : '',
-            triaged: state.showingTriaged ? 'true' : '',
-            sheriff,
-          };
+          const options = {sheriff, limit: 500};
+          if (!state.showingImprovements) {
+            options.is_improvement = 'false';
+          }
+          if (!state.showingTriaged) {
+            options.bug_id = '';
+            options.recovered = 'false';
+          }
+          return options;
         }),
         ...state.bug.selectedOptions.map(bug => {
-          return {bug};
+          return {bug_id: bug};
         }),
       ];
       if (sources.length > 0) {
@@ -1390,17 +1388,21 @@ tr.exportTo('cp', () => {
     const unitSuffix = tr.b.Unit.nameSuffixForImprovementDirection(
         improvementDirection);
 
-    let unitName = 'unitlessNumber';
-    if (tr.b.Unit.byName[alert.units + unitSuffix]) {
-      unitName = alert.units;
-    } else {
-      const info = tr.v.LEGACY_UNIT_INFO.get(alert.units);
-      if (info) {
-        unitName = info.name;
-        deltaValue *= info.conversionFactor || 1;
+    let baseUnit = tr.b.Unit.byName[alert.units];
+    if (!baseUnit ||
+        baseUnit.improvementDirection !== improvementDirection) {
+      let unitName = 'unitlessNumber';
+      if (tr.b.Unit.byName[alert.units + unitSuffix]) {
+        unitName = alert.units;
+      } else {
+        const info = tr.v.LEGACY_UNIT_INFO.get(alert.units);
+        if (info) {
+          unitName = info.name;
+          deltaValue *= info.conversionFactor || 1;
+        }
       }
+      baseUnit = tr.b.Unit.byName[unitName + unitSuffix];
     }
-    const baseUnit = tr.b.Unit.byName[unitName + unitSuffix];
 
     return {
       baseUnit,

@@ -140,6 +140,7 @@ def GetStatisticsForDescriptor(descriptor, revision, statistics, results):
     raise ndb.Return()
 
   results['units'] = avg_test.units
+  results['improvement_direction'] = avg_test.improvement_direction
   if results['units'] in ['sizeInBytes', 'W', 'ms']:
     results['units'] += IMPROVEMENT_DIRECTION_SUFFIXES[
         avg_test.improvement_direction]

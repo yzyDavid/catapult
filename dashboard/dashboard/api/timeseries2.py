@@ -237,6 +237,7 @@ class Timeseries2Handler(api_request_handler.ApiRequestHandler):
         'timeseries': TransformRows(
             rows.fetch(MAX_POINTS), columns, alert_entities, hist_entities,
             min_rev, max_rev, max_timestamp),
+        'improvement_direction': test.improvement_direction,
         'units': test.units,
     })
     self._SetCacheControlHeader(internal_only)
