@@ -6,7 +6,6 @@ import datetime
 import httplib2
 
 from google.appengine.datastore import datastore_query
-from google.appengine.datastore.datastore_query import Cursor
 from google.appengine.ext import ndb
 
 from dashboard import alerts
