@@ -461,7 +461,7 @@ tr.exportTo('cp', () => {
       if (!hist) {
         hist = histograms.createHistogram(event.name, unit, []);
       }
-      hist.addSample(measure.duration);
+      hist.addSample(event.duration);
     }
     return histograms;
   };
