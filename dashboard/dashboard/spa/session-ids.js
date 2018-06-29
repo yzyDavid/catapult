@@ -44,7 +44,7 @@ tr.exportTo('cp', () => {
     }
 
     async computeCacheKey_() {
-      const sessionId = await cp.sha256(this.sessionStateJson_);
+      const sessionId = await cp.sha(this.sessionStateJson_);
       if (this.options_.sessionIdCallback) {
         this.options_.sessionIdCallback(sessionId);
       }

@@ -871,9 +871,9 @@ tr.exportTo('cp', () => {
 
       await Promise.all(alerts.map(async alert => {
         // Ideally, this should be handled in transformAlert, but reducers can't
-        // be async, and sha256 is async so this needs to be done here.
+        // be async, and sha is async so this needs to be done here.
         const partialSuite = alert.testsuite + ':' + alert.test.split('/')[0];
-        alert.partialHash = await cp.sha256(partialSuite);
+        alert.partialHash = await cp.sha(partialSuite);
       }));
 
       dispatch({

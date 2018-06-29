@@ -476,46 +476,7 @@ tr.exportTo('cp', () => {
       ('' + parseInt(p[0])).padEnd(6) + p[1]).join('\n');
   };
 
-  async function sha256(s) {
-    s = new TextEncoder('utf-8').encode(s);
-    const hash = await crypto.subtle.digest('SHA-256', s);
-    const view = new DataView(hash);
-    let hex = '';
-    for (let i = 0; i < view.byteLength; i += 4) {
-      hex += ('00000000' + view.getUint32(i).toString(16)).slice(-8);
-    }
-    return hex;
-  }
-
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-    'Oct', 'Nov', 'Dec'];
-
-  function abbreviateMonth(date) {
-    return MONTHS[date.getMonth()];
-  }
-
-  function succintDateRange(minDate, maxDate) {
-    const minYear = minDate.getYear();
-    const minMonth = abbreviateMonth(minDate);
-    const maxMonth = abbreviateMonth(maxDate);
-    if (minDate.getYear() !== maxDate.getYear()) {
-      return `${minYear} ${minMonth} - ${maxDate.getYear()} ${maxMonth}`;
-    }
-    if (minDate.getMonth() !== maxDate.getMonth()) {
-      return `${minYear} ${minMonth} ${minDate.getDate()} - ` +
-        `${maxMonth} ${maxDate.getDate()}`;
-    }
-    if (minDate.getDate() !== maxDate.getDate()) {
-      return `${minYear} ${minMonth} ${minDate.getDate()} - ` +
-        maxDate.getDate();
-    }
-    return `${minYear} ${minMonth} ${minDate.getDate()} ` +
-      `${minDate.getHours()}:${('0' + minDate.getMinutes()).slice(-2)} - ` +
-      `${maxDate.getHours()}:${('0' + maxDate.getMinutes()).slice(-2)}`;
-  }
-
   return {
     ElementBase,
-    sha256,
   };
 });

@@ -385,9 +385,9 @@ tr.exportTo('cp', () => {
 
       if (state.selectedLineDescriptorHash) {
         // Restore from URL. This needs to be in the action creator because
-        // sha256 is async.
+        // sha is async.
         for (const lineDescriptor of state.lineDescriptors) {
-          const lineDescriptorHash = await cp.sha256(
+          const lineDescriptorHash = await cp.sha(
               cp.ChartTimeseries.stringifyDescriptor(lineDescriptor));
           if (!lineDescriptorHash.startsWith(
               state.selectedLineDescriptorHash)) {
@@ -483,7 +483,7 @@ tr.exportTo('cp', () => {
         type: ChartSection.reducers.selectLine.typeName,
         statePath,
         lineDescriptor,
-        selectedLineDescriptorHash: await cp.sha256(
+        selectedLineDescriptorHash: await cp.sha(
             cp.ChartTimeseries.stringifyDescriptor(lineDescriptor)),
       });
       /*

@@ -72,15 +72,15 @@ tr.exportTo('cp', () => {
     }
 
     async reportNameMatches_(reportName) {
-      return this.reportNameHashes_.has(await cp.sha256(reportName));
+      return this.reportNameHashes_.has(await cp.sha(reportName));
     }
 
     async sheriffNameMatches_(sheriffName) {
-      return this.sheriffNameHashes_.has(await cp.sha256(testSuite));
+      return this.sheriffNameHashes_.has(await cp.sha(testSuite));
     }
 
     async testSuiteMatches_(testSuite) {
-      return this.testSuiteHashes_.has(await cp.sha256(testSuite));
+      return this.testSuiteHashes_.has(await cp.sha(testSuite));
     }
   }
 
