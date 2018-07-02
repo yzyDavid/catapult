@@ -831,7 +831,9 @@ tr.exportTo('cp', () => {
         if (d.MEMORY_PROCESS_RELATED_NAMES.has(measurement)) {
           for (let relatedMeasurement of d.MEMORY_PROCESS_RELATED_NAMES.get(
               measurement)) {
-            if (relatedMeasurement.endsWith('_avg')) relatedMeasurement = relatedMeasurement.slice(0, -4);
+            if (relatedMeasurement.endsWith('_avg')) {
+              relatedMeasurement = relatedMeasurement.slice(0, -4);
+            }
             if (relatedMeasurement === measurement) continue;
             const relatedParts = relatedMeasurement.split(':');
             processSparklines.push(ChartSection.createSparkline(
@@ -842,9 +844,11 @@ tr.exportTo('cp', () => {
           }
         }
         if (d.MEMORY_COMPONENT_RELATED_NAMES.has(measurement)) {
-          for (const relatedMeasurement of d.MEMORY_COMPONENT_RELATED_NAMES.get(
+          for (let relatedMeasurement of d.MEMORY_COMPONENT_RELATED_NAMES.get(
               measurement)) {
-            if (relatedMeasurement.endsWith('_avg')) relatedMeasurement = relatedMeasurement.slice(0, -4);
+            if (relatedMeasurement.endsWith('_avg')) {
+              relatedMeasurement = relatedMeasurement.slice(0, -4);
+            }
             if (relatedMeasurement === measurement) continue;
             const relatedParts = relatedMeasurement.split(':');
             const name = relatedParts.slice(

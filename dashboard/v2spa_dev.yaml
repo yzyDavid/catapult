@@ -26,6 +26,10 @@ handlers:
   static_files: redux/redux.min.js
   upload: redux/redux\.min\.js
 
+- url: /idb.js
+  static_files: idb.js
+  upload: kdb.js
+
 - url: /gl-matrix-min.js
   static_files: gl-matrix-min.js
   upload: gl-matrix-min\.js

@@ -3,12 +3,21 @@ available for preview at https://v2spa-dot-chromeperf.appspot.com .
 
 In order to develop or deploy v2spa, a one-time setup is required:
 ```
-cd dashboard
+pushd common/node_runner/node_runner
+npm install
+sed -i 's/ecmaVersion: 6/ecmaVersion: 9/g' node_modules/hydrolysis/lib/ast-utils/js-parse.js
+popd
+pushd dashboard
+ln -sf ../third_party/idb/idb.js
 ln -sf ../third_party/polymer2
+ln -sf ../third_party/polymer2/bower_components
 ln -sf ../third_party/redux
+ln -sf ../third_party/redux/redux.min.js
+ln -sf ../tracing/third_party/gl-matrix/dist/gl-matrix-min.js
+ln -sf ../tracing/third_party/mannwhitneyu
 ln -sf ../tracing/tracing
-ln -sf polymer2/bower_components
-ln -sf redux/redux.min.js
+ln -sf ../tracing/tracing_project.py
+popd
 ```
 
 In order to deploy v2spa.yaml to v2spa-dot-chromeperf.appspot.com, run

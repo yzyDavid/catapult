@@ -1,0 +1,11 @@
+# Third party
+/bower_components
+/mannwhitneyu
+/polymer2
+/redux
+/redux.min.js
+
+# Catapult tracing library
+/tracing
+/tracing_project.py
+/gl-matrix-min.js
