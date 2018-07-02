@@ -15,11 +15,9 @@ from google.appengine.ext import ndb
 
 from dashboard.api import alerts
 from dashboard.api import api_auth
-from dashboard.common import datastore_hooks
 from dashboard.common import testing_common
 from dashboard.common import utils
 from dashboard.models import anomaly
-from dashboard.models import bug_data
 from dashboard.models import sheriff
 
 

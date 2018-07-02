@@ -10,7 +10,6 @@ from google.appengine.ext import ndb
 
 from dashboard import alerts
 from dashboard import file_bug
-from dashboard import group_report
 from dashboard.api import api_request_handler
 from dashboard.api import describe
 from dashboard.api import test_suites

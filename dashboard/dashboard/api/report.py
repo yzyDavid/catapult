@@ -191,8 +191,9 @@ def GetStatisticsForRow(template_row, statistics, revision):
   ]
 
   yield [GetStatisticsForDescriptor(
-      descriptor, revision, statistics, template_row[revision].setdefault(descriptor, {}))
-      for descriptor in descriptors]
+      descriptor, revision, statistics,
+      template_row[revision].setdefault(descriptor, {}))
+         for descriptor in descriptors]
   raise ndb.Return()
 
 
@@ -256,9 +257,9 @@ def RenderRow(row, statistics, revisions):
             (frame['count'] - 1) * frame['std'] * frame['std']
             for frame in frames)
         denominator = max(1, merged['count'] - len(frames))
-        std = math.sqrt(numerator / denominator)
+        merged['std'] = math.sqrt(numerator / denominator)
       else:
-        std = sum(frame['std'] for frame in frames) / len(frames)
+        merged['std'] = sum(frame['std'] for frame in frames) / len(frames)
 
     if math.isinf(merged['max']):
       merged['max'] = None
