@@ -160,7 +160,9 @@ tr.exportTo('cp', () => {
       revisionString += ':' + revisionRange.max;
     }
 
-    return `${pctDeltaString} regression in ${measurements} at ${revisionString}`;
+    return (
+      `${pctDeltaString} regression in ${measurements} at ${revisionString}`
+    );
   };
 
   TriageNew.collectLabels = alerts => {

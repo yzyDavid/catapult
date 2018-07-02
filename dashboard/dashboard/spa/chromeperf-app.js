@@ -87,9 +87,9 @@ tr.exportTo('cp', () => {
     showBottomButtons_(
         enableNav, showingReportSection, alertsSectionIds, chartSectionIds) {
       return enableNav && (
-          showingReportSection ||
-          !this._empty(alertsSectionIds) ||
-          !this._empty(chartSectionIds));
+        showingReportSection ||
+        !this._empty(alertsSectionIds) ||
+        !this._empty(chartSectionIds));
     }
 
     observeReduxRoute_() {
@@ -167,7 +167,7 @@ tr.exportTo('cp', () => {
     }
 
     get isProduction() {
-      return location.hostname === 'v2spa-dot-chromeperf.appspot.com';
+      return cp.IS_PRODUCTION;
     }
 
     getChartTitle_(ids) {
@@ -378,7 +378,9 @@ tr.exportTo('cp', () => {
       }
 
       if (routeParams.has('nonav')) {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {enableNav: false}));
+        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+          enableNav: false,
+        }));
       }
 
       const sessionId = routeParams.get('session');

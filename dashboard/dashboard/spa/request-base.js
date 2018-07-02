@@ -38,7 +38,7 @@ tr.exportTo('cp', () => {
     async fetch_() {
       await this.addAuthorizationHeaders_();
 
-      if (location.hostname === 'localhost') {
+      if (cp.IS_DEBUG) {
         // Simulate network latency in order to test loading state e.g. progress
         // bars.
         await cp.ElementBase.timeout(1000);
