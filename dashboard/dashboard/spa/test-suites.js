@@ -45,15 +45,15 @@ tr.exportTo('cp', () => {
     }
 
     onStartRequest_(request) {
-      this.dispatch_(cp.ElementBase.actions.updateObject('', {
+      cp.ElementBase.actions.updateObject('', {
         [this.cacheKey_]: request.response,
-      }));
+      })(this.dispatch_, this.getState_);
     }
 
     onFinishRequest_(result) {
-      this.dispatch_(cp.ElementBase.actions.updateObject('', {
+      cp.ElementBase.actions.updateObject('', {
         [this.cacheKey_]: result,
-      }));
+      })(this.dispatch_, this.getState_);
     }
   }
 

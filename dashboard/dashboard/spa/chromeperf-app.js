@@ -245,16 +245,16 @@ tr.exportTo('cp', () => {
     ready: (statePath, routeParams, authParams) =>
       async(dispatch, getState) => {
         requestIdleCallback(() => {
-          dispatch(cp.ReadTestSuites());
-          dispatch(cp.PrefetchTestSuiteDescriptors({
+          cp.ReadTestSuites()(dispatch, getState);
+          cp.PrefetchTestSuiteDescriptors({
             testSuites: PRE_DESCRIBE_TEST_SUITES,
-          }));
+          })(dispatch, getState);
         });
 
-        dispatch(cp.ElementBase.actions.ensureObject(statePath));
-        dispatch(cp.ElementBase.actions.updateObject('', {
+        cp.ElementBase.actions.ensureObject(statePath)(dispatch, getState);
+        cp.ElementBase.actions.updateObject('', {
           userEmail: '',
-        }));
+        })(dispatch, getState);
 
         // Wait for ChromeperfApp and its reducers to be registered.
         await cp.ElementBase.afterRender();
@@ -277,20 +277,21 @@ tr.exportTo('cp', () => {
 
         // Now, if the user is signed in, we have authorizationHeaders. Try to
         // restore session state, which might include internal data.
-        await dispatch(ChromeperfApp.actions.restoreFromRoute(
-            statePath, routeParams));
+        await ChromeperfApp.actions.restoreFromRoute(
+            statePath, routeParams)(dispatch, getState);
 
         // The app is done loading.
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           isLoading: false,
           readied: true,
-        }));
+        })(dispatch, getState);
       },
 
     reportSectionShowing: (statePath, showingReportSection) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            statePath, {showingReportSection}));
+        cp.ElementBase.actions.updateObject(statePath, {
+          showingReportSection,
+        })(dispatch, getState);
       },
 
     newAlerts: (statePath, options) => async(dispatch, getState) => {
@@ -305,8 +306,9 @@ tr.exportTo('cp', () => {
       const state = Polymer.Path.get(getState(), statePath);
       const section = state.alertsSectionsById[sectionId];
       if (cp.AlertsSection.isEmpty(section)) {
-        dispatch(cp.DropdownInput.actions.focus(
-            `${statePath}.alertsSectionsById.${sectionId}.sheriff`));
+        cp.DropdownInput.actions.focus(
+            `${statePath}.alertsSectionsById.${sectionId}.sheriff`
+        )(dispatch, getState);
       }
     },
 
@@ -316,7 +318,7 @@ tr.exportTo('cp', () => {
         statePath,
         sectionId,
       });
-      dispatch(cp.ChromeperfApp.actions.updateLocation(statePath));
+      cp.ChromeperfApp.actions.updateLocation(statePath)(dispatch, getState);
 
       await cp.ElementBase.timeout(5000);
       const state = Polymer.Path.get(getState(), statePath);
@@ -333,23 +335,23 @@ tr.exportTo('cp', () => {
     onSignin: statePath => async(dispatch, getState) => {
       const user = gapi.auth2.getAuthInstance().currentUser.get();
       let response = user.getAuthResponse();
-      dispatch(cp.ElementBase.actions.updateObject('', {
+      cp.ElementBase.actions.updateObject('', {
         userEmail: user.getBasicProfile().getEmail(),
-      }));
+      })(dispatch, getState);
 
       // TODO The AlertsHandler should be able to serve recent bugs without
       // requiring authorization.
       const request = new RecentBugsRequest({});
       response = await request.response;
-      dispatch(cp.ElementBase.actions.updateObject('', {
+      cp.ElementBase.actions.updateObject('', {
         recentPerformanceBugs: response.bugs.map(cp.AlertsSection.transformBug),
-      }));
+      })(dispatch, getState);
     },
 
     onSignout: () => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject('', {
+      cp.ElementBase.actions.updateObject('', {
         userEmail: '',
-      }));
+      })(dispatch, getState);
     },
 
     restoreSessionState: (statePath, sessionId) =>
@@ -357,9 +359,9 @@ tr.exportTo('cp', () => {
         const request = new SessionStateRequest({sessionId});
         const sessionState = await request.response;
         if (sessionState.teamName) {
-          dispatch(cp.ElementBase.actions.updateObject('', {
+          cp.ElementBase.actions.updateObject('', {
             teamName: sessionState.teamName,
-          }));
+          })(dispatch, getState);
         }
 
         dispatch({
@@ -367,43 +369,44 @@ tr.exportTo('cp', () => {
           statePath,
           sessionState,
         });
-        dispatch(cp.ReportSection.actions.restoreState(
-            `${statePath}.reportSection`, sessionState.reportSection));
+        cp.ReportSection.actions.restoreState(
+            `${statePath}.reportSection`, sessionState.reportSection
+        )(dispatch, getState);
       },
 
     restoreFromRoute: (statePath, routeParams) => async(dispatch, getState) => {
       const teamName = routeParams.get('team');
       if (teamName) {
-        dispatch(cp.ElementBase.actions.updateObject('', {teamName}));
+        cp.ElementBase.actions.updateObject('', {teamName})(dispatch, getState);
       }
 
       if (routeParams.has('nonav')) {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           enableNav: false,
-        }));
+        })(dispatch, getState);
       }
 
       const sessionId = routeParams.get('session');
       if (sessionId) {
-        await dispatch(ChromeperfApp.actions.restoreSessionState(
-            statePath, sessionId));
+        await ChromeperfApp.actions.restoreSessionState(
+            statePath, sessionId)(dispatch, getState);
         return;
       }
 
       if (routeParams.get('report') !== null) {
         const options = cp.ReportSection.newStateOptionsFromQueryParams(
             routeParams);
-        dispatch(cp.ReportSection.actions.restoreState(
-            `${statePath}.reportSection`, options));
+        cp.ReportSection.actions.restoreState(
+            `${statePath}.reportSection`, options)(dispatch, getState);
         return;
       }
 
       if (routeParams.get('sheriff') !== null ||
           routeParams.get('bug') !== null) {
         // Hide the report section and create a single alerts-section.
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           showingReportSection: false,
-        }));
+        })(dispatch, getState);
         dispatch({
           type: ChromeperfApp.reducers.newAlerts.typeName,
           statePath,
@@ -416,9 +419,9 @@ tr.exportTo('cp', () => {
       if (routeParams.get('testSuite') !== null ||
           routeParams.get('chart') !== null) {
         // Hide the report section and create a single chart.
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           showingReportSection: false,
-        }));
+        })(dispatch, getState);
         dispatch({
           type: ChromeperfApp.reducers.newChart.typeName,
           statePath,
@@ -432,16 +435,16 @@ tr.exportTo('cp', () => {
     saveSession: statePath => async(dispatch, getState) => {
       const rootState = getState();
       const state = Polymer.Path.get(rootState, statePath);
-      dispatch(cp.readSessionId({
+      cp.readSessionId({
         sessionState: {
           ...ChromeperfApp.getSessionState(state),
           teamName: rootState.teamName,
         },
         sessionIdCallback: session =>
-          dispatch(cp.ElementBase.actions.updateObject(statePath, {
+          cp.ElementBase.actions.updateObject(statePath, {
             reduxRoutePath: new URLSearchParams({session}),
-          })),
-      }));
+          })(dispatch, getState),
+      })(dispatch, getState);
     },
 
     updateLocation: statePath => async(dispatch, getState) => {
@@ -482,7 +485,7 @@ tr.exportTo('cp', () => {
       }
 
       if (routeParams === undefined) {
-        dispatch(ChromeperfApp.actions.saveSession(statePath));
+        ChromeperfApp.actions.saveSession(statePath)(dispatch, getState);
         return;
       }
 
@@ -494,31 +497,31 @@ tr.exportTo('cp', () => {
         routeParams.set('nonav', '');
       }
 
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         reduxRoutePath: routeParams.toString(),
-      }));
+      })(dispatch, getState);
     },
 
     reopenClosedAlerts: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         alertsSectionIds: [
           ...state.alertsSectionIds,
           ...state.closedAlertsIds,
         ],
         closedAlertsIds: undefined,
-      }));
+      })(dispatch, getState);
     },
 
     reopenClosedChart: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         chartSectionIds: [
           ...state.chartSectionIds,
           ...state.closedChartIds,
         ],
         closedChartIds: undefined,
-      }));
+      })(dispatch, getState);
     },
 
     newChart: (statePath, options) => async(dispatch, getState) => {
@@ -535,7 +538,7 @@ tr.exportTo('cp', () => {
         statePath,
         sectionId,
       });
-      dispatch(cp.ChromeperfApp.actions.updateLocation(statePath));
+      cp.ChromeperfApp.actions.updateLocation(statePath)(dispatch, getState);
 
       await cp.ElementBase.timeout(5000);
       const state = Polymer.Path.get(getState(), statePath);
@@ -554,17 +557,18 @@ tr.exportTo('cp', () => {
         type: ChromeperfApp.reducers.closeAllCharts.typeName,
         statePath,
       });
-      dispatch(cp.ChromeperfApp.actions.updateLocation(statePath));
+      cp.ChromeperfApp.actions.updateLocation(statePath)(dispatch, getState);
     },
 
     reset: statePath => async(dispatch, getState) => {
-      dispatch(cp.ReportSection.actions.restoreState(
-          `${statePath}.reportSection`, {sources: [
-            cp.ReportSection.DEFAULT_NAME,
-          ]}));
-      dispatch(ChromeperfApp.actions.reportSectionShowing(statePath, true));
-      dispatch(ChromeperfApp.actions.closeAllAlerts(statePath));
-      dispatch(ChromeperfApp.actions.closeAllCharts(statePath));
+      cp.ReportSection.actions.restoreState(`${statePath}.reportSection`, {
+        sources: [cp.ReportSection.DEFAULT_NAME]
+      })(dispatch, getState);
+      ChromeperfApp.actions.reportSectionShowing(
+          statePath, true
+      )(dispatch, getState);
+      ChromeperfApp.actions.closeAllAlerts(statePath)(dispatch, getState);
+      ChromeperfApp.actions.closeAllCharts(statePath)(dispatch, getState);
     },
   };
 

@@ -159,23 +159,23 @@ tr.exportTo('cp', () => {
   ChartPair.actions = {
     updateRevisions: (statePath, minRevision, maxRevision) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           minRevision, maxRevision,
-        }));
-        dispatch(ChartPair.actions.load(statePath));
+        })(dispatch, getState);
+        ChartPair.actions.load(statePath)(dispatch, getState);
       },
 
     updateLinkedRevisions: (
         linkedStatePath, linkedMinRevision, linkedMaxRevision) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(linkedStatePath, {
+        cp.ElementBase.actions.updateObject(linkedStatePath, {
           linkedMinRevision, linkedMaxRevision,
-        }));
+        })(dispatch, getState);
       },
 
     toggleLinked: (statePath, linkedStatePath) => async(dispatch, getState) => {
       const linkedState = Polymer.Path.get(getState(), linkedStatePath);
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         isLinked: true,
         cursorRevision: linkedState.linkedCursorRevision,
         minRevision: linkedState.linkedMinRevision,
@@ -183,37 +183,37 @@ tr.exportTo('cp', () => {
         mode: linkedState.mode,
         zeroYAxis: linkedState.linkedZeroYAxis,
         fixedXAxis: linkedState.linkedFixedXAxis,
-      }));
-      dispatch(ChartPair.actions.load(statePath));
+      })(dispatch, getState);
+      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleZeroYAxis: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.zeroYAxis`));
-      dispatch(ChartPair.actions.load(statePath));
+      cp.ElementBase.actions.toggleBoolean(`${statePath}.zeroYAxis`)(
+          dispatch, getState);
+      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleLinkedZeroYAxis: linkedStatePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${linkedStatePath}.linkedZeroYAxis`));
+      cp.ElementBase.actions.toggleBoolean(
+          `${linkedStatePath}.linkedZeroYAxis`)(dispatch, getState);
     },
 
     toggleFixedXAxis: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.fixedXAxis`));
-      dispatch(ChartPair.actions.load(statePath));
+      cp.ElementBase.actions.toggleBoolean(
+          `${statePath}.fixedXAxis`)(dispatch, getState);
+      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleLinkedFixedXAxis: linkedStatePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${linkedStatePath}.linkedFixedXAxis`));
+      cp.ElementBase.actions.toggleBoolean(
+          `${linkedStatePath}.linkedFixedXAxis`)(dispatch, getState);
     },
 
     showOptions: (statePath, isShowingOptions) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           isShowingOptions,
-        }));
+        })(dispatch, getState);
       },
 
     brushMinimap: statePath => async(dispatch, getState) => {
@@ -221,24 +221,27 @@ tr.exportTo('cp', () => {
         type: ChartPair.reducers.brushMinimap.typeName,
         statePath,
       });
-      dispatch(ChartPair.actions.load(statePath));
+      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     brushChart: (statePath, brushIndex, value) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.chartLayout.xAxis.brushes.${brushIndex}`,
-            {xPct: value + '%'}));
+        const path = `${statePath}.chartLayout.xAxis.brushes.${brushIndex}`;
+        cp.ElementBase.actions.updateObject(path, {
+          xPct: value + '%',
+        })(dispatch, getState);
       },
 
     load: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
       if (!state || !state.lineDescriptors ||
           state.lineDescriptors.length === 0) {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.minimapLayout`, {lineDescriptors: []}));
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.chartLayout`, {lineDescriptors: []}));
+        cp.ElementBase.actions.updateObject(`${statePath}.minimapLayout`, {
+          lineDescriptors: []
+        })(dispatch, getState);
+        cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
+          lineDescriptors: []
+        })(dispatch, getState);
         return;
       }
 
@@ -291,9 +294,9 @@ tr.exportTo('cp', () => {
       if (maxRevision === undefined ||
           maxRevision <= firstRevision) {
         maxRevision = lastRevision;
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           maxRevision,
-        }));
+        })(dispatch, getState);
       }
 
       const minimapLineDescriptors = [];
@@ -303,12 +306,12 @@ tr.exportTo('cp', () => {
           icons: [],
         });
       }
-      dispatch(cp.ElementBase.actions.updateObject(
-          `${statePath}.minimapLayout`, {
-            lineDescriptors: minimapLineDescriptors,
-            brushRevisions: [minRevision, maxRevision],
-            fixedXAxis: state.fixedXAxis,
-          }));
+
+      cp.ElementBase.actions.updateObject(`${statePath}.minimapLayout`, {
+        lineDescriptors: minimapLineDescriptors,
+        brushRevisions: [minRevision, maxRevision],
+        fixedXAxis: state.fixedXAxis,
+      })(dispatch, getState);
 
       let lineDescriptors = state.lineDescriptors;
       if (lineDescriptors.length === 1) {
@@ -319,7 +322,8 @@ tr.exportTo('cp', () => {
           icons: [],
         });
       }
-      dispatch(cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
+
+      cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
         lineDescriptors,
         minRevision,
         maxRevision,
@@ -327,7 +331,7 @@ tr.exportTo('cp', () => {
         fixedXAxis: state.fixedXAxis,
         mode: state.mode,
         zeroYAxis: state.zeroYAxis,
-      }));
+      })(dispatch, getState);
     },
 
     chartClick: statePath => async(dispatch, getState) => {
@@ -355,13 +359,16 @@ tr.exportTo('cp', () => {
     },
 
     mode: (statePath, mode) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {mode}));
-      dispatch(ChartPair.actions.load(statePath));
+      cp.ElementBase.actions.updateObject(statePath, {
+        mode,
+      })(dispatch, getState);
+      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     linkedMode: (linkedStatePath, linkedMode) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(
-          linkedStatePath, {linkedMode}));
+      cp.ElementBase.actions.updateObject(linkedStatePath, {
+        linkedMode,
+      })(dispatch, getState);
     }
   };
 

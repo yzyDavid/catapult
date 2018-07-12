@@ -95,13 +95,15 @@ tr.exportTo('cp', () => {
     }
 
     onStartRequest_(request) {
-      this.dispatch_(cp.ElementBase.actions.updateObject(
-          this.cacheStatePath_, {[this.cacheKey_]: request.response}));
+      cp.ElementBase.actions.updateObject(this.cacheStatePath_, {
+        [this.cacheKey_]: request.response,
+      })(this.dispatch_, this.getState_);
     }
 
     onFinishRequest_(result) {
-      this.dispatch_(cp.ElementBase.actions.updateObject(
-          this.cacheStatePath_, {[this.cacheKey_]: result}));
+      cp.ElementBase.actions.updateObject(this.cacheStatePath_, {
+        [this.cacheKey_]: result,
+      })(this.dispatch_, this.getState_);
     }
   }
 
@@ -137,7 +139,8 @@ tr.exportTo('cp', () => {
     };
 
   const PrefetchTestSuiteDescriptors = options => async(dispatch, getState) => {
-    for await (const _ of dispatch(ReadTestSuiteDescriptors(options))) {
+    const reader = ReadTestSuiteDescriptors(options)(dispatch, getState);
+    for await (const _ of reader) {
       // The descriptors are not actually needed here, but
       // ReadTestSuiteDescriptors only actually fetches the data if the async
       // generator is pumped.

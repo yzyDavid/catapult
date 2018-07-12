@@ -30,8 +30,8 @@ tr.exportTo('cp', () => {
 
   ExpandButton.actions = {
     toggle: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.isExpanded`));
+      cp.ElementBase.actions.toggleBoolean(
+          `${statePath}.isExpanded`)(dispatch, getState);
     },
   };
 

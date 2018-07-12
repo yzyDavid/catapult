@@ -451,19 +451,20 @@ tr.exportTo('cp', () => {
       let state = Polymer.Path.get(getState(), statePath);
       if (state.minRevision === undefined ||
           state.maxRevision === undefined) {
-        dispatch(ReportSection.actions.selectMilestone(
-            statePath, state.milestone));
+        ReportSection.actions.selectMilestone(
+            statePath, state.milestone)(dispatch, getState);
       }
-      await dispatch(ReportSection.actions.loadSources(statePath));
+      await ReportSection.actions.loadSources(statePath)(dispatch, getState);
 
       state = Polymer.Path.get(getState(), statePath);
       if (state.source.selectedOptions.length === 0) {
-        dispatch(cp.DropdownInput.actions.focus(statePath + '.source'));
+        cp.DropdownInput.actions.focus(
+            statePath + '.source')(dispatch, getState);
       }
     },
 
     authChange: statePath => async(dispatch, getState) => {
-      dispatch(ReportSection.actions.loadSources(statePath));
+      ReportSection.actions.loadSources(statePath)(dispatch, getState);
     },
 
     selectMilestone: (statePath, milestone) => async(dispatch, getState) => {
@@ -472,7 +473,7 @@ tr.exportTo('cp', () => {
         statePath,
         milestone,
       });
-      dispatch(ReportSection.actions.loadReports(statePath));
+      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     restoreState: (statePath, options) => async(dispatch, getState) => {
@@ -481,7 +482,7 @@ tr.exportTo('cp', () => {
         statePath,
         options,
       });
-      dispatch(ReportSection.actions.loadReports(statePath));
+      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     toggleEditing: (statePath, tableIndex) => async(dispatch, getState) => {
@@ -490,11 +491,11 @@ tr.exportTo('cp', () => {
       const table = state.tables[tableIndex];
       if (table.canEdit !== true) {
         // TODO isLoading
-        await dispatch(ReportSection.actions.renderEditForm(
-            statePath, tableIndex));
+        await ReportSection.actions.renderEditForm(
+            statePath, tableIndex)(dispatch, getState);
       }
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.tables.${tableIndex}.isEditing`));
+      cp.ElementBase.actions.toggleBoolean(
+          `${statePath}.tables.${tableIndex}.isEditing`)(dispatch, getState);
     },
 
     loadSources: statePath => async(dispatch, getState) => {
@@ -509,7 +510,7 @@ tr.exportTo('cp', () => {
         sources,
         filteredNames,
       });
-      dispatch(ReportSection.actions.loadReports(statePath));
+      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     loadReports: statePath => async(dispatch, getState) => {
@@ -518,7 +519,7 @@ tr.exportTo('cp', () => {
       let testSuites = [];
       if (state.source.selectedOptions.includes(ReportSection.CREATE)) {
         testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-            await dispatch(cp.ReadTestSuites()));
+            await cp.ReadTestSuites()(dispatch, getState));
       }
       dispatch({
         type: ReportSection.reducers.requestReports.typeName,
@@ -558,7 +559,7 @@ tr.exportTo('cp', () => {
         }
         if (testSuites.length === 0) {
           testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-              await dispatch(cp.ReadTestSuites()));
+              await cp.ReadTestSuites()(dispatch, getState));
         }
         dispatch({
           type: ReportSection.reducers.receiveReports.typeName,
@@ -566,8 +567,8 @@ tr.exportTo('cp', () => {
           reports: results,
           testSuites,
         });
-        // dispatch(ReportSection.actions.renderEditForms(statePath));
-        // dispatch(ReportSection.actions.prefetchCharts(statePath));
+        // ReportSection.actions.renderEditForms(statePath)(dispatch, getState);
+        // ReportSection.actions.prefetchCharts(statePath)(dispatch, getState);
       }
     },
 
@@ -583,14 +584,18 @@ tr.exportTo('cp', () => {
             // TODO this nullcheck should not be necessary
             return;
           }
-          await dispatch(cp.ChartSection.actions.describeTestSuites(
-              `${statePath}.tables.${tableIndex}.rows.${rowIndex}`));
+          const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex}`;
+          await cp.ChartSection.actions.describeTestSuites(path)(
+              dispatch, getState);
         }));
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.tables.${tableIndex}`, {canEdit: true}));
+        const path = `${statePath}.tables.${tableIndex}`;
+        cp.ElementBase.actions.updateObject(path, {
+          canEdit: true
+        })(dispatch, getState);
       })();
-      dispatch(cp.ElementBase.actions.updateObject(
-          `${statePath}.tables.${tableIndex}`, {canEdit: promise}));
+      cp.ElementBase.actions.updateObject(`${statePath}.tables.${tableIndex}`, {
+        canEdit: promise,
+      })(dispatch, getState);
       await promise;
     },
 
@@ -598,8 +603,8 @@ tr.exportTo('cp', () => {
       const state = Polymer.Path.get(getState(), statePath);
       await Promise.all(state.tables.map(async(table, tableIndex) => {
         await cp.ElementBase.idlePeriod();
-        await dispatch(ReportSection.actions.renderEditForm(
-            statePath, tableIndex));
+        await ReportSection.actions.renderEditForm(statePath, tableIndex)(
+            dispatch, getState);
       }));
     },
 
@@ -623,40 +628,41 @@ tr.exportTo('cp', () => {
       }
       for (let i = 0; i < lineDescriptors.length; i += 5) {
         await cp.ElementBase.idlePeriod();
-        await dispatch(cp.ChartTimeseries.actions.prefetch(
-            statePath, lineDescriptors.slice(i, i + 5)));
+        await cp.ChartTimeseries.actions.prefetch(
+            statePath, lineDescriptors.slice(i, i + 5))(dispatch, getState);
       }
     },
 
     templateName: (statePath, tableIndex, name) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.tables.${tableIndex}`, {name}));
+        const path = `${statePath}.tables.${tableIndex}`;
+        cp.ElementBase.actions.updateObject(path, {
+          name,
+        })(dispatch, getState);
       },
 
     templateOwners: (statePath, tableIndex, owners) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.tables.${tableIndex}`, {owners}));
+        const path = `${statePath}.tables.${tableIndex}`;
+        cp.ElementBase.actions.updateObject(path, {owners})(dispatch, getState);
       },
 
     templateUrl: (statePath, tableIndex, url) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.tables.${tableIndex}`, {url}));
+        const path = `${statePath}.tables.${tableIndex}`;
+        cp.ElementBase.actions.updateObject(path, {url})(dispatch, getState);
       },
 
     templateRowLabel: (statePath, tableIndex, rowIndex, label) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.tables.${tableIndex}.rows.${rowIndex}`,
-            {label}));
+        const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex}`;
+        cp.ElementBase.actions.updateObject(path, {label})(dispatch, getState);
       },
 
     templateTestSuite: (statePath, tableIndex, rowIndex) =>
       async(dispatch, getState) => {
-        dispatch(cp.ChartSection.actions.describeTestSuites(
-            `${statePath}.tables.${tableIndex}.rows.${rowIndex}`));
+        const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex}`;
+        cp.ChartSection.actions.describeTestSuites(path)(dispatch, getState);
       },
 
     templateRemoveRow: (statePath, tableIndex, rowIndex) =>
@@ -675,10 +681,10 @@ tr.exportTo('cp', () => {
           type: ReportSection.reducers.templateAddRow.typeName,
           statePath: `${statePath}.tables.${tableIndex}`,
           rowIndex,
-          testSuites: await dispatch(cp.ReadTestSuites()),
+          testSuites: await cp.ReadTestSuites()(dispatch, getState),
         });
-        dispatch(cp.ChartSection.actions.describeTestSuites(
-            `${statePath}.tables.${tableIndex}.rows.${rowIndex + 1}`));
+        const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex + 1}`;
+        cp.ChartSection.actions.describeTestSuites(path)(dispatch, getState);
       },
 
     templateSave: (statePath, tableIndex) => async(dispatch, getState) => {
@@ -701,9 +707,9 @@ tr.exportTo('cp', () => {
           };
         }),
       });
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         isLoading: true,
-      }));
+      })(dispatch, getState);
       const response = await request.response;
       // TODO handle renaming templates
       const sources = [...state.templateIds.values(), response];
@@ -718,57 +724,61 @@ tr.exportTo('cp', () => {
       });
       rootState = getState();
       state = Polymer.Path.get(rootState, statePath);
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         isLoading: false,
         source: {
           ...state.source,
           selectedOptions: [response.name],
         },
-      }));
-      dispatch(ReportSection.actions.loadReports(statePath));
+      })(dispatch, getState);
+      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     setMinRevision: (statePath, minRevisionInput) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           minRevisionInput,
-        }));
+        })(dispatch, getState);
         if (!minRevisionInput.match(/^\d{6}$/)) return;
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           minRevision: minRevisionInput,
-        }));
-        dispatch(ReportSection.actions.loadReports(statePath));
+        })(dispatch, getState);
+        ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     setMaxRevision: (statePath, maxRevisionInput) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           maxRevisionInput,
-        }));
+        })(dispatch, getState);
         if (!maxRevisionInput.match(/^\d{6}$/)) return;
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           maxRevision: maxRevisionInput,
-        }));
-        dispatch(ReportSection.actions.loadReports(statePath));
+        })(dispatch, getState);
+        ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     toastCopied: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         copiedMeasurements: true,
-      }));
+      })(dispatch, getState);
       await cp.ElementBase.timeout(5000);
       // TODO return if a different table was copied during the timeout.
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         copiedMeasurements: false,
-      }));
+      })(dispatch, getState);
     },
 
     showTooltip: (statePath, tooltip) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {tooltip}));
+      cp.ElementBase.actions.updateObject(statePath, {
+        tooltip,
+      })(dispatch, getState);
     },
 
     hideTooltip: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {tooltip: {}}));
+      cp.ElementBase.actions.updateObject(statePath, {
+        tooltip: {},
+      })(dispatch, getState);
     },
   };
 

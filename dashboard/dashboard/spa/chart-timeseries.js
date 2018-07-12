@@ -227,10 +227,11 @@ tr.exportTo('cp', () => {
     load: statePath => async(dispatch, getState) => {
       let state = Polymer.Path.get(getState(), statePath);
       if (!state) return;
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+
+      cp.ElementBase.actions.updateObject(statePath, {
         isLoading: true,
         lines: [],
-      }));
+      })(dispatch, getState);
 
       // Load each lineDescriptor in parallel.
       await Promise.all(state.lineDescriptors.map(lineDescriptor =>
@@ -326,8 +327,9 @@ tr.exportTo('cp', () => {
         const rects = await Promise.all([...ticks].map(tick =>
           cp.measureText(tick)));
         const width = tr.b.math.Statistics.max(rects, rect => rect.width);
-        dispatch(cp.ElementBase.actions.updateObject(
-            statePath + '.yAxis', {width}));
+        cp.ElementBase.actions.updateObject(statePath + '.yAxis', {
+          width,
+        })(dispatch, getState);
       },
 
     dotMouseOver_: (statePath, line, datum) => async(dispatch, getState) => {
@@ -372,7 +374,7 @@ tr.exportTo('cp', () => {
           value: line.descriptor.testCases[0],
         });
       }
-      dispatch(cp.ChartBase.actions.tooltip(statePath, rows));
+      cp.ChartBase.actions.tooltip(statePath, rows)(dispatch, getState);
     },
 
     dotMouseOut_: statePath => async(dispatch, getState) => {

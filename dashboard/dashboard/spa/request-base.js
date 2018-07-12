@@ -128,8 +128,9 @@ tr.exportTo('cp', () => {
       const cacheStatePath = this.cacheStatePath_;
       if (cacheStatePath === undefined) return;
       if (Polymer.Path.get(this.rootState_, cacheStatePath)) return;
-      this.dispatch_(cp.ElementBase.actions.ensureObject(
-          cacheStatePath, this.defaultCacheState_));
+      cp.ElementBase.actions.ensureObject(
+          cacheStatePath, this.defaultCacheState_)(
+          this.dispatch_, this.getState_);
       this.rootState_ = this.getState_();
     }
 

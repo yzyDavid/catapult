@@ -170,17 +170,17 @@ tr.exportTo('cp', () => {
     },
 
     clear: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         query: '',
         selectedOptions: [],
-      }));
-      dispatch(cp.DropdownInput.actions.focus(statePath));
+      })(dispatch, getState);
+      cp.DropdownInput.actions.focus(statePath)(dispatch, getState);
     },
 
     onKeyup: (statePath, query) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         query,
-      }));
+      })(dispatch, getState);
     },
 
     onColumnSelect: statePath =>

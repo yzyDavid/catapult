@@ -154,9 +154,10 @@ tr.exportTo('cp', () => {
 
   ChartBase.actions = {
     brushX: (statePath, brushIndex, xPct) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(
-          `${statePath}.xAxis.brushes.${brushIndex}`,
-          {xPct}));
+      const path = `${statePath}.xAxis.brushes.${brushIndex}`;
+      cp.ElementBase.actions.updateObject(path, {
+        xPct,
+      })(dispatch, getState);
     },
 
     boldLine: (statePath, lineIndex) => async(dispatch, getState) => {
@@ -169,7 +170,7 @@ tr.exportTo('cp', () => {
 
     dotMouseOver: (statePath, chartRect, lineIndex, datum) =>
       async(dispatch, getState) => {
-        dispatch(ChartBase.actions.boldLine(statePath, lineIndex));
+        ChartBase.actions.boldLine(statePath, lineIndex)(dispatch, getState);
         dispatch({
           type: ChartBase.reducers.dotMouseOver.typeName,
           statePath,
@@ -180,8 +181,9 @@ tr.exportTo('cp', () => {
       },
 
     tooltip: (statePath, rows) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(
-          statePath + '.tooltip', {rows}));
+      cp.ElementBase.actions.updateObject(statePath + '.tooltip', {
+        rows,
+      })(dispatch, getState);
     },
 
     unboldLines: statePath => async(dispatch, getState) => {
@@ -192,8 +194,9 @@ tr.exportTo('cp', () => {
     },
 
     dotMouseOut: (statePath, lineIndex) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(
-          `${statePath}.tooltip`, {isVisible: false}));
+      cp.ElementBase.actions.updateObject(`${statePath}.tooltip`, {
+        isVisible: false,
+      })(dispatch, getState);
       dispatch({
         type: ChartBase.reducers.unboldLines.typeName,
         statePath,

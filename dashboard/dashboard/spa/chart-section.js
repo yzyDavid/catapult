@@ -199,24 +199,26 @@ tr.exportTo('cp', () => {
   ChartSection.actions = {
     connected: statePath => async(dispatch, getState) => {
       let state = Polymer.Path.get(getState(), statePath);
-      dispatch(ChartSection.actions.loadTestSuites(statePath));
+      ChartSection.actions.loadTestSuites(statePath)(dispatch, getState);
       if (state.testSuite.selectedOptions.length) {
-        await dispatch(ChartSection.actions.describeTestSuites(statePath));
-        dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+        await ChartSection.actions.describeTestSuites(statePath)(
+            dispatch, getState);
+        ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
       } else {
-        dispatch(cp.DropdownInput.actions.focus(`${statePath}.testSuite`));
+        cp.DropdownInput.actions.focus(`${statePath}.testSuite`)(
+            dispatch, getState);
       }
       state = Polymer.Path.get(getState(), statePath);
     },
 
     authChange: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.loadTestSuites(statePath));
+      ChartSection.actions.loadTestSuites(statePath)(dispatch, getState);
     },
 
     loadTestSuites: statePath => async(dispatch, getState) => {
       const rootState = getState();
       const testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-          await dispatch(cp.ReadTestSuites()));
+          await cp.ReadTestSuites()(dispatch, getState));
       dispatch({
         type: ChartSection.reducers.receiveTestSuites.typeName,
         statePath,
@@ -249,9 +251,9 @@ tr.exportTo('cp', () => {
       // couple of seconds to serve them from memcache, so fetch them in
       // parallel.
       const testSuites = new Set(state.testSuite.selectedOptions);
-      const descriptorStream = dispatch(cp.ReadTestSuiteDescriptors({
+      const descriptorStream = cp.ReadTestSuiteDescriptors({
         testSuites: state.testSuite.selectedOptions,
-      }));
+      })(dispatch, getState);
       for await (const descriptor of descriptorStream) {
         state = Polymer.Path.get(getState(), statePath);
         if (!state.testSuite || !tr.b.setsEqual(
@@ -275,50 +277,51 @@ tr.exportTo('cp', () => {
       state = Polymer.Path.get(getState(), statePath);
 
       if (state.measurement.selectedOptions.length === 0) {
-        dispatch(cp.DropdownInput.actions.focus(`${statePath}.measurement`));
+        cp.DropdownInput.actions.focus(`${statePath}.measurement`)(
+            dispatch, getState);
       }
     },
 
     aggregateTestSuite: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     measurement: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     bot: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     aggregateBot: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     testCase: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     aggregateTestCase: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     statistic: statePath => async(dispatch, getState) => {
-      dispatch(ChartSection.actions.maybeLoadTimeseries(statePath));
+      ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
     },
 
     setTitle: (statePath, title) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         title,
         isTitleCustom: true,
-      }));
+      })(dispatch, getState);
     },
 
     showOptions: (statePath, isShowingOptions) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           isShowingOptions,
-        }));
+        })(dispatch, getState);
       },
 
     brushMinimap: statePath => async(dispatch, getState) => {
@@ -326,14 +329,15 @@ tr.exportTo('cp', () => {
         type: ChartSection.reducers.brushMinimap.typeName,
         statePath,
       });
-      dispatch(ChartSection.actions.loadTimeseries(statePath));
+      ChartSection.actions.loadTimeseries(statePath)(dispatch, getState);
     },
 
     brushChart: (statePath, brushIndex, value) =>
       async(dispatch, getState) => {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.chartLayout.xAxis.brushes.${brushIndex}`,
-            {xPct: value + '%'}));
+        const path = `${statePath}.chartLayout.xAxis.brushes.${brushIndex}`;
+        cp.ElementBase.actions.updateObject(path, {
+          xPct: value + '%',
+        })(dispatch, getState);
       },
 
     maybeLoadTimeseries: statePath => async(dispatch, getState) => {
@@ -342,21 +346,23 @@ tr.exportTo('cp', () => {
       if (state.testSuite.selectedOptions.length &&
           state.measurement.selectedOptions.length &&
           state.statistic.selectedOptions.length) {
-        dispatch(ChartSection.actions.loadTimeseries(statePath));
+        ChartSection.actions.loadTimeseries(statePath)(dispatch, getState);
       } else {
-        dispatch(ChartSection.actions.clearTimeseries(statePath));
+        ChartSection.actions.clearTimeseries(statePath)(dispatch, getState);
       }
     },
 
     clearTimeseries: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
       if (state.minimapLayout.lines.length) {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.minimapLayout`, {lineDescriptors: []}));
+        cp.ElementBase.actions.updateObject(`${statePath}.minimapLayout`, {
+          lineDescriptors: [],
+        })(dispatch, getState);
       }
       if (state.chartLayout.lines.length) {
-        dispatch(cp.ElementBase.actions.updateObject(
-            `${statePath}.chartLayout`, {lineDescriptors: []}));
+        cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
+          lineDescriptors: [],
+        })(dispatch, getState);
       }
       if (state.relatedTabs.length) {
         dispatch({
@@ -379,8 +385,8 @@ tr.exportTo('cp', () => {
       if (!state.measurement.columns &&
           state.measurement.selectedOptions.filter(
               m => m.startsWith('memory:')).length) {
-        dispatch(cp.DropdownInput.actions.populateColumns(
-            `${statePath}.measurement`));
+        cp.DropdownInput.actions.populateColumns(
+            `${statePath}.measurement`)(dispatch, getState);
       }
 
       if (state.selectedLineDescriptorHash) {
@@ -393,9 +399,9 @@ tr.exportTo('cp', () => {
               state.selectedLineDescriptorHash)) {
             continue;
           }
-          dispatch(cp.ElementBase.actions.updateObject(statePath, {
+          cp.ElementBase.actions.updateObject(statePath, {
             lineDescriptors: [lineDescriptor],
-          }));
+          })(dispatch, getState);
           break;
         }
       }
@@ -411,10 +417,10 @@ tr.exportTo('cp', () => {
         await cp.ElementBase.idlePeriod();
         state = Polymer.Path.get(getState(), statePath);
         if (tabIndex >= state.relatedTabs.length) break;
-        dispatch(cp.ElementBase.actions.updateObject(
+        cp.ElementBase.actions.updateObject(
             `${statePath}.relatedTabs.${tabIndex}`, {
               renderedSparklines: state.relatedTabs[tabIndex].sparklines,
-            }));
+            })(dispatch, getState);
       }
       */
     },
@@ -429,16 +435,16 @@ tr.exportTo('cp', () => {
         if (selectedRelatedTabIndex >= 0 &&
             state.relatedTabs[selectedRelatedTabIndex].renderedSparklines ===
             undefined) {
-          dispatch(cp.ElementBase.actions.updateObject(
-              `${statePath}.relatedTabs.${selectedRelatedTabIndex}`, {
-                renderedSparklines:
-                state.relatedTabs[selectedRelatedTabIndex].sparklines,
-              }));
+          const path = `${statePath}.relatedTabs.${selectedRelatedTabIndex}`;
+          const relatedTab = state.relatedTabs[selectedRelatedTabIndex];
+          cp.ElementBase.actions.updateObject(path, {
+            renderedSparklines: relatedTab.sparklines,
+          })(dispatch, getState);
         }
 
-        dispatch(cp.ElementBase.actions.updateObject(statePath, {
+        cp.ElementBase.actions.updateObject(statePath, {
           selectedRelatedTabIndex,
-        }));
+        })(dispatch, getState);
       },
 
     chartClick: statePath => async(dispatch, getState) => {
@@ -467,15 +473,16 @@ tr.exportTo('cp', () => {
           ++lineIndex) {
           if (JSON.stringify(state.chartLayout.lines[lineIndex].descriptor) ===
               lineDescriptor) {
-            dispatch(cp.ChartBase.actions.boldLine(
-                statePath + '.chartLayout', lineIndex));
+            cp.ChartBase.actions.boldLine(
+                statePath + '.chartLayout', lineIndex)(dispatch, getState);
             break;
           }
         }
       },
 
     legendMouseOut: statePath => async(dispatch, getState) => {
-      dispatch(cp.ChartBase.actions.unboldLines(statePath + '.chartLayout'));
+      cp.ChartBase.actions.unboldLines(statePath + '.chartLayout')(
+          dispatch, getState);
     },
 
     legendLeafTap: (statePath, lineDescriptor) => async(dispatch, getState) => {
@@ -487,9 +494,9 @@ tr.exportTo('cp', () => {
             cp.ChartTimeseries.stringifyDescriptor(lineDescriptor)),
       });
       /*
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {
+      cp.ElementBase.actions.updateObject(statePath, {
         lineDescriptors: [lineDescriptor],
-      }));
+      })(dispatch, getState);
       */
     },
 
