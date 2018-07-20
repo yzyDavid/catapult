@@ -15,7 +15,7 @@ tr.exportTo('cp', () => {
    *  * exactly one measurement
    *  * exactly one statistic
    *  * zero or more testCases
-   *  * buildType (enum 'test' or 'reference')
+   *  * buildType (enum 'test' or 'ref')
    * When multiple testSuites, bots, or testCases are specified, the timeseries
    * are merged using RunningStatistics.merge().
    *
@@ -83,7 +83,7 @@ tr.exportTo('cp', () => {
   const LEVEL_OF_DETAIL = {
     // Minimaps only need the (x, y) coordinates to draw the line.
     // FastHistograms contain only r_commit_pos and the needed statistic.
-    // Fetches /api/timeseries2/testpath&columns=r_commit_pos,value
+    // Fetches /api/timeseries2?columns=revision,$statistic
     XY: 'xy',
 
     // chart-pair.chartLayout can draw its lines using XY FastHistograms
@@ -91,7 +91,7 @@ tr.exportTo('cp', () => {
     // for a given revision range for tooltips and icons.
     // If an extant request overlaps a new request, then the new request can
     // fetch the difference and await the extant request.
-    // Fetches /api/timeseries2/testpath&min_rev&max_rev&columns=revision,alert
+    // Fetches timeseries2?min_rev&max_rev&columns=revision,alert,diagnostics
     ANNOTATIONS: 'annotations',
 
     // pivot-table in chart-section and pivot-section need the full real
@@ -101,7 +101,7 @@ tr.exportTo('cp', () => {
     // Real Histograms contain full RunningStatistics, all diagnostics, all
     // samples. Request single Histograms at a time, even if the user brushes a
     // large range.
-    // Fetches /api/histogram/testpath?rev
+    // Fetches /api/histogram?columns=revision,histogram
     HISTOGRAM: 'histogram',
   };
 
@@ -151,8 +151,8 @@ tr.exportTo('cp', () => {
     if (dict.value !== undefined) {
       hist.running[fetchDescriptor.statistic] = dict.value * conversionFactor;
     }
-    if (dict.d_avg !== undefined) {
-      hist.running.avg = dict.d_avg * conversionFactor;
+    if (dict.avg !== undefined) {
+      hist.running.avg = dict.avg * conversionFactor;
     }
     if (dict.error !== undefined) {
       hist.running.std = dict.error * conversionFactor;
@@ -166,28 +166,27 @@ tr.exportTo('cp', () => {
       super(options);
       this.measurement_ = options.measurement;
       this.queryParams_ = new URLSearchParams();
-      this.queryParams_.set('testSuite', options.testSuite);
+      this.queryParams_.set('test_suite', options.testSuite);
       this.queryParams_.set('measurement', options.measurement);
       this.queryParams_.set('bot', options.bot);
       if (options.testCase) {
-        this.queryParams_.set('testCase', options.testCase);
+        this.queryParams_.set('test_case', options.testCase);
       }
-      this.queryParams_.set('statistic', options.statistic);
       if (options.buildType) {
-        this.queryParams_.set('buildType', options.buildType);
+        this.queryParams_.set('build_type', options.buildType);
       }
       this.queryParams_.set('columns', options.columns.join(','));
       if (options.minRevision) {
-        this.queryParams_.set('minRevision', options.minRevision);
+        this.queryParams_.set('min_revision', options.minRevision);
       }
       if (options.maxRevision) {
-        this.queryParams_.set('maxRevision', options.maxRevision);
+        this.queryParams_.set('max_revision', options.maxRevision);
       }
       if (options.minTimestamp) {
-        this.queryParams_.set('minTimestamp', options.minTimestamp);
+        this.queryParams_.set('min_timestamp', options.minTimestamp);
       }
       if (options.maxTimestamp) {
-        this.queryParams_.set('maxTimestamp', options.maxTimestamp);
+        this.queryParams_.set('max_timestamp', options.maxTimestamp);
       }
     }
 
@@ -208,19 +207,18 @@ tr.exportTo('cp', () => {
       if (this.measurement_.startsWith('power')) {
         units = 'W_smallerIsBetter';
       }
-      const timeseries = [];
+      const data = [];
       const sequenceLength = 100;
       const nowMs = new Date() - 0;
       for (let i = 0; i < sequenceLength; i += 1) {
-        // revision, r_commit_pos, timestamp, value
-        timeseries.push([
+        // revision, timestamp, value
+        data.push([
           i * 100,
-          i,
           nowMs - ((sequenceLength - i - 1) * (2592105834 / 50)),
           parseInt(100 * Math.random()),
         ]);
       }
-      return {timeseries, units};
+      return {data, units};
     }
   }
 
@@ -230,7 +228,11 @@ tr.exportTo('cp', () => {
       this.fetchDescriptor_ = this.options_.fetchDescriptor;
       this.refStatePath_ = this.options_.refStatePath;
       // TODO change columns_ depending on level of detail.
-      this.columns_ = ['revision', 'r_commit_pos', 'timestamp', 'value'];
+      this.columns_ = [
+        'revision',
+        'timestamp',
+        this.fetchDescriptor_.statistic,
+      ];
     }
 
     get cacheStatePath_() {
@@ -287,7 +289,6 @@ tr.exportTo('cp', () => {
         measurement: this.fetchDescriptor_.measurement,
         bot: this.fetchDescriptor_.bot,
         testCase: this.fetchDescriptor_.testCase,
-        statistic: this.fetchDescriptor_.statistic,
         buildType: this.fetchDescriptor_.buildType,
         columns: this.columns_,
       });
@@ -311,7 +312,7 @@ tr.exportTo('cp', () => {
         fetchDescriptor: this.fetchDescriptor_,
         cacheKey: this.cacheKey_,
         columns: this.columns_,
-        timeseries: result.timeseries,
+        timeseries: result.data,
         units: result.units,
       });
       this.rootState_ = this.getState_();

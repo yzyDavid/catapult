@@ -25,7 +25,7 @@ tr.exportTo('cp', () => {
     }
 
     get url_() {
-      return `/short_uri?sid=${this.sessionId_}`;
+      return `/short_uri?v2=true&sid=${this.sessionId_}`;
     }
   }
 
@@ -254,6 +254,7 @@ tr.exportTo('cp', () => {
         cp.ElementBase.actions.ensureObject(statePath)(dispatch, getState);
         cp.ElementBase.actions.updateObject('', {
           userEmail: '',
+          largeDom: false,
         })(dispatch, getState);
 
         // Wait for ChromeperfApp and its reducers to be registered.
@@ -364,11 +365,17 @@ tr.exportTo('cp', () => {
           })(dispatch, getState);
         }
 
-        dispatch({
-          type: ChromeperfApp.reducers.receiveSessionState.typeName,
-          statePath,
-          sessionState,
-        });
+        cp.ElementBase.actions.chain([
+          {
+            type: ChromeperfApp.reducers.receiveSessionState.typeName,
+            statePath,
+            sessionState,
+          },
+          {
+            type: ChromeperfApp.reducers.updateLargeDom.typeName,
+            appStatePath: statePath,
+          },
+        ])(dispatch, getState);
         cp.ReportSection.actions.restoreState(
             `${statePath}.reportSection`, sessionState.reportSection
         )(dispatch, getState);
@@ -422,12 +429,9 @@ tr.exportTo('cp', () => {
         cp.ElementBase.actions.updateObject(statePath, {
           showingReportSection: false,
         })(dispatch, getState);
-        dispatch({
-          type: ChromeperfApp.reducers.newChart.typeName,
-          statePath,
-          options: cp.ChartSection.newStateOptionsFromQueryParams(
-              routeParams),
-        });
+        ChromeperfApp.actions.newChart(
+            statePath, cp.ChartSection.newStateOptionsFromQueryParams(
+                routeParams))(dispatch, getState);
         return;
       }
     },
@@ -525,11 +529,17 @@ tr.exportTo('cp', () => {
     },
 
     newChart: (statePath, options) => async(dispatch, getState) => {
-      dispatch({
-        type: ChromeperfApp.reducers.newChart.typeName,
-        statePath,
-        options,
-      });
+      cp.ElementBase.actions.chain([
+        {
+          type: ChromeperfApp.reducers.newChart.typeName,
+          statePath,
+          options,
+        },
+        {
+          type: ChromeperfApp.reducers.updateLargeDom.typeName,
+          appStatePath: statePath,
+        },
+      ])(dispatch, getState);
     },
 
     closeChart: (statePath, sectionId) => async(dispatch, getState) => {
@@ -776,6 +786,13 @@ tr.exportTo('cp', () => {
         }
       }
       return state;
+    },
+
+    updateLargeDom: (rootState, action, rootStateAgain) => {
+      const state = Polymer.Path.get(rootState, action.appStatePath);
+      const sectionCount = (
+        state.chartSectionIds.length + state.alertsSectionIds.length);
+      return {...rootState, largeDom: (sectionCount > 3)};
     },
   };
 

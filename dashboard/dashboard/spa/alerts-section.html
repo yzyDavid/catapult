@@ -197,7 +197,6 @@ found in the LICENSE file.
             horizontal-align="right"
             vertical-align="top"
             no-overlap
-            entry-animation="slide-from-top-animation"
             on-iron-overlay-canceled="onCancelTriagedNew_">
           Created
           <a href="[[crbug_(triagedBugId)]]" target="_blank">
@@ -210,7 +209,6 @@ found in the LICENSE file.
             horizontal-align="right"
             vertical-align="top"
             no-overlap
-            entry-animation="slide-from-top-animation"
             on-iron-overlay-canceled="onCancelTriagedExisting_">
           Updated
           <a href="[[crbug_(triagedBugId)]]" target="_blank">
@@ -223,7 +221,6 @@ found in the LICENSE file.
             horizontal-align="right"
             vertical-align="top"
             no-overlap
-            entry-animation="slide-from-top-animation"
             on-iron-overlay-canceled="onCancelIgnored_">
           Ignored [[ignoredCount]] alert[[_plural(ignoredCount)]]
         </paper-dialog>
@@ -264,18 +261,6 @@ found in the LICENSE file.
 
     <paper-progress indeterminate="[[isLoading_(isLoading, preview.isLoading)]]">
     </paper-progress>
-
-    <iron-collapse opened="[[!_empty(alertGroups)]]">
-      <chart-pair
-          id="preview"
-          state-path="[[statePath]].preview"
-          linked-state-path="[[linkedStatePath]]"
-          on-dot-click="onDotClick_"
-          on-line-count-change="onPreviewLineCountChange_"
-          on-dot-mouseover="onDotMouseOver_">
-        Select alerts using the checkboxes in the table below to preview their timeseries.
-      </chart-pair>
-    </iron-collapse>
 
     <template is="dom-if" if="[[!_empty(alertGroups)]]">
       <div id="triage_controls"
@@ -337,6 +322,18 @@ found in the LICENSE file.
         on-sort="onSort_"
         on-select-alert="onSelectAlert_">
     </alerts-table>
+
+    <iron-collapse opened="[[!_empty(alertGroups)]]">
+      <chart-pair
+          id="preview"
+          state-path="[[statePath]].preview"
+          linked-state-path="[[linkedStatePath]]"
+          on-dot-click="onDotClick_"
+          on-line-count-change="onPreviewLineCountChange_"
+          on-dot-mouseover="onDotMouseOver_">
+        Select alerts using the checkboxes in the table below to preview their timeseries.
+      </chart-pair>
+    </iron-collapse>
   </template>
 </dom-module>
 <script src="/dashboard/spa/alerts-section.js"></script>

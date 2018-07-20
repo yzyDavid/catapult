@@ -99,41 +99,43 @@ found in the LICENSE file.
     </paper-input>
 
     <div id="dropdown">
-      <iron-collapse opened="[[isFocused]]">
-        <template is="dom-if" if="[[showRecommended_(recommended, query)]]">
-          <b style="margin: 4px;">Recommended</b>
-          <div id="recommended">
+      <template is="dom-if" if="[[renderDropdown_(hasBeenOpened, largeDom)]]">
+        <iron-collapse opened="[[isFocused]]">
+          <template is="dom-if" if="[[showRecommended_(recommended, query)]]">
+            <b style="margin: 4px;">Recommended</b>
+            <div id="recommended">
+              <option-group
+                  state-path="[[statePath]].recommended"
+                  root-state-path="[[statePath]]">
+              </option-group>
+            </div>
+          </template>
+
+          <template is="dom-if" if="[[showColumns_(columns, query)]]">
+            <b style="margin: 4px;">Memory Components</b>
+            <div id="columns">
+              <template is="dom-repeat" items="[[columns]]" as="column" index-as="columnIndex">
+                <div class="column">
+                  <option-group
+                      state-path="[[statePath]].columns.[[columnIndex]]"
+                      root-state-path="[[statePath]].columns.[[columnIndex]]"
+                      on-option-select="onColumnSelect_">
+                  </option-group>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <div id="mundane">
+            <slot name="dropdown_extra"></slot>
+
             <option-group
-                state-path="[[statePath]].recommended"
+                state-path="[[statePath]]"
                 root-state-path="[[statePath]]">
             </option-group>
           </div>
-        </template>
-
-        <template is="dom-if" if="[[showColumns_(columns, query)]]">
-          <b style="margin: 4px;">Memory Components</b>
-          <div id="columns">
-            <template is="dom-repeat" items="[[columns]]" as="column" index-as="columnIndex">
-              <div class="column">
-                <option-group
-                    state-path="[[statePath]].columns.[[columnIndex]]"
-                    root-state-path="[[statePath]].columns.[[columnIndex]]"
-                    on-option-select="onColumnSelect_">
-                </option-group>
-              </div>
-            </template>
-          </div>
-        </template>
-
-        <div id="mundane">
-          <slot name="dropdown_extra"></slot>
-
-          <option-group
-              state-path="[[statePath]]"
-              root-state-path="[[statePath]]">
-          </option-group>
-        </div>
-      </iron-collapse>
+        </iron-collapse>
+      </template>
     </div>
   </template>
 </dom-module>

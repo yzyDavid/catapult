@@ -202,12 +202,13 @@ found in the LICENSE file.
 
       <span id="spacer">&nbsp;</span>
 
-      <paper-button
-          disabled$="[[!isPreviousMilestone_(milestone)]]"
-          on-tap="onPreviousMilestone_">
-        M[[_add(milestone, -2)]]
-        <iron-icon icon="chevron-left"></iron-icon>
-      </paper-button>
+      <template is="dom-if" if="[[isPreviousMilestone_(milestone)]]">
+        <paper-button
+            on-tap="onPreviousMilestone_">
+          [[prevMstoneButtonLabel_(milestone, maxRevision)]]
+          <iron-icon icon="chevron-left"></iron-icon>
+        </paper-button>
+      </template>
 
       <paper-input
           id="min_revision"
@@ -222,12 +223,13 @@ found in the LICENSE file.
           on-keyup="onMaxRevisionKeyup_">
       </paper-input>
 
-      <paper-button
-          disabled$="[[!isNextMilestone_(milestone)]]"
-          on-tap="onNextMilestone_">
-        <iron-icon icon="chevron-right"></iron-icon>
-        M[[_add(milestone, 1)]]
-      </paper-button>
+      <template is="dom-if" if="[[isNextMilestone_(milestone)]]">
+        <paper-button
+            on-tap="onNextMilestone_">
+          <iron-icon icon="chevron-right"></iron-icon>
+          M[[_add(milestone, 1)]]
+        </paper-button>
+      </template>
 
       <template is="dom-if" if="[[anyAlerts]]">
         <paper-button
@@ -400,12 +402,12 @@ found in the LICENSE file.
                 <tr>
                   <th colspan$="[[table.maxLabelParts]]">&nbsp;</th>
                   <th colspan$="[[_len(table.statistics)]]">
-                    M[[_add(milestone, -1)]]
+                    [[prevMstoneLabel_(milestone, maxRevision)]]
                     <br>
                     [[minRevision]]
                   </th>
                   <th colspan$="[[_len(table.statistics)]]">
-                    M[[milestone]]
+                    [[curMstoneLabel_(milestone, maxRevision)]]
                     <br>
                     [[maxRevision]]
                   </th>

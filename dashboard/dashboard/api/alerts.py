@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime
 import httplib2
 
 from google.appengine.datastore import datastore_query
@@ -11,26 +10,40 @@ from google.appengine.ext import ndb
 from dashboard import alerts
 from dashboard import file_bug
 from dashboard.api import api_request_handler
-from dashboard.api import describe
-from dashboard.api import test_suites
+from dashboard.api import utils as api_utils
+from dashboard.common import descriptor
 from dashboard.common import request_handler
+from dashboard.common import report_query
 from dashboard.common import utils
 from dashboard.models import anomaly
+from dashboard.models import report_template
 from dashboard.services import issue_tracker_service
 
 
-def ParseISO8601(s):
-  # ISO8601 specifies many possible formats. The dateutil library is much more
-  # flexible about parsing all of the possible formats, but it would be annoying
-  # to third_party it just for this. A few formats should cover enough users.
-  try:
-    return datetime.datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f')
-  except ValueError:
-    return datetime.datetime.strptime(s, '%Y-%m-%dT%H:%M:%S')
+def _TestKeysForReportTemplate(template_id):
+  template = ndb.Key('ReportTemplate', int(template_id)).get()
+  if not template:
+    if any(template_id == handler.template.key.id()
+           for handler in report_template.STATIC_TEMPLATES):
+      # Static report templates don't necessarily use a predictable set
+      # of test paths so they can't support filtering alerts.
+      return
+
+    raise api_request_handler.BadRequestError(
+        'Invalid report id %r' % template_id)
+
+  for table_row in template.template['rows']:
+    for desc in report_query.TableRowDescriptors(table_row):
+      for test_path in desc.ToTestPathsSync():
+        yield utils.TestMetadataKey(test_path)
+        yield utils.OldStyleTestKey(test_path)
 
 
 class AlertsHandler(api_request_handler.ApiRequestHandler):
   """API handler for various alert requests."""
+
+  def _AllowAnonymous(self):
+    return True
 
   def _AuthorizedHttp(self):
     # TODO(benjhayden): Use this instead of ServiceAccountHttp in order to use
@@ -106,23 +119,21 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
     response = {}
     try:
       if len(args) == 0:
-        is_improvement = self.request.get('is_improvement', None)
-        assert is_improvement in [None, 'true', 'false'], is_improvement
-        if is_improvement:
-          is_improvement = is_improvement == 'true'
-        recovered = self.request.get('recovered', None)
-        assert recovered in [None, 'true', 'false'], recovered
-        if recovered:
-          recovered = recovered == 'true'
+        is_improvement = api_utils.ParseBool(self.request.get(
+            'is_improvement', None))
+        recovered = api_utils.ParseBool(self.request.get('recovered', None))
         start_cursor = self.request.get('cursor', None)
         if start_cursor:
           start_cursor = datastore_query.Cursor(urlsafe=start_cursor)
-        min_timestamp = self.request.get('min_timestamp', None)
-        if min_timestamp:
-          min_timestamp = ParseISO8601(min_timestamp)
-        max_timestamp = self.request.get('max_timestamp', None)
-        if max_timestamp:
-          max_timestamp = ParseISO8601(max_timestamp)
+
+        min_timestamp = api_utils.ParseISO8601(self.request.get(
+            'min_timestamp', None))
+        max_timestamp = api_utils.ParseISO8601(self.request.get(
+            'max_timestamp', None))
+
+        test_keys = [test_key
+                     for template_id in self.request.get_all('report')
+                     for test_key in _TestKeysForReportTemplate(template_id)]
 
         try:
           alert_list, next_cursor, _ = anomaly.Anomaly.QueryAsync(
@@ -142,6 +153,7 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
               sheriff=self.request.get('sheriff', None),
               start_cursor=start_cursor,
               test=self.request.get('test', None),
+              test_keys=test_keys,
               test_suite_name=self.request.get('test_suite', None)).get_result()
         except AssertionError:
           alert_list, next_cursor = [], None
@@ -161,18 +173,16 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
     anomaly_dicts = alerts.AnomalyDicts(
         [a for a in alert_list if a.key.kind() == 'Anomaly'])
     for ad in anomaly_dicts:
-      test_parts = ad['test'].split('/')
-      ad['testsuite2'] = test_suites.GroupableTestSuite(ad['testsuite'])
-      test_part1_name = None
-      if test_suites.IsPartialTestSuite(ad['testsuite2']):
-        test_part1_name = test_parts.pop(0)
-        ad['testsuite2'] += ':' + test_part1_name
-      ad['measurement'], ad['testcase'] = describe.ParseTestPath(
-          test_parts, ad['testsuite'], test_part1_name, [])
-      stripped = describe.StripSuffix(ad['measurement'])
-      if len(stripped) < len(ad['measurement']):
-        ad['statistic'] = ad['measurement'][len(stripped) + 1:]
-        ad['measurement'] = stripped
+      test_path = '/'.join([ad['master'], ad['bot'], ad['testsuite']])
+      test_path += '/' + ad['test']
+      desc = descriptor.Descriptor.FromTestPathSync(test_path)
+      ad['descriptor'] = {
+          'testSuite': desc.test_suite,
+          'measurement': desc.measurement,
+          'bot': desc.bot,
+          'testCase': desc.test_case,
+          'statistic': desc.statistic,
+      }
 
     response['anomalies'] = anomaly_dicts
     return response

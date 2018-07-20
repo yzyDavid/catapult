@@ -2,249 +2,348 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime
-import json
 import logging
 
 from google.appengine.ext import ndb
 
 from dashboard import alerts
-from dashboard.api import api_auth
 from dashboard.api import api_request_handler
-from dashboard.api import describe
+from dashboard.api import utils as api_utils
+from dashboard.common import descriptor
+from dashboard.common import timing
 from dashboard.common import utils
 from dashboard.models import anomaly
 from dashboard.models import graph_data
 from dashboard.models import histogram
-from google.appengine.api import memcache
 
 
-MAX_POINTS = 20000
-BORING_COLUMNS = ['revision', 'timestamp']
-CACHE_SECONDS = 60 * 60 * 4
+# These limits should prevent DeadlineExceededErrors.
+# TODO(benjhayden): Find a better strategy for staying under the deadline.
+DIAGNOSTICS_QUERY_LIMIT = 10000
+HISTOGRAMS_QUERY_LIMIT = 1000
+ROWS_QUERY_LIMIT = 20000
 
-
-@ndb.tasklet
-def WaitAnySuccess(futures):
-  while futures:
-    try:
-      yield futures
-    except Exception: # pylint: disable=broad-except
-      pass
-    new_futures = []
-    for future in futures:
-      if not future.done():
-        new_futures.append(future)
-        continue
-      if future.get_exception():
-        logging.info('%r', future.get_exception())
-        continue
-      result = future.get_result()
-      if result:
-        raise ndb.Return(result)
-    futures = new_futures
-
-
-@ndb.tasklet
-def FindTestInternal(test_suite, measurement, bot, test_case, build_type):
-  test_paths = [CompileTest(bot, test_suite, measurement, test_case)]
-  if build_type == 'reference':
-    test_paths = [
-        test_path + '_ref' for test_path in test_paths
-    ] + [
-        test_path + '/ref' for test_path in test_paths
-    ]
-  logging.info('test_paths %s', ' '.join(test_paths))
-  futures = [utils.TestKey(test_path).get_async() for test_path in test_paths]
-  test = yield WaitAnySuccess(futures)
-  raise ndb.Return(test)
-
-
-@ndb.tasklet
-def FindTest(
-    test_suite, measurement, bot, test_case, statistic, build_type):
-  # Prefer the suffixed measurement.
-  # TODO make callers merge both suffixed and unsuffixed timeseries.
-  test = yield FindTestInternal(
-      test_suite, measurement + '_' + statistic, bot, test_case, build_type)
-  if test:
-    raise ndb.Return(test)
-  test = yield FindTestInternal(
-      test_suite, measurement, bot, test_case, build_type)
-  raise ndb.Return(test)
-
-
-def CompileTest(bot, test_suite, measurement, test_case):
-  suite_name, test_part1_name = describe.ParseTestSuite(test_suite)
-  test_suite_hash = describe.Hash(test_suite)
-  is_2c74 = test_suite_hash.startswith('2c74dc4e60629fc0bcc621c72d376beb02c1df')
-
-  components = bot.split(':')
-  components.append(suite_name)
-  if test_part1_name:
-    components.append(test_part1_name)
-
-  if describe.IsPolyMeasurement(test_suite) or is_2c74:
-    components.extend(measurement.split(':'))
-  else:
-    components.append(measurement)
-
-  if test_case:
-    if (test_suite.startswith('system_health') or
-        (test_suite in [
-            'tab_switching.typical_25',
-            'v8:browsing_desktop',
-            'v8:browsing_desktop-future',
-            'v8:browsing_mobile',
-            'v8:browsing_mobile-future',
-            ])):
-      test_case = test_case.split(':')
-      if test_case[0] == 'long_running_tools':
-        components.append(test_case[0])
-      else:
-        components.append('_'.join(test_case[:2]))
-      components.append('_'.join(test_case))
-    elif ((test_suite in ['memory.dual_browser_test', 'memory.top_10_mobile'])
-          or is_2c74):
-      components.extend(test_case.split(':'))
-    else:
-      components.append(test_case)
-  return '/'.join(components)
-
-
-def TransformRows(
-    entities, columns, alert_entities, hist_entities, min_rev, max_rev,
-    max_timestamp):
-  logging.info('TransformRows %d', len(entities))
-  entities = sorted(entities, key=lambda r: r.revision)
-  results = []
-  for entity in entities:
-    if min_rev and (entity.revision < min_rev):
-      continue
-    if max_rev and (entity.revision > max_rev):
-      continue
-    if max_timestamp and (entity.timestamp > max_timestamp):
-      continue
-
-    row = []
-    interesting = False
-    for attr in columns:
-      if attr == 'alert':
-        cell = alert_entities.get(entity.revision)
-      elif attr == 'hist':
-        cell = hist_entities.get(entity.revision)
-      else:
-        cell = getattr(entity, attr, None)
-        if isinstance(cell, datetime.datetime):
-          cell = cell.isoformat()
-        elif isinstance(cell, float):
-          cell = round(cell, 6)
-      row.append(cell)
-      if not interesting:
-        interesting = attr not in BORING_COLUMNS and cell is not None
-    if interesting:
-      results.append(row)
-  return results
-
-
-def CacheKey(*args):
-  return 'api_timeseries2_' + '_'.join(args)
+COLUMNS_REQUIRING_ROWS = {'timestamp', 'revisions'}.union(descriptor.STATISTICS)
+CACHE_SECONDS = 60 * 60 * 20
 
 
 class Timeseries2Handler(api_request_handler.ApiRequestHandler):
-  def _PreGet(self):
-    try:
-      api_auth.AuthorizeOauthUser()
-    except (api_auth.OAuthError, api_auth.NotLoggedInError):
-      # If the user isn't signed in or isn't an internal user, then they won't
-      # be able to access internal_only timeseries, but they should still be
-      # able to access non-internal_only timeseries.
-      pass
-    self._SetCorsHeadersIfAppropriate()
 
   def get(self):
-    self._PreGet()
-    test_suite = self.request.get('testSuite')
-    measurement = self.request.get('measurement')
-    bot = self.request.get('bot')
-    test_case = self.request.get('testCase')
-    statistic = self.request.get('statistic')
-    build_type = self.request.get('buildType')
+    self.post()
 
-    min_rev = self.request.get('minRevision')
-    max_rev = self.request.get('maxRevision')
-    min_timestamp = self.request.get('minTimestamp')
-    max_timestamp = self.request.get('maxTimestamp')
+  def _AllowAnonymous(self):
+    return True
 
-    cache_key = CacheKey(
-        test_suite, measurement, bot, test_case, statistic, build_type, min_rev,
-        max_rev, min_timestamp, max_timestamp)
-    cached = memcache.get(cache_key)
-    if cached is not None:
-      logging.info('cached %s', cache_key)
-      self._SetCacheControlHeader(True)
-      self.response.write(cached)
-      return
-
-    if min_rev:
-      min_rev = int(min_rev)
-    if max_rev:
-      max_rev = int(max_rev)
-    if min_timestamp:
-      min_timestamp = datetime.datetime.utcfromtimestamp(min_timestamp)
-    if max_timestamp:
-      max_timestamp = datetime.datetime.utcfromtimestamp(max_timestamp)
-
-    test = FindTest( # pylint: disable=assignment-from-no-return
-        test_suite, measurement, bot, test_case, statistic,
-        build_type).get_result()
-
-    if not test:
-      self.response.set_status(404)
-      self.response.write(json.dumps({'error': 'timeseries not found'}))
-      return
-    logging.info('found %r', test.key.id())
-
-    internal_only = describe.AnyPrivate(
-        [bot], test.suite_name, test.test_part1_name)
-
-    columns = self.request.get('columns')
-    if not columns:
-      self.response.set_status(400)
-      self.response.write(json.dumps({'error': 'missing "columns" parameter'}))
-      return
-    columns = columns.split(',')
-
-    rows = graph_data.Row.query().filter(
-        graph_data.Row.parent_test == utils.OldStyleTestKey(test.key.id()))
-    rows = rows.order(-graph_data.Row.revision)
-    if min_timestamp:
-      rows = rows.filter(graph_data.Row.timestamp > min_timestamp)
-
-    alert_entities = {}
-    if 'alert' in columns:
-      alert_entities = dict(
-          (entity.end_revision, alerts.GetAnomalyDict(entity))
-          for entity in anomaly.Anomaly.GetAlertsForTest(test))
-    hist_entities = {}
-    if 'hist' in columns:
-      hist_entities = dict(
-          (entity.revision, entity.data)
-          for entity in histogram.Histogram.query().filter(
-              histogram.Histogram.test == test.key.id()))
-
-    response_json = json.dumps({
-        'timeseries': TransformRows(
-            rows.fetch(MAX_POINTS), columns, alert_entities, hist_entities,
-            min_rev, max_rev, max_timestamp),
-        'improvement_direction': test.improvement_direction,
-        'units': test.units,
-    })
-    self._SetCacheControlHeader(internal_only)
-    self.response.out.write(response_json)
-    if len(response_json) < 1000000:
-      memcache.add(cache_key, response_json, time=CACHE_SECONDS)
-
-  def _SetCacheControlHeader(self, private):
+  def AuthorizedPost(self):
+    desc = descriptor.Descriptor(
+        test_suite=self.request.get('test_suite'),
+        measurement=self.request.get('measurement'),
+        bot=self.request.get('bot'),
+        test_case=self.request.get('test_case'),
+        statistic=None,
+        build_type=self.request.get('build_type'))
+    min_revision = self.request.get('min_revision')
+    min_revision = int(min_revision) if min_revision else None
+    max_revision = self.request.get('max_revision')
+    max_revision = int(max_revision) if max_revision else None
+    query = TimeseriesQuery(
+        desc, self.request.get('columns').split(','),
+        min_revision, max_revision,
+        api_utils.ParseISO8601(self.request.get('min_timestamp', None)),
+        api_utils.ParseISO8601(self.request.get('max_timestamp', None)))
+    try:
+      result = query.FetchSync()
+    except AssertionError:
+      # The caller has requested internal-only data but is not authorized.
+      raise api_request_handler.NotFoundError
     self.response.headers['Cache-Control'] = '%s, max-age=%d' % (
-        'private' if private else 'public', CACHE_SECONDS)
+        'private' if query.private else 'public', CACHE_SECONDS)
+    return result
+
+
+class TimeseriesQuery(object):
+
+  def __init__(self, desc, columns, min_revision=None, max_revision=None,
+               min_timestamp=None, max_timestamp=None):
+    self._descriptor = desc
+    self._columns = columns
+    self._min_revision = min_revision
+    self._max_revision = max_revision
+    self._min_timestamp = min_timestamp
+    self._max_timestamp = max_timestamp
+    self._statistic_columns = []
+    self._unsuffixed_test_metadata_keys = []
+    self._test_keys = []
+    self._units = None
+    self._improvement_direction = None
+    self._data = {}
+    self._private = False
+
+  @property
+  def private(self):
+    return self._private
+
+  @timing.TimeWall('fetch')
+  @timing.TimeCpu('fetch')
+  def FetchSync(self):
+    return self.FetchAsync().get_result()
+
+  @ndb.tasklet
+  def FetchAsync(self):
+    """Returns {units, improvement_direction, data}.
+
+    Raises:
+      api_request_handler.NotFoundError when the timeseries cannot be found.
+      AssertionError when an external user requests internal-only data.
+    """
+    # Always need to query TestMetadata even if the caller doesn't need units
+    # and improvement_direction because Row doesn't have internal_only.
+    # Use tasklets so that they can process the data as it arrives.
+    self._CreateTestKeys()
+    futures = [self._FetchTests()]
+    if COLUMNS_REQUIRING_ROWS.intersection(self._columns):
+      futures.append(self._FetchRows())
+    elif 'histogram' in self._columns:
+      futures.append(self._FetchHistograms())
+    if 'alert' in self._columns:
+      self._ResolveTimestamps()
+      futures.append(self._FetchAlerts())
+    if 'diagnostics' in self._columns:
+      self._ResolveTimestamps()
+      futures.append(self._FetchDiagnostics())
+    yield futures
+    raise ndb.Return({
+        'units': self._units,
+        'improvement_direction': self._improvement_direction,
+        'data': [[datum.get(col) for col in self._columns]
+                 for _, datum in sorted(self._data.iteritems())],
+    })
+
+  def _ResolveTimestamps(self):
+    if self._min_timestamp and self._min_revision is None:
+      self._min_revision = self._ResolveTimestamp(self._min_timestamp)
+    if self._max_timestamp and self._max_revision is None:
+      self._max_revision = self._ResolveTimestamp(self._max_timestamp)
+
+  def _ResolveTimestamp(self, timestamp):
+    query = graph_data.Row.query(
+        graph_data.Row.parent_test.IN(self._test_keys),
+        graph_data.Row.timestamp < timestamp)
+    query = query.order(-graph_data.Row.timestamp)
+    row_keys = query.fetch(1, keys_only=True)
+    if not row_keys:
+      return None
+    return row_keys[0].integer_id() + 1
+
+  def _CreateTestKeys(self):
+    desc = self._descriptor.Clone()
+
+    desc.statistic = None
+    unsuffixed_test_paths = desc.ToTestPathsSync()
+    self._unsuffixed_test_metadata_keys = [
+        utils.TestMetadataKey(path) for path in unsuffixed_test_paths]
+
+    self._statistic_columns = [
+        col for col in self._columns if col in descriptor.STATISTICS]
+    test_paths = []
+    for statistic in self._statistic_columns:
+      desc.statistic = statistic
+      test_paths.extend(desc.ToTestPathsSync())
+
+    test_metadata_keys = [utils.TestMetadataKey(path) for path in test_paths]
+    test_metadata_keys.extend(self._unsuffixed_test_metadata_keys)
+    test_paths.extend(unsuffixed_test_paths)
+    for test_path in test_paths:
+      logging.info('test_path=%r', test_path)
+
+    test_old_keys = [utils.OldStyleTestKey(path) for path in test_paths]
+    self._test_keys = test_old_keys + test_metadata_keys
+
+  @ndb.tasklet
+  def _FetchTests(self):
+    with timing.WallTimeLogger('fetch_tests'):
+      tests = yield [key.get_async() for key in self._test_keys]
+    tests = [test for test in tests if test]
+    if not tests:
+      raise api_request_handler.NotFoundError
+
+    improvement_direction = None
+    for test in tests:
+      if test.internal_only:
+        self._private = True
+
+      test_desc = yield descriptor.Descriptor.FromTestPathAsync(
+          utils.TestPath(test.key))
+      # The unit for 'count' statistics is trivially always 'count'. Callers
+      # certainly want the units of the measurement, which is the same as the
+      # units of the 'avg' and 'std' statistics.
+      if self._units is None or test_desc.statistic != 'count':
+        self._units = test.units
+        improvement_direction = test.improvement_direction
+
+    if improvement_direction == anomaly.DOWN:
+      self._improvement_direction = 'down'
+    elif improvement_direction == anomaly.UP:
+      self._improvement_direction = 'up'
+    else:
+      self._improvement_direction = None
+
+  def _Datum(self, revision):
+    return self._data.setdefault(revision, {'revision': revision})
+
+  @ndb.tasklet
+  def _FetchRows(self):
+    yield [self._FetchRowsForTest(test_key) for test_key in self._test_keys]
+
+  @staticmethod
+  def Round(x):
+    return round(x, 6)
+
+  def _RowQueryProjection(self, statistic):
+    limit = ROWS_QUERY_LIMIT
+    projection = None
+
+    # 'r_'-prefixed revisions are not in any index, so a projection query can't
+    # get them.
+    if 'revisions' in self._columns:
+      return projection, limit
+
+    # TODO(benjhayden) Remove this if/when the Row index is fixed.
+    # Disable projection queries for timestamp for now. There's just an index
+    # for ascending revision, not descending revision with timestamp.
+    if 'timestamp' in self._columns:
+      return projection, limit
+
+    # There is no index like (parent_test, -timestamp, revision, value):
+    self._ResolveTimestamps()
+
+    # If statistic is not None, then project value. _CreateTestKeys will
+    # generate test keys for the other statistics in columns if there are any.
+    # If statistic is None and the only statistic is avg, then project value.
+    # If statistic is None and there are multiple statistics, then fetch full
+    # Row entities because we might need their 'error' aka 'std' or
+    # 'd_'-prefixed statistics.
+    if ((statistic is not None) or
+        (','.join(self._statistic_columns) == 'avg')):
+      projection = ['revision', 'value']
+      if 'timestamp' in self._columns:
+        projection.append('timestamp')
+      limit = None
+
+    return projection, limit
+
+  @ndb.tasklet
+  def _FetchRowsForTest(self, test_key):
+    test_desc = yield descriptor.Descriptor.FromTestPathAsync(
+        utils.TestPath(test_key))
+    projection, limit = self._RowQueryProjection(test_desc.statistic)
+    query = graph_data.Row.query(projection=projection)
+    query = query.filter(graph_data.Row.parent_test == test_key)
+    query = self._FilterRowQuery(query)
+
+    with timing.WallTimeLogger('fetch_test'):
+      rows = yield query.fetch_async(limit)
+
+    with timing.CpuTimeLogger('rows'):
+      for row in rows:
+        datum = self._Datum(row.revision)
+        if test_desc.statistic is None:
+          datum['avg'] = self.Round(row.value)
+          if hasattr(row, 'error') and row.error:
+            datum['std'] = self.Round(row.error)
+        else:
+          datum[test_desc.statistic] = self.Round(row.value)
+        for stat in self._statistic_columns:
+          if hasattr(row, 'd_' + stat):
+            datum[stat] = self.Round(getattr(row, 'd_' + stat))
+        if 'timestamp' in self._columns:
+          datum['timestamp'] = row.timestamp.isoformat()
+        if 'revisions' in self._columns:
+          datum['revisions'] = {
+              attr: value for attr, value in row.to_dict().iteritems()
+              if attr.startswith('r_')}
+
+    if 'histogram' in self._columns and test_desc.statistic == None:
+      with timing.WallTimeLogger('fetch_histograms'):
+        yield [self._FetchHistogram(test_key, row.revision) for row in rows]
+
+  def _FilterRowQuery(self, query):
+    if self._min_revision or self._max_revision:
+      if self._min_revision:
+        query = query.filter(graph_data.Row.revision >= self._min_revision)
+      if self._max_revision:
+        query = query.filter(graph_data.Row.revision <= self._max_revision)
+      query = query.order(-graph_data.Row.revision)
+    elif self._min_timestamp or self._max_timestamp:
+      if self._min_timestamp:
+        query = query.filter(graph_data.Row.timestamp >= self._min_timestamp)
+      if self._max_timestamp:
+        query = query.filter(graph_data.Row.timestamp <= self._max_timestamp)
+      query = query.order(-graph_data.Row.timestamp)
+    else:
+      query = query.order(-graph_data.Row.revision)
+    return query
+
+  @ndb.tasklet
+  def _FetchAlerts(self):
+    anomalies, _, _ = yield anomaly.Anomaly.QueryAsync(
+        test_keys=self._test_keys,
+        max_start_revision=self._max_revision,
+        min_end_revision=self._min_revision)
+    for alert in anomalies:
+      if alert.internal_only:
+        self._private = True
+      datum = self._Datum(alert.end_revision)
+      # TODO(benjhayden) bisect_status
+      datum['alert'] = alerts.GetAnomalyDict(alert)
+
+  @ndb.tasklet
+  def _FetchHistograms(self):
+    yield [self._FetchHistogramsForTest(test) for test in self._test_keys]
+
+  @ndb.tasklet
+  def _FetchHistogramsForTest(self, test):
+    query = graph_data.Row.query(graph_data.Row.parent_test == test)
+    query = self._FilterRowQuery(query)
+    with timing.WallTimeLogger('fetch_histograms'):
+      row_keys = yield query.fetch_async(HISTOGRAMS_QUERY_LIMIT, keys_only=True)
+      yield [self._FetchHistogram(test, row_key.integer_id())
+             for row_key in row_keys]
+
+  @ndb.tasklet
+  def _FetchHistogram(self, test, revision):
+    query = histogram.Histogram.query(
+        histogram.Histogram.test == utils.TestMetadataKey(test),
+        histogram.Histogram.revision == revision)
+    hist = yield query.get_async()
+    if hist is None:
+      return
+    if hist.internal_only:
+      self._private = True
+    self._Datum(hist.revision)['histogram'] = hist.data
+
+  @ndb.tasklet
+  def _FetchDiagnostics(self):
+    with timing.WallTimeLogger('fetch_diagnosticss'):
+      yield [self._FetchDiagnosticsForTest(test)
+             for test in self._unsuffixed_test_metadata_keys]
+
+  @ndb.tasklet
+  def _FetchDiagnosticsForTest(self, test):
+    query = histogram.SparseDiagnostic.query(
+        histogram.SparseDiagnostic.test == test)
+    if self._min_revision:
+      query = query.filter(
+          histogram.SparseDiagnostic.start_revision >= self._min_revision)
+    if self._max_revision:
+      query = query.filter(
+          histogram.SparseDiagnostic.start_revision <= self._max_revision)
+    query = query.order(-histogram.SparseDiagnostic.start_revision)
+    diagnostics = yield query.fetch_async(DIAGNOSTICS_QUERY_LIMIT)
+    for diag in diagnostics:
+      if diag.internal_only:
+        self._private = True
+      datum = self._Datum(diag.start_revision)
+      datum_diags = datum.setdefault('diagnostics', {})
+      datum_diags[diag.name] = diag.data

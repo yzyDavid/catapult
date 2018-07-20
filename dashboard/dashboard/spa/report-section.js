@@ -12,6 +12,7 @@ tr.exportTo('cp', () => {
     66: 540276,
     67: 550428,
     68: 561733,
+    69: 576753,
   };
   const CURRENT_MILESTONE = tr.b.math.Statistics.max(
       Object.keys(CHROMIUM_MILESTONES));
@@ -53,50 +54,63 @@ tr.exportTo('cp', () => {
 
     async localhostResponse_() {
       const rows = [];
-      const dummyRow = () => {
+      const dummyRow = measurement => {
         const row = {
           testSuites: ['system_health.common_mobile'],
           bots: ['master:bot0', 'master:bot1', 'master:bot2'],
           testCases: [],
+          data: {},
+          measurement,
         };
         for (const revision of this.revisions_) {
-          row[revision] = {
-            avg: Math.random() * 1000,
-            std: Math.random() * 1000,
+          row.data[revision] = {
+            descriptors: [
+              {
+                testSuite: 'system_health.common_mobile',
+                measurement,
+                bot: 'master:bot0',
+                testCase: 'search:portal:google',
+              },
+              {
+                testSuite: 'system_health.common_mobile',
+                measurement,
+                bot: 'master:bot1',
+                testCase: 'search:portal:google',
+              },
+            ],
+            statistics: [
+              10, 0, 0, Math.random() * 1000, 0, 0, Math.random() * 1000],
+            revision,
           };
         }
         return row;
       };
+
       for (const group of ['Pixel', 'Android Go']) {
         rows.push({
-          ...dummyRow(),
+          ...dummyRow('memory:a_size'),
           label: group + ':Memory',
           units: 'sizeInBytes_smallerIsBetter',
-          measurement: 'memory:a_size',
         });
         rows.push({
-          ...dummyRow(),
+          ...dummyRow('loading'),
           label: group + ':Loading',
           units: 'ms_smallerIsBetter',
-          measurement: 'loading',
         });
         rows.push({
-          ...dummyRow(),
+          ...dummyRow('startup'),
           label: group + ':Startup',
           units: 'ms_smallerIsBetter',
-          measurement: 'startup',
         });
         rows.push({
-          ...dummyRow(),
+          ...dummyRow('cpu:a'),
           label: group + ':CPU',
           units: 'ms_smallerIsBetter',
-          measurement: 'cpu:a',
         });
         rows.push({
-          ...dummyRow(),
+          ...dummyRow('power'),
           label: group + ':Power',
           units: 'W_smallerIsBetter',
-          measurement: 'power',
         });
       }
 
@@ -104,8 +118,7 @@ tr.exportTo('cp', () => {
         name: this.name_,
         owners: ['benjhayden@chromium.org', 'benjhayden@google.com'],
         url: cp.PRODUCTION_URL,
-        statistics: ['avg', 'std'],
-        rows,
+        report: {rows, statistics: ['avg', 'std']},
       };
     }
   }
@@ -114,17 +127,15 @@ tr.exportTo('cp', () => {
     constructor(options) {
       super(options);
       this.method_ = 'POST';
-      this.headers_.set('Content-type', 'application/json');
-      this.body_ = JSON.stringify({
-        id: options.id,
-        name: options.name,
-        owners: options.owners,
+      this.body_ = new FormData();
+      this.body_.set('template', JSON.stringify({
         url: options.url,
-        template: {
-          statistics: options.statistics,
-          rows: options.rows,
-        },
-      });
+        statistics: options.statistics,
+        rows: options.rows,
+      }));
+      this.body_.set('name', options.name);
+      this.body_.set('owners', options.owners.join(','));
+      this.body_.set('id', options.id);
     }
 
     get url_() {
@@ -167,6 +178,20 @@ tr.exportTo('cp', () => {
       }
     }
 
+    prevMstoneButtonLabel_(milestone, maxRevision) {
+      return this.prevMstoneLabel_(milestone - 1, maxRevision);
+    }
+
+    prevMstoneLabel_(milestone, maxRevision) {
+      if (maxRevision === 'latest') milestone += 1;
+      return `M${milestone - 1}`;
+    }
+
+    curMstoneLabel_(milestone, maxRevision) {
+      if (maxRevision === 'latest') return '';
+      return `M${milestone}`;
+    }
+
     async onPreviousMilestone_() {
       await this.dispatch('selectMilestone', this.statePath,
           this.milestone - 1);
@@ -184,16 +209,24 @@ tr.exportTo('cp', () => {
       for (const row of event.model.table.rows) {
         const tr = document.createElement('tr');
         table.appendChild(tr);
+        // b/111692559
+        const td = document.createElement('td');
+        td.innerText = row.label;
+        tr.appendChild(td);
+
         for (let scalarIndex = 0; scalarIndex < 2 * statisticsCount;
           ++scalarIndex) {
           const td = document.createElement('td');
           tr.appendChild(td);
           const scalar = row.scalars[scalarIndex];
-          td.innerText = scalar.unit.format(scalar.value, {
-            unitPrefix: scalar.unitPrefix,
-          }).match(/^(-?[,0-9]+\.?[0-9]*)/)[0];
+          if (!isNaN(scalar.value)) {
+            td.innerText = scalar.unit.format(scalar.value, {
+              unitPrefix: scalar.unitPrefix,
+            }).match(/^(-?[,0-9]+\.?[0-9]*)/)[0];
+          }
         }
       }
+
       this.$.scratch.appendChild(table);
       const range = document.createRange();
       range.selectNodeContents(this.$.scratch);
@@ -356,6 +389,7 @@ tr.exportTo('cp', () => {
     }
 
     async onOverRow_(event) {
+      if (!event.model.row.actualDescriptors) return;
       let tr;
       for (const elem of event.path) {
         if (elem.tagName === 'TR') {
@@ -414,7 +448,7 @@ tr.exportTo('cp', () => {
     name: DASHES,
     isPlaceholder: true,
     statistics: ['avg'],
-    rows: [],
+    report: {rows: []},
   };
   // Keep this the same shape as the default report so that the buttons don't
   // move when the default report loads.
@@ -423,7 +457,7 @@ tr.exportTo('cp', () => {
     for (let j = 0; j < 4 * PLACEHOLDER_TABLE.statistics.length; ++j) {
       scalars.push({value: 0, unit: tr.b.Unit.byName.count});
     }
-    PLACEHOLDER_TABLE.rows.push({
+    PLACEHOLDER_TABLE.report.rows.push({
       labelParts: [
         {
           href: '',
@@ -710,9 +744,7 @@ tr.exportTo('cp', () => {
       cp.ElementBase.actions.updateObject(statePath, {
         isLoading: true,
       })(dispatch, getState);
-      const response = await request.response;
-      // TODO handle renaming templates
-      const sources = [...state.templateIds.values(), response];
+      const sources = await request.response;
       sources.sort((a, b) => a.name.localeCompare(b.name));
       const filteredNames = await cp.TeamFilter.get(
           rootState.teamName).reportNames(sources.map(entity => entity.name));
@@ -728,7 +760,7 @@ tr.exportTo('cp', () => {
         isLoading: false,
         source: {
           ...state.source,
-          selectedOptions: [response.name],
+          selectedOptions: [table.name],
         },
       })(dispatch, getState);
       ReportSection.actions.loadReports(statePath)(dispatch, getState);
@@ -784,8 +816,9 @@ tr.exportTo('cp', () => {
 
   ReportSection.reducers = {
     selectMilestone: (state, action, rootState) => {
-      const maxRevision = CHROMIUM_MILESTONES[action.milestone];
-      const minRevision = CHROMIUM_MILESTONES[action.milestone - 1];
+      const maxRevision = (action.milestone === CURRENT_MILESTONE) ?
+        'latest' : CHROMIUM_MILESTONES[action.milestone + 1];
+      const minRevision = CHROMIUM_MILESTONES[action.milestone];
       return {
         ...state,
         minRevision,
@@ -859,9 +892,10 @@ tr.exportTo('cp', () => {
           table && (table.name === report.name));
         tables.splice(placeholderIndex, 1);
 
-        const rows = report.rows.map(row => ReportSection.transformReportRow(
-            row, state.minRevision, state.maxRevision, report.statistics,
-            action.testSuites));
+        const rows = report.report.rows.map(
+            row => ReportSection.transformReportRow(
+                row, state.minRevision, state.maxRevision,
+                report.report.statistics, action.testSuites));
 
         // Right-align labelParts.
         const maxLabelParts = tr.b.math.Statistics.max(rows, row =>
@@ -897,6 +931,7 @@ tr.exportTo('cp', () => {
 
         tables.push({
           ...report,
+          ...report.report,
           canEdit: false, // See actions.renderEditForm
           isEditing: false,
           rows,
@@ -917,7 +952,7 @@ tr.exportTo('cp', () => {
               '95%',
               '99%',
             ],
-            selectedOptions: report.statistics,
+            selectedOptions: report.report.statistics,
             required: true,
           },
         });
@@ -1032,12 +1067,17 @@ tr.exportTo('cp', () => {
     };
   };
 
+  function maybeInt(x) {
+    const i = parseInt(x);
+    return isNaN(i) ? x : i;
+  }
+
   ReportSection.newStateOptionsFromQueryParams = queryParams => {
     const options = {
       sources: queryParams.getAll('report'),
       milestone: parseInt(queryParams.get('m')) || undefined,
-      minRevision: parseInt(queryParams.get('minRev')) || undefined,
-      maxRevision: parseInt(queryParams.get('maxRev')) || undefined,
+      minRevision: maybeInt(queryParams.get('minRev')) || undefined,
+      maxRevision: maybeInt(queryParams.get('maxRev')) || undefined,
     };
     if (options.maxRevision < options.minRevision) {
       [options.maxRevision, options.minRevision] = [
@@ -1048,8 +1088,9 @@ tr.exportTo('cp', () => {
         options.maxRevision !== undefined) {
       for (const [milestone, milestoneRevision] of Object.entries(
           CHROMIUM_MILESTONES)) {
-        if (milestoneRevision >= options.minRevision &&
-            options.maxRevision >= milestoneRevision) {
+        if ((milestoneRevision >= options.minRevision) &&
+            ((options.maxRevision === 'latest') ||
+             (options.maxRevision >= milestoneRevision))) {
           options.milestone = milestone;
           break;
         }
@@ -1109,12 +1150,28 @@ tr.exportTo('cp', () => {
     return routeParams;
   };
 
+  function chartHref(lineDescriptor) {
+    const params = new URLSearchParams({
+      measurement: lineDescriptor.measurement,
+    });
+    for (const testSuite of lineDescriptor.testSuites) {
+      params.append('testSuite', testSuite);
+    }
+    for (const bot of lineDescriptor.testSuites) {
+      params.append('bot', bot);
+    }
+    for (const testCase of lineDescriptor.testSuites) {
+      params.append('testCase', testCase);
+    }
+    return location.origin + '#' + params;
+  }
+
   ReportSection.transformReportRow = (
       row, minRevision, maxRevision, statistics, testSuites) => {
-    const origin = location.origin + '#';
+    const href = chartHref(row);
     const labelParts = row.label.split(':').map(label => {
       return {
-        href: origin + new URLSearchParams('TODO'),
+        href,
         isFirst: true,
         label,
         rowCount: 1,
@@ -1147,10 +1204,12 @@ tr.exportTo('cp', () => {
         if (rowUnit.baseUnit === tr.b.Unit.byName.sizeInBytes) {
           unitPrefix = tr.b.UnitPrefixScale.BINARY.KIBI;
         }
+        const running = tr.b.math.RunningStatistics.fromDict(
+            row.data[revision].statistics);
         scalars.push({
           unit,
           unitPrefix,
-          value: row[revision][statistic],
+          value: running[statistic],
         });
       }
     }
@@ -1158,13 +1217,16 @@ tr.exportTo('cp', () => {
       const unit = ((statistic === 'count') ? tr.b.Unit.byName.count :
         rowUnit).correspondingDeltaUnit;
       const deltaValue = (
-        row[maxRevision][statistic] -
-        row[minRevision][statistic]);
+        tr.b.math.RunningStatistics.fromDict(
+            row.data[maxRevision].statistics)[statistic] -
+        tr.b.math.RunningStatistics.fromDict(
+            row.data[minRevision].statistics)[statistic]);
       const suffix = tr.b.Unit.nameSuffixForImprovementDirection(
           unit.improvementDirection);
       scalars.push({
         unit: tr.b.Unit.byName[`normalizedPercentageDelta${suffix}`],
-        value: deltaValue / row[minRevision][statistic],
+        value: deltaValue / tr.b.math.RunningStatistics.fromDict(
+            row.data[minRevision].statistics)[statistic],
       });
       scalars.push({
         unit,
@@ -1176,11 +1238,11 @@ tr.exportTo('cp', () => {
       labelParts,
       scalars,
       label: row.label,
-      actualDescriptors: row.descriptors,
+      actualDescriptors: row.data[minRevision].descriptors,
       testSuite: {
         errorMessage: 'required',
-        label: `Test suites (${testSuites.count})`,
-        options: testSuites.options,
+        label: `Test suites (${testSuites.length})`,
+        options: testSuites,
         query: '',
         required: true,
         selectedOptions: row.testSuites,

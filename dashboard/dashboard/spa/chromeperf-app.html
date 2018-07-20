@@ -180,7 +180,7 @@ found in the LICENSE file.
           <paper-button
               raised
               title="Close all charts"
-              disabled="[[!_multiple(chartSectionIds)]]"
+              disabled="[[_empty(chartSectionIds)]]"
               on-tap="onCloseAllCharts_">
             <iron-icon icon="close">
             </iron-icon>
@@ -296,7 +296,7 @@ found in the LICENSE file.
         <paper-button
             raised
             title="Close all charts"
-            disabled="[[!_multiple(chartSectionIds)]]"
+            disabled="[[_empty(chartSectionIds)]]"
             on-tap="onCloseAllCharts_">
           <iron-icon icon="close">
           </iron-icon>

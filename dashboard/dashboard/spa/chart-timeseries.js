@@ -388,7 +388,7 @@ tr.exportTo('cp', () => {
   const SHADE_FILL_ALPHA = 0.2;
 
   ChartTimeseries.assignColors = lines => {
-    const isTestLine = line => line.descriptor.buildType !== 'reference';
+    const isTestLine = line => line.descriptor.buildType !== 'ref';
     const testLines = lines.filter(isTestLine);
     const colors = cp.generateColors(testLines.length, {hueOffset: 0.64});
     const colorByDescriptor = new Map();

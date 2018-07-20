@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+
+<dom-module id="raised-button">
+  <template>
+    <style include="paper-material-styles">
+      button {
+        @apply --paper-material-elevation-1;
+        background-color: var(--paper-indigo-50);
+        border-radius: 24px;
+        color: var(--paper-indigo-500);
+        padding: 4px;
+      }
+    </style>
+
+    <button><slot></slot></button>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/raised-button.js"></script>

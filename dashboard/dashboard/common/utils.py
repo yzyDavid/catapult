@@ -30,11 +30,42 @@ SERVICE_ACCOUNT_KEY = 'service_account'
 EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 _PROJECT_ID_KEY = 'project_id'
 _DEFAULT_CUSTOM_METRIC_VAL = 1
+OAUTH_SCOPES = (
+    'https://www.googleapis.com/auth/userinfo.email',
+)
+OAUTH_ENDPOINTS = ['/api/', '/add_histograms']
 
 
 def _GetNowRfc3339():
   """Returns the current time formatted per RFC 3339."""
   return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+
+def GetEmail():
+  """Returns email address of the current user.
+
+  Uses OAuth2 for /api/ requests, otherwise cookies.
+
+  Returns:
+    The email address as a string or None if there is no user logged in.
+
+  Raises:
+    OAuthRequestError: The request was not a valid OAuth request.
+    OAuthServiceFailureError: An unknown error occurred.
+  """
+  request_uri = os.environ.get('REQUEST_URI', '')
+  if any(request_uri.startswith(e) for e in OAUTH_ENDPOINTS):
+    # Prevent a CSRF whereby a malicious site posts an api request without an
+    # Authorization header (so oauth.get_current_user() is None), but while the
+    # user is signed in, so their cookies would make users.get_current_user()
+    # return a non-None user.
+    if 'HTTP_AUTHORIZATION' not in os.environ:
+      # The user is not signed in. Avoid raising OAuthRequestError.
+      return None
+    user = oauth.get_current_user(OAUTH_SCOPES)
+  else:
+    user = users.get_current_user()
+  return user.email() if user else None
 
 
 def TickMonitoringCustomMetric(metric_name):
@@ -336,46 +367,29 @@ def MinimumRange(ranges):
   return start, end
 
 
-OAUTH_SCOPES = (
-    'https://www.googleapis.com/auth/userinfo.email',
-)
-
-
-def GetUserEmail():
-  user = users.get_current_user()
-  if user:
-    return user.email()
-  try:
-    user = oauth.get_current_user(OAUTH_SCOPES)
-    if user:
-      return user.email()
-  except (oauth.InvalidOAuthTokenError, oauth.InvalidOAuthParametersError):
-    pass
-
-
 def IsInternalUser():
   """Checks whether the user should be able to see internal-only data."""
-  username = GetUserEmail()
-  if not username:
+  email = GetEmail()
+  if not email:
     return False
-  cached = GetCachedIsInternalUser(username)
+  cached = GetCachedIsInternalUser(email)
   if cached is not None:
     return cached
-  is_internal_user = IsGroupMember(identity=username, group='chromeperf-access')
-  SetCachedIsInternalUser(username, is_internal_user)
+  is_internal_user = IsGroupMember(identity=email, group='chromeperf-access')
+  SetCachedIsInternalUser(email, is_internal_user)
   return is_internal_user
 
 
-def GetCachedIsInternalUser(username):
-  return memcache.get(_IsInternalUserCacheKey(username))
+def GetCachedIsInternalUser(email):
+  return memcache.get(_IsInternalUserCacheKey(email))
 
 
-def SetCachedIsInternalUser(username, value):
-  memcache.add(_IsInternalUserCacheKey(username), value, time=60*60*24)
+def SetCachedIsInternalUser(email, value):
+  memcache.add(_IsInternalUserCacheKey(email), value, time=60*60*24)
 
 
-def _IsInternalUserCacheKey(username):
-  return 'is_internal_user_%s' % username
+def _IsInternalUserCacheKey(email):
+  return 'is_internal_user_%s' % email
 
 
 def IsGroupMember(identity, group):
@@ -401,7 +415,6 @@ def IsGroupMember(identity, group):
     response = request.execute()
     is_member = response['is_member']
     SetCachedIsGroupMember(identity, group, is_member)
-    logging.info('IsGroupMember %r %r %s', identity, group, is_member)
     return is_member
   except (errors.HttpError, KeyError, AttributeError) as e:
     logging.error('Failed to check membership of %s: %s', identity, e)
@@ -441,14 +454,14 @@ def ServiceAccountHttp(scope=EMAIL_SCOPE, timeout=None):
 
 def IsValidSheriffUser():
   """Checks whether the user should be allowed to triage alerts."""
-  user = GetUserEmail()
-  if not user:
-    return False
+  email = GetEmail()
   sheriff_domains = stored_object.Get(SHERIFF_DOMAINS_KEY)
-  domain_matched = sheriff_domains and any(
-      user.endswith('@' + domain) for domain in sheriff_domains)
-  return domain_matched or IsGroupMember(
-      identity=user, group='project-chromium-tryjob-access')
+  if email:
+    domain_matched = sheriff_domains and any(
+        email.endswith('@' + domain) for domain in sheriff_domains)
+    return domain_matched or IsGroupMember(
+        identity=email, group='project-chromium-tryjob-access')
+  return False
 
 
 def GetIpWhitelist():

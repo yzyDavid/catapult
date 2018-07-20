@@ -186,9 +186,11 @@ tr.exportTo('cp', () => {
       try {
         return Polymer.Path.setImmutable(rootState, statePath, state => {
           const mark = tr.b.Timing.mark('reducer', reducer.typeName);
-          const newState = reducer(state, action, rootState);
-          mark.end();
-          return newState;
+          try {
+            return reducer(state, action, rootState);
+          } finally {
+            mark.end();
+          }
         });
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -201,6 +203,10 @@ tr.exportTo('cp', () => {
     });
     return replacement;
   };
+
+  tr.b.Timing.ANALYTICS_FILTERS.push(mark =>
+    ['firstPaint', 'fetch', 'load'].includes(mark.groupName) ||
+    (mark.durationMs > 100));
 
   ElementBase.registerReducers = cls => {
     if (!cls.reducers) return;
@@ -232,20 +238,23 @@ tr.exportTo('cp', () => {
             tr.b.Timing.mark('listener', debugName, event.timeStamp).end();
           }
 
-          const firstPaintMark = tr.b.Timing.mark('firstPaint', debugName);
           // Measure the first paint latency by starting the event listener
           // without awaiting it.
+          const firstPaintMark = tr.b.Timing.mark('firstPaint', debugName);
           const resultPromise = wrapped.call(this, event);
           (async() => {
             await ElementBase.afterRender();
             firstPaintMark.end();
           })();
+
           const result = await resultPromise;
+
           const lastPaintMark = tr.b.Timing.mark('lastPaint', debugName);
           (async() => {
             await ElementBase.afterRender();
             lastPaintMark.end();
           })();
+
           return result;
         };
       })();
@@ -266,9 +275,11 @@ tr.exportTo('cp', () => {
         Object.defineProperty(thunk, 'name', {value: debugName});
         const thunkReplacement = async(dispatch, getState) => {
           const mark = tr.b.Timing.mark('action', debugName);
-          const result = await thunk(dispatch, getState);
-          mark.end();
-          return result;
+          try {
+            return await thunk(dispatch, getState);
+          } finally {
+            mark.end();
+          }
         };
         Object.defineProperty(thunkReplacement, 'name', {
           value: 'ElementBase.action.wrapper',
@@ -308,14 +319,6 @@ tr.exportTo('cp', () => {
   ElementBase.idlePeriod = () => new Promise(resolve =>
     requestIdleCallback(resolve));
 
-  ElementBase.measureInputLatency = async(groupName, functionName, event) => {
-    const mark = tr.b.Timing.mark(
-        groupName, functionName,
-        event.timeStamp || event.detail.sourceEvent.timeStamp);
-    await ElementBase.afterRender();
-    mark.end();
-  };
-
   ElementBase.actions = {
     updateObject: (statePath, delta) => async(dispatch, getState) => {
       dispatch({
@@ -342,10 +345,9 @@ tr.exportTo('cp', () => {
       });
     },
 
-    chain: (statePath, actions) => async(dispatch, getState) => {
+    chain: actions => async(dispatch, getState) => {
       dispatch({
         type: ElementBase.reducers.chain.typeName,
-        statePath,
         actions,
       });
     },
@@ -376,12 +378,16 @@ tr.exportTo('cp', () => {
       return rootState;
     },
 
-    chain: (state, {actions}, rootState) => {
+    chain: (rootState, {actions}, rootStateAgain) => {
       for (const action of actions) {
-        if (!REDUCERS.has(action.type)) continue;
-        state = REDUCERS.get(action.type)(state, action);
+        if (!REDUCERS.has(action.type)) {
+          // eslint-disable-next-line no-console
+          console.warn('Unrecognized action type', action);
+          continue;
+        }
+        rootState = REDUCERS.get(action.type)(rootState, action);
       }
-      return state;
+      return rootState;
     },
   };
 

@@ -19,14 +19,41 @@ This translation layer should be temporary until the descriptor concept can be
 pushed down into the Model layer.
 """
 
+from google.appengine.ext import ndb
+
 from dashboard.common import stored_object
 
 TEST_BUILD_TYPE = 'test'
 REFERENCE_BUILD_TYPE = 'ref'
 STATISTICS = ['avg', 'count', 'max', 'min', 'std', 'sum']
+NO_MITIGATIONS_CASE = 'no-mitigations'
+
+# This stored object contains a list of test path component strings that must be
+# joined with the subsequent test path component in order to form a composite
+# test suite. Some are internal-only, but there's no need to store a separate
+# list for external users since this data is not served, just used to parse test
+# keys.
 PARTIAL_TEST_SUITES_KEY = 'partial_test_suites'
+
+# This stored object contains a list of test suites composed of 2 or more test
+# path components. All composite test suites start with a partial test suite,
+# but not all test suites that start with a partial test suite are composite.
 COMPOSITE_TEST_SUITES_KEY = 'composite_test_suites'
+
+# This stored object contains a list of prefixes of test suites that are
+# transformed to allow the UI to group them.
 GROUPABLE_TEST_SUITE_PREFIXES_KEY = 'groupable_test_suite_prefixes'
+
+# This stored object contains a list of test suites whose measurements are
+# composed of multiple test path components.
+POLY_MEASUREMENT_TEST_SUITES_KEY = 'poly_measurement_test_suites'
+
+# This stored object contains a list of test suites whose measurements and test
+# cases are each composed of two test path components.
+TWO_TWO_TEST_SUITES_KEY = 'two_two_test_suites'
+
+# This stored object contains a list of lists of bot aliases.
+BOT_ALIASES_KEY = 'bot_aliases'
 
 
 class Descriptor(object):
@@ -45,56 +72,100 @@ class Descriptor(object):
     self.statistic = statistic
     self.build_type = build_type
 
+  def Clone(self):
+    return Descriptor(self.test_suite, self.measurement, self.bot,
+                      self.test_case, self.statistic, self.build_type)
+
   def __repr__(self):
     return 'Descriptor(%r, %r, %r, %r, %r, %r)' % (
         self.test_suite, self.measurement, self.bot, self.test_case,
         self.statistic, self.build_type)
 
-  PARTIAL_TEST_SUITES = None
+  def __eq__(self, other):
+    return repr(self) == repr(other)
+
+  def __lt__(self, other):
+    return repr(self) < repr(other)
+
+  CONFIGURATION = {}
 
   @classmethod
-  def _PartialTestSuites(cls):
-    """Returns a list of test path component strings that must be joined with
-    the subsequent test path component in order to form a composite test suite.
-    Some are internal-only, but there's no need to store a separate list for
-    external users.
-    """
-    if cls.PARTIAL_TEST_SUITES is None:
-      cls.PARTIAL_TEST_SUITES = stored_object.Get(PARTIAL_TEST_SUITES_KEY)
-    return cls.PARTIAL_TEST_SUITES
-
-  COMPOSITE_TEST_SUITES = None
+  @ndb.tasklet
+  def _GetConfiguration(cls, key, default=None):
+    if key not in cls.CONFIGURATION:
+      cls.CONFIGURATION[key] = (yield stored_object.GetAsync(key)) or default
+    raise ndb.Return(cls.CONFIGURATION[key])
 
   @classmethod
-  def _CompositeTestSuites(cls):
-    """
-    Returns a list of test suites composed of 2 or more test path components.
-    All composite test suites start with a partial test suite, but not all test
-    suites that start with a partial test suite are composite.
-    Some are internal-only, but there's no need to store a separate list for
-    external users.
-    """
-    if cls.COMPOSITE_TEST_SUITES is None:
-      cls.COMPOSITE_TEST_SUITES = stored_object.Get(COMPOSITE_TEST_SUITES_KEY)
-    return cls.COMPOSITE_TEST_SUITES
-
-  GROUPABLE_TEST_SUITE_PREFIXES = None
+  def ResetMemoizedConfigurationForTesting(cls):
+    cls.CONFIGURATION = {}
 
   @classmethod
-  def _GroupableTestSuitePrefixes(cls):
-    """
-    Returns a list of prefixes of test suites that are transformed to allow the
-    UI to group them.
-    Some are internal-only, but there's no need to store a separate list for
-    external users.
-    """
-    if cls.GROUPABLE_TEST_SUITE_PREFIXES is None:
-      cls.GROUPABLE_TEST_SUITE_PREFIXES = stored_object.Get(
-          GROUPABLE_TEST_SUITE_PREFIXES_KEY)
-    return cls.GROUPABLE_TEST_SUITE_PREFIXES
+  @ndb.tasklet
+  def _MeasurementCase(cls, test_suite, path):
+    if len(path) == 1:
+      raise ndb.Return((path.pop(0), None))
+
+    if test_suite.startswith('loading.'):
+      measurement = path.pop(0)
+      parts, path[:] = path[:], []
+      if len(parts) > 1 and parts[1].endswith('_' + parts[0]):
+        parts[1] = parts[1][:-(len(parts[0]) + 1)]
+      raise ndb.Return((measurement, ':'.join(parts)))
+
+    if test_suite.startswith('resource_sizes'):
+      parts, path[:] = path[:], []
+      raise ndb.Return((':'.join(parts), None))
+
+    if test_suite == 'sizes':
+      parts, path[:] = path[:], []
+      raise ndb.Return((':'.join(parts[:6]), ':'.join(parts[6:])))
+
+    if (test_suite.startswith('system_health') or
+        (test_suite in [
+            'tab_switching.typical_25',
+            'v8:browsing_desktop',
+            'v8:browsing_desktop-future',
+            'v8:browsing_mobile',
+            'v8:browsing_mobile-future',
+            ])):
+      measurement = path.pop(0)
+      path.pop(0)
+      if len(path) == 0:
+        raise ndb.Return((measurement, None))
+      raise ndb.Return((measurement, path.pop(0).replace('_', ':').replace(
+          'long:running:tools', 'long_running_tools')))
+
+    if test_suite in (yield cls._GetConfiguration(TWO_TWO_TEST_SUITES_KEY, [])):
+      parts, path[:] = path[:], []
+      raise ndb.Return(':'.join(parts[:2]), ':'.join(parts[2:]))
+
+    if test_suite in [
+        'memory.dual_browser_test', 'memory.top_10_mobile',
+        'v8:runtime_stats.top_25']:
+      measurement = path.pop(0)
+      case = path.pop(0)
+      if len(path) == 0:
+        raise ndb.Return((measurement, None))
+      raise ndb.Return((measurement, case + ':' + path.pop(0)))
+
+    if test_suite in (yield cls._GetConfiguration(
+        POLY_MEASUREMENT_TEST_SUITES_KEY, [])):
+      parts, path[:] = path[:], []
+      case = None
+      if parts[-1] == NO_MITIGATIONS_CASE:
+        case = parts.pop()
+      raise ndb.Return((':'.join(parts), case))
+
+    raise ndb.Return((path.pop(0), path.pop(0)))
 
   @classmethod
-  def FromTestPath(cls, path):
+  def FromTestPathSync(cls, test_path):
+    return cls.FromTestPathAsync(test_path).get_result()
+
+  @classmethod
+  @ndb.tasklet
+  def FromTestPathAsync(cls, test_path):
     """Parse a test path into a Descriptor.
 
     Args:
@@ -103,95 +174,147 @@ class Descriptor(object):
     Returns:
       Descriptor
     """
+    path = test_path.split('/')
     if len(path) < 2:
-      return cls()
+      raise ndb.Return(cls())
 
     bot = path.pop(0) + ':' + path.pop(0)
     if len(path) == 0:
-      return cls(bot=bot)
+      raise ndb.Return(cls(bot=bot))
 
     test_suite = path.pop(0)
 
-    if test_suite in cls._PartialTestSuites():
+    if test_suite in (yield cls._GetConfiguration(PARTIAL_TEST_SUITES_KEY, [])):
       if len(path) == 0:
-        return cls(bot=bot)
+        raise ndb.Return(cls(bot=bot))
       test_suite += ':' + path.pop(0)
 
     if test_suite.startswith('resource_sizes '):
       test_suite = 'resource_sizes:' + test_suite[16:-1]
     else:
-      for prefix in cls._GroupableTestSuitePrefixes():
+      for prefix in (yield cls._GetConfiguration(
+          GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])):
         if test_suite.startswith(prefix):
           test_suite = prefix[:-1] + ':' + test_suite[len(prefix):]
           break
 
     if len(path) == 0:
-      return cls(test_suite=test_suite, bot=bot)
+      raise ndb.Return(cls(test_suite=test_suite, bot=bot))
 
     build_type = TEST_BUILD_TYPE
-    measurement = path.pop(0)
+    if path[-1] == 'ref':
+      path.pop()
+      build_type = REFERENCE_BUILD_TYPE
+
+    if len(path) == 0:
+      raise ndb.Return(cls(
+          test_suite=test_suite, bot=bot, build_type=build_type))
+
+    measurement, test_case = yield cls._MeasurementCase(test_suite, path)
+
     statistic = None
-    # TODO(crbug.com/853258) some measurements include path[4]
     for suffix in STATISTICS:
       if measurement.endswith('_' + suffix):
         statistic = suffix
         measurement = measurement[:-(1 + len(suffix))]
-    if len(path) == 0:
-      return cls(test_suite=test_suite, bot=bot, measurement=measurement,
-                 build_type=build_type, statistic=statistic)
 
-    test_case = path.pop(0)
-    if test_case.endswith('_ref'):
+    if test_case and test_case.endswith('_ref'):
       test_case = test_case[:-4]
       build_type = REFERENCE_BUILD_TYPE
     if test_case == REFERENCE_BUILD_TYPE:
       build_type = REFERENCE_BUILD_TYPE
       test_case = None
-    # TODO(crbug.com/853258) some test_cases include path[5] and/or path[6]
-    # and/or path[7]
-    # TODO(crbug.com/853258) some test_cases need to be modified
 
-    return cls(test_suite=test_suite, bot=bot, measurement=measurement,
-               statistic=statistic, test_case=test_case, build_type=build_type)
+    if path:
+      raise ValueError('Unable to parse %r' % test_path)
 
-  def ToTestPaths(self):
+    raise ndb.Return(cls(
+        test_suite=test_suite, bot=bot, measurement=measurement,
+        statistic=statistic, test_case=test_case, build_type=build_type))
+
+  def ToTestPathsSync(self):
+    return self.ToTestPathsAsync().get_result()
+
+  @ndb.tasklet
+  def ToTestPathsAsync(self):
     # There may be multiple possible test paths for a given Descriptor.
 
     if not self.bot:
-      return []
+      raise ndb.Return([])
 
-    test_path = self.bot.replace(':', '/')
+    test_paths = [self.bot]
+    bot_aliases = yield self._GetConfiguration(BOT_ALIASES_KEY, [])
+    for aliases in bot_aliases:
+      if self.bot in aliases:
+        test_paths = aliases
+        break
+    test_paths = [test_path.replace(':', '/') for test_path in test_paths]
     if not self.test_suite:
-      return [test_path]
+      raise ndb.Return(test_paths)
 
-    test_path += '/'
+    test_paths = [p + '/' for p in test_paths]
 
     if self.test_suite.startswith('resource_sizes:'):
-      test_path += 'resource sizes (%s)' % self.test_suite[15:]
-    elif self.test_suite in self._CompositeTestSuites():
-      test_path += self.test_suite.replace(':', '/')
+      test_paths = [p + 'resource_sizes (%s)' % self.test_suite[15:]
+                    for p in test_paths]
+    elif self.test_suite in (yield self._GetConfiguration(
+        COMPOSITE_TEST_SUITES_KEY, [])):
+      test_paths = [p + self.test_suite.replace(':', '/')
+                    for p in test_paths]
     else:
       first_part = self.test_suite.split(':')[0]
-      for prefix in self._GroupableTestSuitePrefixes():
+      for prefix in (yield self._GetConfiguration(
+          GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])):
         if prefix[:-1] == first_part:
-          test_path += prefix + self.test_suite[len(first_part) + 1:]
+          test_paths = [p + prefix + self.test_suite[len(first_part) + 1:]
+                        for p in test_paths]
           break
       else:
-        test_path += self.test_suite
+        test_paths = [p + self.test_suite for p in test_paths]
     if not self.measurement:
-      return [test_path]
+      raise ndb.Return(test_paths)
 
-    # TODO(crbug.com/853258) some measurements need to be modified
-    test_path += '/' + self.measurement
+    if self.test_suite in (yield self._GetConfiguration(
+        POLY_MEASUREMENT_TEST_SUITES_KEY, [])):
+      test_paths = [p + '/' + self.measurement.replace(':', '/')
+                    for p in test_paths]
+    else:
+      test_paths = [p + '/' + self.measurement
+                    for p in test_paths]
+
     if self.statistic:
-      test_path += '_' + self.statistic
-    if self.test_case:
-      # TODO(crbug.com/853258) some test_cases need to be modified
-      test_path += '/' + self.test_case
+      test_paths = [p + '_' + self.statistic for p in test_paths]
 
-    candidates = [test_path]
+    if self.test_case:
+      if (self.test_suite.startswith('system_health') or
+          (self.test_suite in [
+              'tab_switching.typical_25',
+              'v8:browsing_desktop',
+              'v8:browsing_desktop-future',
+              'v8:browsing_mobile',
+              'v8:browsing_mobile-future',
+              ])):
+        test_case = self.test_case.split(':')
+        if test_case[0] == 'long_running_tools':
+          test_paths = [p + '/' + test_case[0] for p in test_paths]
+        else:
+          test_paths = [p + '/' + '_'.join(test_case[:2]) for p in test_paths]
+        test_paths = [p + '/' + '_'.join(test_case) for p in test_paths]
+      elif self.test_suite.startswith('loading.'):
+        test_paths = [p + '/' + self.test_case.replace(':', '/') + extra
+                      for p in test_paths
+                      for extra in ['', '_' + self.test_case.split(':')[0]]]
+      elif self.test_suite in [
+          'sizes', 'memory.dual_browser_test', 'memory.top_10_mobile',
+          'v8:runtime_stats.top_25'] + (yield self._GetConfiguration(
+              TWO_TWO_TEST_SUITES_KEY, [])):
+        test_paths = [p + '/' + self.test_case.replace(':', '/')
+                      for p in test_paths]
+      else:
+        test_paths = [p + '/' + self.test_case for p in test_paths]
+
     if self.build_type == REFERENCE_BUILD_TYPE:
-      candidates = [candidate + suffix
-                    for candidate in candidates
+      test_paths = [test_path + suffix
+                    for test_path in test_paths
                     for suffix in ['_ref', '/ref']]
-    return candidates
+    raise ndb.Return(test_paths)

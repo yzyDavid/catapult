@@ -47,6 +47,10 @@ tr.exportTo('tr.b.math', function() {
       return this.mean_;
     }
 
+    get avg() {
+      return this.mean;
+    }
+
     get max() {
       return this.max_;
     }
@@ -68,6 +72,10 @@ tr.exportTo('tr.b.math', function() {
     get stddev() {
       if (this.count_ === 0) return undefined;
       return Math.sqrt(this.variance);
+    }
+
+    get std() {
+      return this.stddev;
     }
 
     add(x) {

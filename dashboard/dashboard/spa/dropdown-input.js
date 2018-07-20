@@ -43,6 +43,10 @@ tr.exportTo('cp', () => {
       }
     }
 
+    renderDropdown_(hasBeenOpened, largeDom) {
+      return hasBeenOpened || !largeDom;
+    }
+
     isDisabled_(alwaysEnabled, options) {
       return !alwaysEnabled && options && (options.length === 0);
     }
@@ -124,6 +128,7 @@ tr.exportTo('cp', () => {
   DropdownInput.properties = {
     ...cp.ElementBase.statePathProperties('statePath', {
       alwaysEnabled: {type: Boolean},
+      hasBeenOpened: {type: Boolean},
       columns: {type: Array},
       focusTimestamp: {type: Number},
       label: {type: String},
@@ -135,6 +140,10 @@ tr.exportTo('cp', () => {
       errorMessage: {type: String},
       selectedOptions: {type: Array},
     }),
+    largeDom: {
+      type: Boolean,
+      statePath: 'largeDom',
+    },
     rootFocusTimestamp: {
       type: Number,
       statePath: 'focusTimestamp',
@@ -263,7 +272,7 @@ tr.exportTo('cp', () => {
 
       return Polymer.Path.setImmutable(
           rootState, action.inputStatePath, inputState => {
-            return {...inputState, focusTimestamp};
+            return {...inputState, focusTimestamp, hasBeenOpened: true};
           });
     },
 

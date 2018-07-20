@@ -76,13 +76,16 @@ tr.exportTo('tr.b', function() {
             this.groupName, this.functionName, this.durationMs);
       }
 
-      if (!(window.ga instanceof Function)) return;
       // Google Analytics
+      if (!(window.ga instanceof Function)) return;
+      for (const filter of Timing.ANALYTICS_FILTERS) {
+        if (!filter(this)) return;
+      }
       ga('send', {
         hitType: 'event',
         eventCategory: this.groupName,
         eventAction: this.functionName,
-        eventValue: this.durationMs,
+        eventValue: Math.round(this.durationMs),
       });
     }
   }
@@ -120,6 +123,7 @@ tr.exportTo('tr.b', function() {
     }
   }
 
+  Timing.ANALYTICS_FILTERS = [];
   Timing.logVoidMarks = false;
 
   return {
