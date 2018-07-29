@@ -22,6 +22,7 @@ class TestCase(testing_common.TestCase):
     self._SetUpTestApp()
     self._SetUpStubs()
     self._PopulateData()
+    self.SetCurrentUserOAuth(testing_common.EXTERNAL_USER)
 
   def _SetUpTestApp(self):
     self.testapp = webtest.TestApp(dispatcher.APP)
@@ -32,6 +33,38 @@ class TestCase(testing_common.TestCase):
     self.addCleanup(patcher.stop)
     self.commit_info = patcher.start()
     self.commit_info.side_effect = _CommitInfoStub
+
+    patcher = mock.patch('dashboard.services.gitiles_service.CommitRange')
+    self.addCleanup(patcher.stop)
+    self.commit_range = patcher.start()
+    self.commit_range.side_effect = _CommitRangeStub
+
+    patcher = mock.patch('dashboard.services.gitiles_service.FileContents')
+    self.addCleanup(patcher.stop)
+    self.file_contents = patcher.start()
+    self.file_contents.return_value = 'deps = {}'
+
+    patcher = mock.patch('dashboard.services.gerrit_service.GetChange')
+    self.addCleanup(patcher.stop)
+    self.get_change = patcher.start()
+    self.get_change.return_value = {
+        '_number': 567890,
+        'project': 'project/name',
+        'subject': 'Patch subject.',
+        'revisions': {
+            'abc123': {
+                '_number': 5,
+                'created': '2018-02-01 23:46:56.000000000',
+                'uploader': {'email': 'author@codereview.com'},
+                'fetch': {
+                    'http': {
+                        'url': CHROMIUM_URL,
+                        'ref': 'refs/changes/90/567890/5',
+                    },
+                },
+            },
+        },
+    }
 
   def _PopulateData(self):
     # Add repository mappings.
@@ -54,3 +87,10 @@ def _CommitInfoStub(repository_url, git_hash):
                  'Commit message.\n'
                  'Cr-Commit-Position: refs/heads/master@{#123456}',
   }
+
+
+def _CommitRangeStub(repository_url, first_git_hash, last_git_hash):
+  first_number = int(first_git_hash.split()[1])
+  last_number = int(last_git_hash.split()[1])
+  return [_CommitInfoStub(repository_url, 'commit ' + str(x))
+          for x in xrange(last_number, first_number, -1)]

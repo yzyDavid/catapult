@@ -2,65 +2,102 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import itertools
 import unittest
 
+from dashboard.pinpoint import test
 from dashboard.pinpoint.models import job_state
-from dashboard.pinpoint.models import quest
+from dashboard.pinpoint.models.change import change_test
+from dashboard.pinpoint.models.quest import quest_test
 
 
-class ExploreTest(unittest.TestCase):
+class ExploreTest(test.TestCase):
 
-  def testDifferent(self):
-    # TODO(dtu): Implement when we have more powerful mocking available.
-    pass
+  def testDifferentWithMidpoint(self):
+    quests = [quest_test.QuestByChange({
+        change_test.Change(1): quest_test.QuestPass,
+        change_test.Change(9): quest_test.QuestFail,
+    })]
+    state = job_state.JobState(quests, comparison_mode=job_state.PERFORMANCE)
+    state.AddChange(change_test.Change(1))
+    state.AddChange(change_test.Change(9))
+
+    state.ScheduleWork()
+    state.Explore()
+
+    # The Changes are different. Add the midpoint.
+    expected = [change_test.Change(1), change_test.Change(5),
+                change_test.Change(9)]
+    self.assertEqual(state._changes, expected)
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(5)])
+    attempt_count_3 = len(state._attempts[change_test.Change(9)])
+    self.assertEqual(attempt_count_1, attempt_count_2)
+    self.assertEqual(attempt_count_2, attempt_count_3)
+
+  def testDifferentNoMidpoint(self):
+    quests = [quest_test.QuestByChange({
+        change_test.Change(1): quest_test.QuestPass,
+        change_test.Change(2): quest_test.QuestFail,
+    })]
+    state = job_state.JobState(quests, comparison_mode=job_state.PERFORMANCE)
+    state.AddChange(change_test.Change(1))
+    state.AddChange(change_test.Change(2))
+
+    state.ScheduleWork()
+    state.Explore()
+
+    # The Changes are different, but there's no midpoint. We're done.
+    self.assertEqual(len(state._changes), 2)
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(2)])
+    self.assertEqual(attempt_count_1, attempt_count_2)
 
   def testPending(self):
-    state = job_state.JobState([_QuestStub(_ExecutionSpin)],
-                               comparison_mode=job_state.PERFORMANCE)
-    state.AddChange('change 1')
-    state.AddChange('change 2')
+    quests = [quest_test.QuestSpin()]
+    state = job_state.JobState(quests, comparison_mode=job_state.PERFORMANCE)
+    state.AddChange(change_test.Change(1))
+    state.AddChange(change_test.Change(9))
 
     state.Explore()
 
     # The results are pending. Do not add any Attempts or Changes.
     self.assertEqual(len(state._changes), 2)
-    attempt_count_1 = len(state._attempts['change 1'])
-    attempt_count_2 = len(state._attempts['change 2'])
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(9)])
     self.assertEqual(attempt_count_1, attempt_count_2)
 
   def testSame(self):
-    state = job_state.JobState([_QuestStub(_ExecutionPass)],
-                               comparison_mode=job_state.FUNCTIONAL)
-    state.AddChange('change 1')
-    state.AddChange('change 2')
+    quests = [quest_test.QuestPass()]
+    state = job_state.JobState(quests, comparison_mode=job_state.FUNCTIONAL)
+    state.AddChange(change_test.Change(1))
+    state.AddChange(change_test.Change(9))
     for _ in xrange(5):
       # More Attempts give more confidence that they are, indeed, the same.
-      state.AddAttempts('change 1')
-      state.AddAttempts('change 2')
+      state.AddAttempts(change_test.Change(1))
+      state.AddAttempts(change_test.Change(9))
 
     state.ScheduleWork()
     state.Explore()
 
     # The Changes are the same. Do not add any Attempts or Changes.
     self.assertEqual(len(state._changes), 2)
-    attempt_count_1 = len(state._attempts['change 1'])
-    attempt_count_2 = len(state._attempts['change 2'])
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(9)])
     self.assertEqual(attempt_count_1, attempt_count_2)
 
   def testUnknown(self):
-    state = job_state.JobState([_QuestStub(_ExecutionPass)],
-                               comparison_mode=job_state.FUNCTIONAL)
-    state.AddChange('change 1')
-    state.AddChange('change 2')
+    quests = [quest_test.QuestPass()]
+    state = job_state.JobState(quests, comparison_mode=job_state.FUNCTIONAL)
+    state.AddChange(change_test.Change(1))
+    state.AddChange(change_test.Change(9))
 
     state.ScheduleWork()
     state.Explore()
 
     # Need more information. Add more attempts to one Change.
     self.assertEqual(len(state._changes), 2)
-    attempt_count_1 = len(state._attempts['change 1'])
-    attempt_count_2 = len(state._attempts['change 2'])
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(9)])
     self.assertGreater(attempt_count_1, attempt_count_2)
 
     state.ScheduleWork()
@@ -68,8 +105,8 @@ class ExploreTest(unittest.TestCase):
 
     # We still need more information. Add more attempts to the other Change.
     self.assertEqual(len(state._changes), 2)
-    attempt_count_1 = len(state._attempts['change 1'])
-    attempt_count_2 = len(state._attempts['change 2'])
+    attempt_count_1 = len(state._attempts[change_test.Change(1)])
+    attempt_count_2 = len(state._attempts[change_test.Change(9)])
     self.assertEqual(attempt_count_1, attempt_count_2)
 
 
@@ -80,78 +117,24 @@ class ScheduleWorkTest(unittest.TestCase):
     self.assertFalse(state.ScheduleWork())
 
   def testWorkLeft(self):
-    state = job_state.JobState([_QuestStub(_ExecutionPass, _ExecutionSpin)])
-    state.AddChange('change')
+    quests = [quest_test.QuestCycle(quest_test.QuestPass, quest_test.QuestSpin)]
+    state = job_state.JobState(quests)
+    state.AddChange(change_test.Change(123))
     self.assertTrue(state.ScheduleWork())
 
   def testNoWorkLeft(self):
-    state = job_state.JobState([_QuestStub(_ExecutionPass)])
-    state.AddChange('change')
+    quests = [quest_test.QuestPass()]
+    state = job_state.JobState(quests)
+    state.AddChange(change_test.Change(123))
     self.assertTrue(state.ScheduleWork())
     self.assertFalse(state.ScheduleWork())
 
   def testAllAttemptsFail(self):
-    q = _QuestStub(_ExecutionFail, _ExecutionFail, _ExecutionFail2)
-    state = job_state.JobState([q])
-    state.AddChange('change')
+    quests = [quest_test.QuestCycle(
+        quest_test.QuestFail, quest_test.QuestFail, quest_test.QuestFail2)]
+    state = job_state.JobState(quests)
+    state.AddChange(change_test.Change(123))
     expected_regexp = '7/10.*\nException: Expected error for testing.$'
     self.assertTrue(state.ScheduleWork())
     with self.assertRaisesRegexp(Exception, expected_regexp):
       self.assertFalse(state.ScheduleWork())
-
-
-class _QuestStub(quest.Quest):
-
-  def __init__(self, *execution_classes):
-    self._execution_classes = itertools.cycle(execution_classes)
-
-  def __str__(self):
-    return 'Quest'
-
-  def Start(self, change):
-    del change
-    return self._execution_classes.next()()
-
-  @classmethod
-  def FromDict(cls, arguments):
-    return cls
-
-
-class _ExecutionFail(quest.Execution):
-  """This Execution always fails on first Poll()."""
-
-  def _Poll(self):
-    raise Exception('Expected error for testing.')
-
-  def _AsDict(self):
-    return {}
-
-
-class _ExecutionFail2(quest.Execution):
-  """This Execution always fails on first Poll()."""
-
-  def _Poll(self):
-    raise Exception('A different expected error for testing.')
-
-  def _AsDict(self):
-    return {}
-
-
-class _ExecutionPass(quest.Execution):
-  """This Execution always completes on first Poll()."""
-
-  def _Poll(self):
-    self._Complete()
-
-  def _AsDict(self):
-    return {}
-
-
-class _ExecutionSpin(quest.Execution):
-  """This Execution never completes."""
-
-  def _Poll(self):
-    pass
-
-  def _AsDict(self):
-    return {}

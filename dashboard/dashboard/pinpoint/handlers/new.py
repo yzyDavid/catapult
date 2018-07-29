@@ -4,16 +4,13 @@
 
 import json
 
-from dashboard.api import api_auth
 from dashboard.api import api_request_handler
-from dashboard.common import namespaced_stored_object
+from dashboard.common import utils
+from dashboard.pinpoint.models import bot_configurations
 from dashboard.pinpoint.models import change
 from dashboard.pinpoint.models import job as job_module
 from dashboard.pinpoint.models import quest as quest_module
 from dashboard.pinpoint.models.change import patch
-
-
-_BOT_CONFIGURATIONS = 'bot_configurations'
 
 
 _ERROR_BUG_ID = 'Bug ID must be an integer.'
@@ -48,6 +45,7 @@ def _CreateJob(request):
   bug_id = _ValidateBugId(arguments.get('bug_id'))
   comparison_mode = _ValidateComparisonMode(arguments.get('comparison_mode'))
   gerrit_server, gerrit_change_id = _ValidatePatch(arguments.get('patch'))
+  name = arguments.get('name')
   pin = _ValidatePin(arguments.get('pin'))
   tags = _ValidateTags(arguments.get('tags'))
   user = _ValidateUser(arguments.get('user'))
@@ -56,7 +54,8 @@ def _CreateJob(request):
   return job_module.Job.New(
       quests, changes, arguments=original_arguments, bug_id=bug_id,
       comparison_mode=comparison_mode, gerrit_server=gerrit_server,
-      gerrit_change_id=gerrit_change_id, pin=pin, tags=tags, user=user)
+      gerrit_change_id=gerrit_change_id,
+      name=name, pin=pin, tags=tags, user=user)
 
 
 def _ArgumentsWithConfiguration(original_arguments):
@@ -64,8 +63,7 @@ def _ArgumentsWithConfiguration(original_arguments):
   # arguments. Pull any arguments from the specified "configuration", if any.
   configuration = original_arguments.get('configuration')
   if configuration:
-    configurations = namespaced_stored_object.Get(_BOT_CONFIGURATIONS)
-    new_arguments = configurations[configuration]
+    new_arguments = bot_configurations.Get(configuration)
   else:
     new_arguments = {}
 
@@ -140,8 +138,8 @@ def _GenerateQuests(arguments):
     request arguments that were used, and quests is a list of Quests.
   """
   target = arguments.get('target')
-  if target in ('performance_test_suite', 'telemetry_perf_tests',
-                'telemetry_perf_webview_tests'):
+  if target in ('performance_test_suite', 'performance_webview_test_suite',
+                'telemetry_perf_tests', 'telemetry_perf_webview_tests'):
     quest_classes = (quest_module.FindIsolate, quest_module.RunTelemetryTest,
                      quest_module.ReadHistogramsJsonValue)
   else:
@@ -182,4 +180,4 @@ def _ValidateTags(tags):
 
 
 def _ValidateUser(user):
-  return user or api_auth.Email()
+  return user or utils.GetEmail()

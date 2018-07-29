@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import json
+import ntpath
+import posixpath
 
 from dashboard.common import histogram_helpers
 from dashboard.pinpoint.models.quest import execution
@@ -11,6 +13,10 @@ from dashboard.services import isolate
 from tracing.value import histogram_set
 from tracing.value.diagnostics import diagnostic_ref
 from tracing.value.diagnostics import reserved_infos
+
+
+_PERFORMANCE_TESTS = ('performance_test_suite',
+                      'performance_webview_test_suite')
 
 
 class ReadValueError(Exception):
@@ -57,8 +63,11 @@ class ReadHistogramsJsonValue(quest.Quest):
     benchmark = arguments.get('benchmark')
     if not benchmark:
       raise TypeError('Missing "benchmark" argument.')
-    if arguments.get('target') == 'performance_test_suite':
-      results_filename = benchmark + '/perf_results.json'
+    if arguments.get('target') in _PERFORMANCE_TESTS:
+      if _IsWindows(arguments):
+        results_filename = ntpath.join(benchmark, 'perf_results.json')
+      else:
+        results_filename = posixpath.join(benchmark, 'perf_results.json')
     else:
       # TODO: Remove this hack when all builders build performance_test_suite.
       results_filename = 'chartjson-output.json'
@@ -251,6 +260,13 @@ class _ReadGraphJsonValueExecution(execution.Execution):
     result_value = float(graphjson[self._chart]['traces'][self._trace][0])
 
     self._Complete(result_values=(result_value,))
+
+
+def _IsWindows(arguments):
+  for dimension in arguments.get('dimensions', []):
+    if dimension['key'] == 'os' and dimension['value'].startswith('Win'):
+      return True
+  return False
 
 
 def _RetrieveOutputJson(isolate_server, isolate_hash, filename):
