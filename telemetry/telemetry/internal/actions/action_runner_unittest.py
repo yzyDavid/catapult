@@ -1,8 +1,9 @@
 # Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import mock
 import unittest
+
+import mock
 
 from telemetry.core import exceptions
 from telemetry import decorators
@@ -21,7 +22,7 @@ class ActionRunnerInteractionTest(tab_test_case.TabTestCase):
 
   def GetInteractionRecords(self, trace_data):
     timeline_model = model.TimelineModel(trace_data)
-    renderer_thread = timeline_model.GetRendererThreadFromTabId(self._tab.id)
+    renderer_thread = timeline_model.GetFirstRendererThread(self._tab.id)
     return [
         tir_module.TimelineInteractionRecord.FromAsyncEvent(e)
         for e in renderer_thread.async_slices

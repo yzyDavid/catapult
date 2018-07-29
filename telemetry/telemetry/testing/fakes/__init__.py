@@ -10,6 +10,8 @@ underscore are intended to be implementation details, and should not
 be subclassed; however, some, like FakeBrowser, have public APIs that
 may need to be called in tests.
 """
+import types
+
 from telemetry.core import exceptions
 from telemetry.internal.backends.chrome_inspector import websocket
 from telemetry.internal.browser import browser_options as browser_options_module
@@ -18,7 +20,6 @@ from telemetry.page import shared_page_state
 from telemetry.util import image_util
 from telemetry.util import wpr_modes
 from telemetry.testing.internal import fake_gpu_info
-from types import ModuleType
 
 
 # Classes and functions which are intended to be part of the public
@@ -36,7 +37,6 @@ class FakePlatform(object):
   def __init__(self):
     self._network_controller = None
     self._tracing_controller = None
-    self._has_battor = False
     self._os_name = 'FakeOS'
     self._device_type_name = 'abc'
     self._is_svelte = False
@@ -98,13 +98,6 @@ class FakePlatform(object):
 
   def WaitForBatteryTemperature(self, _):
     pass
-
-  def HasBattOrConnected(self):
-    return self._has_battor
-
-  def SetBattOrDetected(self, b):
-    assert isinstance(b, bool)
-    self._has_battor = b
 
   # TODO(rnephew): Investigate moving from setters to @property.
   def SetDeviceTypeName(self, name):
@@ -272,7 +265,7 @@ class FakeSharedPageState(shared_page_state.SharedPageState):
 
 class FakeSystemInfo(system_info.SystemInfo):
   def __init__(self, model_name='', gpu_dict=None, command_line=''):
-    if gpu_dict == None:
+    if gpu_dict is None:
       gpu_dict = fake_gpu_info.FAKE_GPU_INFO
     super(FakeSystemInfo, self).__init__(model_name, gpu_dict, command_line)
 
@@ -383,6 +376,9 @@ class FakeBrowser(FakeApp):
 
   def DumpStateUponFailure(self):
     pass
+
+  def LogSymbolizedUnsymbolizedMinidumps(self, log_level):
+    del log_level  # unused
 
 
 class _FakeTracingController(object):
@@ -615,7 +611,7 @@ class FakeTimer(object):
     self._module = module
     self._actual_time = None
     if module:
-      assert isinstance(module, ModuleType)
+      assert isinstance(module, types.ModuleType)
       self._actual_time = module.time
       self._module.time = self
 

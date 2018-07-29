@@ -301,6 +301,14 @@ class InspectorBackend(object):
       raise py_utils.TimeoutException(
           e.message + '\n' + debug_message)
 
+  def AddTimelineMarker(self, marker):
+    return self.ExecuteJavaScript(
+        """
+        console.time({{ marker }});
+        console.timeEnd({{ marker }});
+        """,
+        marker=str(marker))
+
   @_HandleInspectorWebSocketExceptions
   def EnableAllContexts(self):
     """Allows access to iframes.
@@ -481,6 +489,7 @@ class InspectorBackend(object):
       exceptions.DevtoolsTargetCrashException: On any other error, the most
         likely explanation is that the devtool's target crashed.
     """
+    # pylint: disable=redefined-variable-type
     if isinstance(error, websocket.WebSocketTimeoutException):
       new_error = exceptions.TimeoutException()
       new_error.AddDebuggingMessage(exceptions.AppCrashException(

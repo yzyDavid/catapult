@@ -9,7 +9,6 @@ import re
 import subprocess
 import tempfile
 
-from battor import battor_wrapper
 from telemetry.core import android_platform
 from telemetry.core import exceptions
 from telemetry.core import util
@@ -27,8 +26,6 @@ from telemetry.internal.platform.power_monitor import sysfs_power_monitor
 from telemetry.internal.util import binary_manager
 from telemetry.internal.util import external_modules
 
-psutil = external_modules.ImportOptionalModule('psutil')
-
 from devil.android import app_ui
 from devil.android import battery_utils
 from devil.android import device_errors
@@ -38,6 +35,7 @@ from devil.android.perf import perf_control
 from devil.android.perf import thermal_throttle
 from devil.android.sdk import shared_prefs
 from devil.android.sdk import version_codes
+from devil.android.tools import provision_devices
 from devil.android.tools import video_recorder
 
 try:
@@ -51,6 +49,7 @@ try:
 except Exception: # pylint: disable=broad-except
   surface_stats_collector = None
 
+psutil = external_modules.ImportOptionalModule('psutil')
 
 _ARCH_TO_STACK_TOOL_ARCH = {
     'armeabi-v7a': 'arm',
@@ -526,7 +525,11 @@ class AndroidPlatformBackend(
     if not profile_base:
       profile_base = os.path.basename(profile_parent)
 
-    saved_profile_location = '/sdcard/profile/%s' % profile_base
+    provision_devices.CheckExternalStorage(self._device)
+
+    saved_profile_location = posixpath.join(
+        self._device.GetExternalStoragePath(),
+        'profile', profile_base)
     self._device.PushChangedFiles([(new_profile_dir, saved_profile_location)],
                                   delete_device_stale=True)
 
@@ -718,13 +721,6 @@ class AndroidPlatformBackend(
     input_methods = self._device.RunShellCommand(['dumpsys', 'input_method'],
                                                  check_return=True)
     return self._IsScreenLocked(input_methods)
-
-  def HasBattOrConnected(self):
-    # Use linux instead of Android because when determining what tests to run on
-    # a bot the individual device could be down, which would make BattOr tests
-    # not run on any device. BattOrs communicate with the host and not android
-    # devices.
-    return battor_wrapper.IsBattOrConnected('linux')
 
   def Log(self, message):
     """Prints line to logcat."""

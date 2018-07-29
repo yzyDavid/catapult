@@ -109,7 +109,7 @@ def _RunStoryAndProcessErrorIfNeeded(story, results, state, test):
 
     # Note: calling Fail on the results object also normally causes the
     # progress_reporter to log it in the output.
-    results.Fail(sys.exc_info())
+    results.Fail('Exception raised running %s' % story.name)
 
   with CaptureLogsAsArtifacts(results, story.name):
     try:
@@ -198,6 +198,8 @@ def Run(test, story_set, finder_options, results, max_failures=None,
 
   state = None
   device_info_diags = {}
+  # TODO(crbug.com/866458): unwind the nested blocks
+  # pylint: disable=too-many-nested-blocks
   try:
     pageset_repeat = _GetPageSetRepeat(finder_options)
     if finder_options.smoke_test_mode:
@@ -369,14 +371,19 @@ def RunBenchmark(benchmark, finder_options):
       # this will log error messages if names do not match what is in the set.
       benchmark.GetBrokenExpectations(stories)
     except Exception: # pylint: disable=broad-except
+
       logging.fatal(
           'Benchmark execution interrupted by a fatal exception.')
-      results.InterruptBenchmark(stories, _GetPageSetRepeat(finder_options))
+
+      filtered_stories = story_module.StoryFilter.FilterStorySet(stories)
+      results.InterruptBenchmark(
+          filtered_stories, _GetPageSetRepeat(finder_options))
       exception_formatter.PrintFormattedException()
       return_code = 2
 
     benchmark_owners = benchmark.GetOwners()
     benchmark_component = benchmark.GetBugComponents()
+    benchmark_documentation_url = benchmark.GetDocumentationLink()
 
     if benchmark_owners:
       results.AddSharedDiagnostic(
@@ -385,6 +392,10 @@ def RunBenchmark(benchmark, finder_options):
     if benchmark_component:
       results.AddSharedDiagnostic(
           reserved_infos.BUG_COMPONENTS.name, benchmark_component)
+
+    if benchmark_documentation_url:
+      results.AddSharedDiagnostic(
+          reserved_infos.DOCUMENTATION_URLS.name, benchmark_documentation_url)
 
     try:
       if finder_options.upload_results:
