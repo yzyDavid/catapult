@@ -47,24 +47,20 @@ class TraceDataPart(object):
 ANDROID_PROCESS_DATA_PART = TraceDataPart('androidProcessDump')
 ATRACE_PART = TraceDataPart('systemTraceEvents')
 ATRACE_PROCESS_DUMP_PART = TraceDataPart('atraceProcessDump')
-BATTOR_TRACE_PART = TraceDataPart('powerTraceAsString')
 CHROME_TRACE_PART = TraceDataPart('traceEvents')
 CPU_TRACE_DATA = TraceDataPart('cpuSnapshots')
 INSPECTOR_TRACE_PART = TraceDataPart('inspectorTimelineEvents')
 SURFACE_FLINGER_PART = TraceDataPart('surfaceFlinger')
-TAB_ID_PART = TraceDataPart('tabIds')
 TELEMETRY_PART = TraceDataPart('telemetry')
 WALT_TRACE_PART = TraceDataPart('waltTraceEvents')
 
 ALL_TRACE_PARTS = {ANDROID_PROCESS_DATA_PART,
                    ATRACE_PART,
                    ATRACE_PROCESS_DUMP_PART,
-                   BATTOR_TRACE_PART,
                    CHROME_TRACE_PART,
                    CPU_TRACE_DATA,
                    INSPECTOR_TRACE_PART,
                    SURFACE_FLINGER_PART,
-                   TAB_ID_PART,
                    TELEMETRY_PART}
 
 ALL_TRACE_PARTS_RAW_NAMES = set(k.raw_field_name for k in ALL_TRACE_PARTS)
