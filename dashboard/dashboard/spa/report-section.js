@@ -25,7 +25,7 @@ tr.exportTo('cp', () => {
       // (such as the browser cache) understand that it returns different data
       // depending on whether the user is authorized to access internal data.
       const internal = this.headers_.has('Authorization');
-      return '/api/report_names' + (internal ? '?internal' : '');
+      return '/api/report/names' + (internal ? '?internal' : '');
     }
 
     async localhostResponse_() {
@@ -49,7 +49,7 @@ tr.exportTo('cp', () => {
     }
 
     get url_() {
-      return `/api/report?${this.queryParams_}`;
+      return `/api/report/generate?${this.queryParams_}`;
     }
 
     async localhostResponse_() {
@@ -139,7 +139,7 @@ tr.exportTo('cp', () => {
     }
 
     get url_() {
-      return `/api/report`;
+      return `/api/report/template`;
     }
 
     async localhostResponse_() {

@@ -261,7 +261,7 @@ tr.exportTo('cp', () => {
         await cp.ElementBase.afterRender();
 
         // Create the First Contentful Paint with a placeholder table in the
-        // ReportSection. ReportSection will also fetch public /api/report_names
+        // ReportSection. ReportSection will also fetch public /api/report/names
         // without authorizationHeaders.
         dispatch({
           type: ChromeperfApp.reducers.ready.typeName,
