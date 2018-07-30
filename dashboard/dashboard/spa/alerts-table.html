@@ -118,7 +118,16 @@ found in the LICENSE file.
         <table placeholder$="[[areAlertGroupsPlaceholders]]">
           <thead>
             <tr>
-              <th>&nbsp;</th>
+              <th>
+                <column-head
+                    name="count"
+                    sort-column="[[sortColumn]]"
+                    sort-descending="[[sortDescending]]"
+                    on-tap="onSort_">
+                  Count
+                </column-head>
+              </th>
+
               <th class="checkbox">
                 <paper-checkbox
                     checked="[[anySelectedAlerts_(alertGroups)]]"

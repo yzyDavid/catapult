@@ -1289,17 +1289,22 @@ tr.exportTo('cp', () => {
 
   AlertsSection.sortGroups = (alertGroups, sortColumn, sortDescending) => {
     const factor = sortDescending ? -1 : 1;
-    alertGroups = alertGroups.map(group => {
-      const alerts = Array.from(group.alerts);
-      alerts.sort((alertA, alertB) => factor * AlertsSection.compareAlerts(
-          alertA, alertB, sortColumn));
-      return {
-        ...group,
-        alerts,
-      };
-    });
-    alertGroups.sort((groupA, groupB) => factor * AlertsSection.compareAlerts(
-        groupA.alerts[0], groupB.alerts[0], sortColumn));
+    if (sortColumn === 'count') {
+      alertGroups = [...alertGroups];
+      alertGroups.sort((groupA, groupB) => factor * (groupA.alerts.length - groupB.alerts.length));
+    } else {
+      alertGroups = alertGroups.map(group => {
+        const alerts = Array.from(group.alerts);
+        alerts.sort((alertA, alertB) => factor * AlertsSection.compareAlerts(
+            alertA, alertB, sortColumn));
+        return {
+          ...group,
+          alerts,
+        };
+      });
+      alertGroups.sort((groupA, groupB) => factor * AlertsSection.compareAlerts(
+          groupA.alerts[0], groupB.alerts[0], sortColumn));
+    }
     return alertGroups;
   };
 
