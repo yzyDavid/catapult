@@ -153,25 +153,12 @@ tr.exportTo('cp', () => {
     }
   }
 
-  function selfAwarePromise(narcissus) {
-    const socrates = (async() => {
-      try {
-        return await narcissus;
-      } finally {
-        socrates.isResolved = true;
-      }
-    })();
-    socrates.isResolved = false;
-    return socrates;
-  }
-
   /* Processing results can be costly. Help callers batch process
    * results by waiting a bit to see if more promises resolve.
    * This is similar to Polymer.Debouncer, but as an async generator.
    * Usage:
    * async function fetchThings(things) {
    *   const responses = things.map(thing => new ThingRequest(thing).response);
-   *   const mergedResult = {};
    *   for await (const {results, errors} of
    *              cp.RequestBase.batchResponses(responses)) {
    *     dispatch({
@@ -189,44 +176,42 @@ tr.exportTo('cp', () => {
   RequestBase.batchResponses = async function* (promises, opt_getDelayPromise) {
     const getDelayPromise = opt_getDelayPromise || (() =>
       cp.ElementBase.timeout(500));
-    promises = promises.map(selfAwarePromise);
+    let delay;
     let results = [];
     let errors = [];
-    while (promises.length) {
-      let result;
-      try {
-        result = await Promise.race(promises);
-      } catch (err) {
-        errors.push(err);
-      }
-
-      // Remove the delay even if it hasn't fired yet.
-      promises = promises.filter(p => !p.isResolved && !p.isBatchDelay);
-
-      if (result === RequestBase.batchResponses.DELAY_NONCE) {
-        // The delay resolved, so yield and reset results and errors.
-        yield {results, errors};
-        results = [];
-        errors = [];
-      } else {
-        // A response resolved, so store it and start a delay.
-        results.push(result);
-        if (promises.length > 0) {
-          const delay = (async() => {
-            await getDelayPromise();
-            return RequestBase.batchResponses.DELAY_NONCE;
-          })();
-          // It doesn't matter if the delay is self aware because timeouts and
-          // resolved promises are treated the same in the filter above.
-          delay.isBatchDelay = true;
-          promises.push(delay);
+    promises = promises.map(narcissus => {
+      const socrates = (async() => {
+        try {
+          results.push(await narcissus);
+        } catch (err) {
+          errors.push(err);
+        } finally {
+          promises.splice(promises.indexOf(socrates), 1);
         }
+      })();
+      return socrates;
+    });
+
+    while (promises.length) {
+      if (delay) {
+        await Promise.race([delay, ...promises]);
+        if (delay.isResolved) {
+          yield {results, errors};
+          results = [];
+          errors = [];
+          delay = undefined;
+        }
+      } else {
+        await Promise.race(promises);
+        delay = (async() => {
+          await getDelayPromise();
+          delay.isResolved = true;
+        })();
+        delay.isResolved = false;
       }
     }
     yield {results, errors};
   };
-
-  RequestBase.batchResponses.DELAY_NONCE = Object.freeze({});
 
   return {
     CacheBase,
