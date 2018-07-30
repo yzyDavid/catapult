@@ -1194,6 +1194,15 @@ tr.exportTo('cp', () => {
         rowUnit = tr.b.Unit.byName[info.name + unitNameSuffix];
       }
     }
+    if (rowUnit.improvementDirection === tr.b.ImprovementDirection.DONT_CARE &&
+        row.improvement_direction !== 4) {
+      const improvementDirection = (row.improvement_direction === 0) ?
+        tr.b.ImprovementDirection.BIGGER_IS_BETTER :
+        tr.b.ImprovementDirection.SMALLER_IS_BETTER;
+      const unitNameSuffix = tr.b.Unit.nameSuffixForImprovementDirection(
+          improvementDirection);
+      rowUnit = tr.b.Unit.byName[rowUnit.unitName + unitNameSuffix];
+    }
 
     const scalars = [];
     for (const revision of [minRevision, maxRevision]) {
