@@ -31,8 +31,17 @@ found in the LICENSE file.
       #sheriff {
         width: 350px;
       }
-      #sheriff_container {
+
+      #sheriff_container,
+      #bug_container,
+      #report_container,
+      #min_revision,
+      #max_revision {
         margin-right: 8px;
+      }
+
+      paper-input div[slot="suffix"] {
+        height: 32px;
       }
 
       paper-toggle-button {
@@ -40,7 +49,8 @@ found in the LICENSE file.
       }
 
       #triaged {
-        margin-left: 16px;
+        margin-left: 8px;
+        margin-right: 8px;
       }
 
       #summary {
@@ -125,7 +135,7 @@ found in the LICENSE file.
       <iron-collapse
           horizontal
           id="sheriff_container"
-          opened="[[showSheriff_(bug)]]">
+          opened="[[showSheriff_(bug, report)]]">
         <dropdown-input
             id="sheriff"
             state-path="[[statePath]].sheriff"
@@ -134,7 +144,10 @@ found in the LICENSE file.
         </dropdown-input>
       </iron-collapse>
 
-      <iron-collapse horizontal opened="[[showBug_(sheriff)]]">
+      <iron-collapse
+          horizontal
+          id="bug_container"
+          opened="[[showBug_(sheriff, report)]]">
         <dropdown-input
             id="bug"
             state-path="[[statePath]].bug"
@@ -143,6 +156,41 @@ found in the LICENSE file.
             on-option-select="onBugSelect_">
         </dropdown-input>
       </iron-collapse>
+
+      <iron-collapse
+          horizontal
+          id="report_container"
+          opened="[[showReport_(sheriff, bug)]]">
+        <dropdown-input
+            id="report"
+            state-path="[[statePath]].report"
+            on-clear="onReportClear_"
+            on-input-keyup="onReportKeyup_"
+            on-option-select="onReportSelect_">
+        </dropdown-input>
+      </iron-collapse>
+
+      <paper-input
+          id="min_revision"
+          value="[[minRevision]]"
+          label="min revision"
+          size="6"
+          on-keyup="onMinRevisionKeyup_">
+        <div slot="suffix">
+          &nbsp;
+        </div>
+      </paper-input>
+
+      <paper-input
+          id="max_revision"
+          value="[[maxRevision]]"
+          label="max revision"
+          size="6"
+          on-keyup="onMaxRevisionKeyup_">
+        <div slot="suffix">
+          &nbsp;
+        </div>
+      </paper-input>
 
       <template is="dom-if" if="[[alertGroups]]">
         <template is="dom-if" if="[[isOwner]]">
@@ -163,7 +211,7 @@ found in the LICENSE file.
 
       <paper-toggle-button
           id="improvements"
-          disabled="[[_empty(sheriff.selectedOptions)]]"
+          disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingImprovements]]"
           on-change="onToggleImprovements_">
         Improvements
@@ -171,7 +219,7 @@ found in the LICENSE file.
 
       <paper-toggle-button
           id="triaged"
-          disabled="[[_empty(sheriff.selectedOptions)]]"
+          disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingTriaged]]"
           on-change="onToggleTriaged_">
         Triaged
@@ -331,7 +379,7 @@ found in the LICENSE file.
           on-dot-click="onDotClick_"
           on-line-count-change="onPreviewLineCountChange_"
           on-dot-mouseover="onDotMouseOver_">
-        Select alerts using the checkboxes in the table below to preview their timeseries.
+        Select alerts using the checkboxes in the table above to preview their timeseries.
       </chart-pair>
     </iron-collapse>
   </template>

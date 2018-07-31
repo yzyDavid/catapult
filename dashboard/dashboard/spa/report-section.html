@@ -33,9 +33,13 @@ found in the LICENSE file.
         background-color: var(--paper-indigo-50);
         border-radius: 24px;
         color: var(--paper-indigo-500);
-        font-size: larger;
         margin: 0 16px;
-        padding: 4px;
+        padding: 4px 8px;
+      }
+
+      #prev_mstone,
+      #next_mstone {
+        font-size: larger;
       }
 
       #controls paper-button[disabled] {
@@ -43,13 +47,12 @@ found in the LICENSE file.
         color: var(--paper-grey-500);
       }
 
-      #min_revision {
-        margin-right: 16px;
+      #alerts {
+        color: var(--paper-indigo-500);
       }
 
-      #add_alerts {
-        height: 34px;
-        margin: 0;
+      #min_revision {
+        margin-right: 8px;
       }
 
       #close {
@@ -95,7 +98,7 @@ found in the LICENSE file.
         vertical-align: top;
       }
 
-      #spacer {
+      .spacer {
         flex-grow: 1;
       }
 
@@ -130,7 +133,7 @@ found in the LICENSE file.
         };
       }
 
-      .edit_form table paper-input div[slot="suffix"] {
+      paper-input div[slot="suffix"] {
         height: 32px;
       }
 
@@ -200,10 +203,23 @@ found in the LICENSE file.
           on-option-select="onSelectSource_">
       </dropdown-input>
 
-      <span id="spacer">&nbsp;</span>
+      <paper-button
+          id="alerts"
+          raised
+          title="Alerts"
+          on-tap="onAlerts_">
+        <iron-icon icon="add-alert">
+        </iron-icon>
+        <span class="nav_button_label">
+          Alerts
+        </span>
+      </paper-button>
+
+      <span class="spacer">&nbsp;</span>
 
       <template is="dom-if" if="[[isPreviousMilestone_(milestone)]]">
         <paper-button
+            id="prev_mstone"
             on-tap="onPreviousMilestone_">
           [[prevMstoneButtonLabel_(milestone, maxRevision)]]
           <iron-icon icon="chevron-left"></iron-icon>
@@ -214,32 +230,33 @@ found in the LICENSE file.
           id="min_revision"
           value="[[minRevisionInput]]"
           size="6"
+          label="min revision"
           on-keyup="onMinRevisionKeyup_">
+        <div slot="suffix">
+          &nbsp;
+        </div>
       </paper-input>
 
       <paper-input
           value="[[maxRevisionInput]]"
           size="6"
+          label="max revision"
           on-keyup="onMaxRevisionKeyup_">
+        <div slot="suffix">
+          &nbsp;
+        </div>
       </paper-input>
 
       <template is="dom-if" if="[[isNextMilestone_(milestone)]]">
         <paper-button
+            id="next_mstone"
             on-tap="onNextMilestone_">
           <iron-icon icon="chevron-right"></iron-icon>
           M[[_add(milestone, 1)]]
         </paper-button>
       </template>
 
-      <template is="dom-if" if="[[anyAlerts]]">
-        <paper-button
-            id="add_alerts"
-            on-tap="onAddAlertsSection_">
-          Alerts
-        </paper-button>
-      </template>
-
-      <span id="spacer">&nbsp;</span>
+      <span class="spacer">&nbsp;</span>
 
       <paper-icon-button
           id="close"

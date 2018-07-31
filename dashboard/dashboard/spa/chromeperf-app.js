@@ -409,7 +409,8 @@ tr.exportTo('cp', () => {
       }
 
       if (routeParams.get('sheriff') !== null ||
-          routeParams.get('bug') !== null) {
+          routeParams.get('bug') !== null ||
+          routeParams.get('ar') !== null) {
         // Hide the report section and create a single alerts-section.
         cp.ElementBase.actions.updateObject(statePath, {
           showingReportSection: false,

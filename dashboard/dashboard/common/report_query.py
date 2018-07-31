@@ -249,6 +249,8 @@ class ReportQuery(object):
         datum['improvement_direction'] = test.improvement_direction
       test_path = utils.TestPath(test.key)
       data_row = yield self._GetDataRow(test_path, rev)
+      if not data_row:
+        continue
       if not last_data_row or data_row.revision > last_data_row.revision:
         last_data_row = data_row
     if not last_data_row:

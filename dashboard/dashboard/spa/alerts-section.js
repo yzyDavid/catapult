@@ -205,12 +205,19 @@ tr.exportTo('cp', () => {
       this.dispatch('connected', this.statePath, window.innerHeight);
     }
 
-    showSheriff_(bug) {
-      return bug.selectedOptions.length === 0;
+    showSheriff_(bug, report) {
+      return ((bug.selectedOptions.length === 0) &&
+              (report.selectedOptions.length === 0));
     }
 
-    showBug_(sheriff) {
-      return sheriff.selectedOptions.length === 0;
+    showBug_(sheriff, report) {
+      return ((sheriff.selectedOptions.length === 0) &&
+              (report.selectedOptions.length === 0));
+    }
+
+    showReport_(sheriff, bug) {
+      return ((sheriff.selectedOptions.length === 0) &&
+              (bug.selectedOptions.length === 0));
     }
 
     isLoading_(isLoading, isPreviewLoading) {
@@ -272,6 +279,26 @@ tr.exportTo('cp', () => {
 
     async onBugSelect_(event) {
       await this.dispatch('loadAlerts', this.statePath);
+    }
+
+    async onReportClear_(event) {
+      await this.dispatch('onReportClear', this.statePath);
+    }
+
+    async onReportKeyup_(event) {
+      await this.dispatch('onReportKeyup', this.statePath, event.detail.value);
+    }
+
+    async onReportSelect_(event) {
+      await this.dispatch('loadAlerts', this.statePath);
+    }
+
+    async onMinRevisionKeyup_(event) {
+      await this.dispatch('setMinRevision', this.statePath, event.detail.value);
+    }
+
+    async onMaxRevisionKeyup_(event) {
+      await this.dispatch('setMaxRevision', this.statePath, event.detail.value);
     }
 
     async onToggleImprovements_(event) {
@@ -455,6 +482,9 @@ tr.exportTo('cp', () => {
       preview: {type: Object},
       showingRecentlyModifiedBugs: {type: Boolean},
       recentlyModifiedBugs: {type: Array},
+      report: {type: Object},
+      maxRevision: {type: String},
+      minRevision: {type: String},
       sectionId: {type: String},
       selectedAlertsCount: {type: Number},
       showBugColumn: {type: Boolean},
@@ -556,7 +586,39 @@ tr.exportTo('cp', () => {
       });
     },
 
+    onReportClear: statePath => async(dispatch, getState) => {
+      dispatch(AlertsSection.actions.loadAlerts(statePath));
+      dispatch(cp.DropdownInput.actions.focus(statePath + '.report'));
+    },
+
+    onReportKeyup: (statePath, report) => async(dispatch, getState) => {
+    },
+
+    setMinRevision: (statePath, minRevision) => async(dispatch, getState) => {
+      cp.ElementBase.actions.updateObject(statePath, {
+        minRevision,
+      })(dispatch, getState);
+      AlertsSection.actions.loadAlerts(statePath)(dispatch, getState);
+    },
+
+    setMaxRevision: (statePath, maxRevision) => async(dispatch, getState) => {
+      cp.ElementBase.actions.updateObject(statePath, {
+        maxRevision,
+      })(dispatch, getState);
+      AlertsSection.actions.loadAlerts(statePath)(dispatch, getState);
+    },
+
+    loadReportNames: statePath => async(dispatch, getState) => {
+      const rootState = getState();
+      if (!rootState.reportTemplateIds) return;
+      cp.ElementBase.actions.updateObject(statePath + '.report', {
+        options: cp.OptionGroup.groupValues(rootState.reportTemplateIds.keys()),
+        label: `Reports (${rootState.reportTemplateIds.size})`,
+      })(dispatch, getState);
+    },
+
     connected: (statePath, windowHeightPx) => async(dispatch, getState) => {
+      AlertsSection.actions.loadReportNames(statePath)(dispatch, getState);
       const tableHeightPx = AlertsSection.tableHeightPx(windowHeightPx);
       dispatch(cp.ElementBase.actions.updateObject(statePath, {tableHeightPx}));
       const recentlyModifiedBugs = localStorage.getItem('recentlyModifiedBugs');
@@ -569,7 +631,8 @@ tr.exportTo('cp', () => {
       }
       const state = Polymer.Path.get(getState(), statePath);
       if (state.sheriff.selectedOptions.length > 0 ||
-          state.bug.selectedOptions.length > 0) {
+          state.bug.selectedOptions.length > 0 ||
+          state.report.selectedOptions.length > 0) {
         dispatch(AlertsSection.actions.loadAlerts(statePath));
       }
       if (state.doSelectAll) {
@@ -774,9 +837,16 @@ tr.exportTo('cp', () => {
 
       const alerts = [];
       const errors = [];
+      const revisions = {};
+      if (state.minRevision && state.minRevision.match(/^\d+$/)) {
+        revisions.min_end_revision = parseInt(state.minRevision);
+      }
+      if (state.maxRevision && state.maxRevision.match(/^\d+$/)) {
+        revisions.max_start_revision = parseInt(state.maxRevision);
+      }
       const sources = [
         ...state.sheriff.selectedOptions.map(sheriff => {
-          const options = {sheriff, limit: 500};
+          const options = {sheriff, limit: 500, ...revisions};
           if (!state.showingImprovements) {
             options.is_improvement = 'false';
           }
@@ -787,7 +857,13 @@ tr.exportTo('cp', () => {
           return options;
         }),
         ...state.bug.selectedOptions.map(bug => {
-          return {bug_id: bug};
+          return {bug_id: bug, ...revisions};
+        }),
+        ...state.report.selectedOptions.map(report => {
+          return {
+            report: rootState.reportTemplateIds.get(report).id,
+            ...revisions,
+          };
         }),
       ];
       if (sources.length > 0) {
@@ -1180,6 +1256,9 @@ tr.exportTo('cp', () => {
       sheriffs: queryParams.getAll('sheriff').map(
           sheriffName => sheriffName.replace(/_/g, ' ')),
       bugs: queryParams.getAll('bug'),
+      reports: queryParams.getAll('ar'),
+      minRevision: queryParams.get('minRev'),
+      maxRevision: queryParams.get('maxRev'),
       sortColumn: queryParams.get('sort') || 'revisions',
       showingImprovements: queryParams.get('improvements') !== null,
       showingTriaged: queryParams.get('triaged') !== null,
@@ -1215,6 +1294,13 @@ tr.exportTo('cp', () => {
     return {
       alertGroups: PLACEHOLDER_ALERT_GROUPS,
       areAlertGroupsPlaceholders: true,
+      bug: {
+        alwaysEnabled: true,
+        label: 'Bug',
+        options: [],
+        query: '',
+        selectedOptions: options.bugs || [],
+      },
       doOpenCharts: options.doOpenCharts || false,
       doSelectAll: options.doSelectAll || false,
       existingBug: cp.TriageExisting.DEFAULT_STATE,
@@ -1225,12 +1311,27 @@ tr.exportTo('cp', () => {
       triagedBugId: 0,
       isLoading: false,
       isOwner: false,
+      maxRevision: options.maxRevision || '',
+      minRevision: options.minRevision || '',
       newBug: {isOpen: false},
       preview: cp.ChartPair.newState(options),
       previousSelectedAlertKey: undefined,
       recentlyModifiedBugs: [],
+      report: {
+        label: 'Report',
+        options: [],
+        query: '',
+        selectedOptions: options.reports || [],
+      },
       selectedAlertPath: undefined,
       selectedAlertsCount: 0,
+      sheriff: {
+        label: 'Sheriff',
+        options: SHERIFFS,
+        query: '',
+        selectedOptions: options.sheriffs || [],
+        recommended: {options: RECOMMENDED_SHERIFFS},
+      },
       showBugColumn: true,
       showMasterColumn: true,
       showTestCaseColumn: true,
@@ -1239,20 +1340,6 @@ tr.exportTo('cp', () => {
       showingTriaged: options.showingTriaged || false,
       sortColumn: options.sortColumn || 'revisions',
       sortDescending: options.sortDescending || false,
-      sheriff: {
-        label: 'Sheriff',
-        options: SHERIFFS,
-        query: '',
-        selectedOptions: options.sheriffs || [],
-        recommended: {options: RECOMMENDED_SHERIFFS},
-      },
-      bug: {
-        alwaysEnabled: true,
-        label: 'Bug',
-        options: [],
-        query: '',
-        selectedOptions: options.bugs || [],
-      },
     };
   };
 
@@ -1291,7 +1378,8 @@ tr.exportTo('cp', () => {
     const factor = sortDescending ? -1 : 1;
     if (sortColumn === 'count') {
       alertGroups = [...alertGroups];
-      alertGroups.sort((groupA, groupB) => factor * (groupA.alerts.length - groupB.alerts.length));
+      alertGroups.sort((groupA, groupB) =>
+        factor * (groupA.alerts.length - groupB.alerts.length));
     } else {
       alertGroups = alertGroups.map(group => {
         const alerts = Array.from(group.alerts);
@@ -1423,6 +1511,15 @@ tr.exportTo('cp', () => {
     for (const bug of state.bug.selectedOptions) {
       queryParams.append('bug', bug);
     }
+    for (const name of state.report.selectedOptions) {
+      queryParams.append('ar', name);
+    }
+    if (state.minRevision && state.minRevision.match(/^\d+$/)) {
+      queryParams.set('minRev', state.minRevision);
+    }
+    if (state.maxRevision && state.maxRevision.match(/^\d+$/)) {
+      queryParams.set('maxRev', state.maxRevision);
+    }
     if (state.showingImprovements) queryParams.set('improvements', '');
     if (state.showingTriaged) queryParams.set('triaged', '');
     if (state.sortColumn !== 'revisions') {
@@ -1435,9 +1532,14 @@ tr.exportTo('cp', () => {
   AlertsSection.isEmpty = state => (
     state &&
     state.sheriff.selectedOptions.length === 0 &&
-    state.bug.selectedOptions.length === 0);
+    state.bug.selectedOptions.length === 0 &&
+    state.report.selectedOptions.length === 0);
 
   AlertsSection.matchesOptions = (state, options) => {
+    if (!tr.b.setsEqual(new Set(options.reports),
+        new Set(state.report.selectedOptions))) {
+      return false;
+    }
     if (!tr.b.setsEqual(new Set(options.sheriffs),
         new Set(state.sheriff.selectedOptions))) {
       return false;
