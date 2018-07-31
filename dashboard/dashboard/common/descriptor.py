@@ -21,6 +21,7 @@ pushed down into the Model layer.
 
 from google.appengine.ext import ndb
 
+from dashboard.common import bot_configurations
 from dashboard.common import stored_object
 
 TEST_BUILD_TYPE = 'test'
@@ -52,8 +53,13 @@ POLY_MEASUREMENT_TEST_SUITES_KEY = 'poly_measurement_test_suites'
 # cases are each composed of two test path components.
 TWO_TWO_TEST_SUITES_KEY = 'two_two_test_suites'
 
-# This stored object contains a list of lists of bot aliases.
-BOT_ALIASES_KEY = 'bot_aliases'
+COMPLEX_TEST_SUITES = [
+    'tab_switching.typical_25',
+    'v8:browsing_desktop',
+    'v8:browsing_desktop-future',
+    'v8:browsing_mobile',
+    'v8:browsing_mobile-future',
+]
 
 
 class Descriptor(object):
@@ -240,81 +246,102 @@ class Descriptor(object):
     # There may be multiple possible test paths for a given Descriptor.
 
     if not self.bot:
-      raise ndb.Return([])
+      raise ndb.Return(set())
 
-    test_paths = [self.bot]
-    bot_aliases = yield self._GetConfiguration(BOT_ALIASES_KEY, [])
-    for aliases in bot_aliases:
-      if self.bot in aliases:
-        test_paths = aliases
-        break
-    test_paths = [test_path.replace(':', '/') for test_path in test_paths]
+    test_paths = yield self._BotTestPaths()
     if not self.test_suite:
       raise ndb.Return(test_paths)
 
-    test_paths = [p + '/' for p in test_paths]
-
-    if self.test_suite.startswith('resource_sizes:'):
-      test_paths = [p + 'resource_sizes (%s)' % self.test_suite[15:]
-                    for p in test_paths]
-    elif self.test_suite in (yield self._GetConfiguration(
-        COMPOSITE_TEST_SUITES_KEY, [])):
-      test_paths = [p + self.test_suite.replace(':', '/')
-                    for p in test_paths]
-    else:
-      first_part = self.test_suite.split(':')[0]
-      for prefix in (yield self._GetConfiguration(
-          GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])):
-        if prefix[:-1] == first_part:
-          test_paths = [p + prefix + self.test_suite[len(first_part) + 1:]
-                        for p in test_paths]
-          break
-      else:
-        test_paths = [p + self.test_suite for p in test_paths]
+    test_paths = yield self._AppendTestSuite(test_paths)
     if not self.measurement:
       raise ndb.Return(test_paths)
 
-    if self.test_suite in (yield self._GetConfiguration(
-        POLY_MEASUREMENT_TEST_SUITES_KEY, [])):
-      test_paths = [p + '/' + self.measurement.replace(':', '/')
-                    for p in test_paths]
-    else:
-      test_paths = [p + '/' + self.measurement
-                    for p in test_paths]
-
+    test_paths = yield self._AppendMeasurement(test_paths)
     if self.statistic:
-      test_paths = [p + '_' + self.statistic for p in test_paths]
+      test_paths = {p + '_' + self.statistic for p in test_paths}
 
     if self.test_case:
-      if (self.test_suite.startswith('system_health') or
-          (self.test_suite in [
-              'tab_switching.typical_25',
-              'v8:browsing_desktop',
-              'v8:browsing_desktop-future',
-              'v8:browsing_mobile',
-              'v8:browsing_mobile-future',
-              ])):
-        test_case = self.test_case.split(':')
-        if test_case[0] == 'long_running_tools':
-          test_paths = [p + '/' + test_case[0] for p in test_paths]
-        else:
-          test_paths = [p + '/' + '_'.join(test_case[:2]) for p in test_paths]
-        test_paths = [p + '/' + '_'.join(test_case) for p in test_paths]
-      elif self.test_suite.startswith('loading.'):
-        test_paths = [p + '/' + self.test_case.replace(':', '/') + extra
-                      for p in test_paths
-                      for extra in ['', '_' + self.test_case.split(':')[0]]]
-      elif self.test_suite in [
-          'sizes', 'memory.dual_browser_test', 'memory.top_10_mobile',
-          'v8:runtime_stats.top_25'] + (yield self._GetConfiguration(
-              TWO_TWO_TEST_SUITES_KEY, [])):
-        test_paths = [p + '/' + self.test_case.replace(':', '/')
-                      for p in test_paths]
-      else:
-        test_paths = [p + '/' + self.test_case for p in test_paths]
+      test_paths = yield self._AppendTestCase(test_paths)
 
     if self.build_type == REFERENCE_BUILD_TYPE:
-      test_paths = [test_path + suffix
-                    for test_path in test_paths
-                    for suffix in ['_ref', '/ref']]
+      test_paths = self._AppendRef(test_paths)
+
     raise ndb.Return(test_paths)
+
+  @ndb.tasklet
+  def _BotTestPaths(self):
+    master, slave = self.bot.split(':')
+    aliases = yield bot_configurations.GetAliasesAsync(slave)
+    raise ndb.Return({master + '/' + alias for alias in aliases})
+
+  @ndb.tasklet
+  def _AppendTestSuite(self, test_paths):
+    if self.test_suite.startswith('resource_sizes:'):
+      raise ndb.Return({p + '/resource_sizes (%s)' % self.test_suite[15:]
+                        for p in test_paths})
+
+    composite_test_suites = yield self._GetConfiguration(
+        COMPOSITE_TEST_SUITES_KEY, [])
+    if self.test_suite in composite_test_suites:
+      raise ndb.Return({p + '/' + self.test_suite.replace(':', '/')
+                        for p in test_paths})
+
+    first_part = self.test_suite.split(':')[0]
+    groupable_prefixes = yield self._GetConfiguration(
+        GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])
+    for prefix in groupable_prefixes:
+      if prefix[:-1] == first_part:
+        raise ndb.Return({
+            p + '/' + prefix + self.test_suite[len(first_part) + 1:]
+            for p in test_paths})
+
+    raise ndb.Return({p + '/' + self.test_suite for p in test_paths})
+
+  @ndb.tasklet
+  def _AppendMeasurement(self, test_paths):
+    poly_measurement_test_suites = yield self._GetConfiguration(
+        POLY_MEASUREMENT_TEST_SUITES_KEY, [])
+    if self.test_suite in poly_measurement_test_suites:
+      raise ndb.Return({p + '/' + self.measurement.replace(':', '/')
+                        for p in test_paths})
+
+    raise ndb.Return({p + '/' + self.measurement for p in test_paths})
+
+  @ndb.tasklet
+  def _AppendTestCase(self, test_paths):
+    if (self.test_suite.startswith('system_health') or
+        (self.test_suite in COMPLEX_TEST_SUITES)):
+      test_case = self.test_case.split(':')
+      if test_case[0] == 'long_running_tools':
+        test_paths = {p + '/' + test_case[0] for p in test_paths}
+      else:
+        test_paths = {p + '/' + '_'.join(test_case[:2]) for p in test_paths}
+      raise ndb.Return({p + '/' + '_'.join(test_case) for p in test_paths})
+
+    if self.test_suite.startswith('loading.'):
+      raise ndb.Return({p + '/' + self.test_case.replace(':', '/') + extra
+                        for p in test_paths
+                        for extra in ['', '_' + self.test_case.split(':')[0]]})
+
+    poly_case_test_suites = [
+        'sizes',
+        'memory.dual_browser_test',
+        'memory.top_10_mobile',
+        'v8:runtime_stats.top_25',
+    ]
+    poly_case_test_suites += yield self._GetConfiguration(
+        TWO_TWO_TEST_SUITES_KEY, [])
+    if self.test_suite in poly_case_test_suites:
+      raise ndb.Return({p + '/' + self.test_case.replace(':', '/')
+                        for p in test_paths})
+
+    raise ndb.Return({p + '/' + self.test_case for p in test_paths})
+
+  def _AppendRef(self, test_paths):
+    ref_test_paths = set()
+    for p in test_paths:
+      # A given test path will only use one of these suffixes, but there's no
+      # way to know which.
+      ref_test_paths.add(p + '_ref')
+      ref_test_paths.add(p + '/ref')
+    return ref_test_paths
