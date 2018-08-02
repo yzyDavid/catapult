@@ -5,40 +5,59 @@
 'use strict';
 tr.exportTo('cp', () => {
   class TriageNew extends cp.ElementBase {
-    onCancel_(event) {
-      this.dispatch('close', this.statePath);
+    ready() {
+      super.ready();
+      this.addEventListener('blur', this.onBlur_.bind(this));
+      this.addEventListener('keyup', this.onKeyup_.bind(this));
     }
 
-    onSummary_(event) {
-      this.dispatch('summary', this.statePath, event.target.value);
-    }
-
-    onDescription_(event) {
-      if (event.ctrlKey && (event.key === 'Enter')) {
-        this.onSubmit_(event);
+    async onKeyup_(event) {
+      if (event.key === 'Escape') {
+        await this.dispatch('close', this.statePath);
       }
-      this.dispatch('description', this.statePath, event.target.value);
-      this.$.dialog.style.maxHeight = '';
     }
 
-    onLabel_(event) {
-      this.dispatch('label', this.statePath, event.model.label.name);
+    async onBlur_(event) {
+      await this.dispatch('close', this.statePath);
     }
 
-    onComponent_(event) {
-      this.dispatch('component', this.statePath, event.model.component.name);
+    observeIsOpen_() {
+      if (this.isOpen) {
+        this.$.description.focus();
+      }
     }
 
-    onOwner_(event) {
-      this.dispatch('owner', this.statePath, event.target.value);
+    async onSummary_(event) {
+      await this.dispatch('summary', this.statePath, event.target.value);
     }
 
-    onCC_(event) {
-      this.dispatch('cc', this.statePath, event.target.value);
+    async onDescription_(event) {
+      if (event.ctrlKey && (event.key === 'Enter')) {
+        await this.onSubmit_(event);
+        return;
+      }
+      await this.dispatch('description', this.statePath, event.target.value);
     }
 
-    onSubmit_(event) {
-      this.dispatch('close', this.statePath);
+    async onLabel_(event) {
+      await this.dispatch('label', this.statePath, event.model.label.name);
+    }
+
+    async onComponent_(event) {
+      await this.dispatch('component', this.statePath,
+          event.model.component.name);
+    }
+
+    async onOwner_(event) {
+      await this.dispatch('owner', this.statePath, event.target.value);
+    }
+
+    async onCC_(event) {
+      await this.dispatch('cc', this.statePath, event.target.value);
+    }
+
+    async onSubmit_(event) {
+      await this.dispatch('close', this.statePath);
       this.dispatchEvent(new CustomEvent('submit', {
         bubbles: true,
         composed: true,
@@ -50,7 +69,11 @@ tr.exportTo('cp', () => {
     cc: {type: String},
     components: {type: Array},
     description: {type: String},
-    isOpen: {type: Boolean},
+    isOpen: {
+      type: Boolean,
+      reflectToAttribute: true,
+      observer: 'observeIsOpen_',
+    },
     labels: {type: Array},
     owner: {type: String},
     summary: {type: String},

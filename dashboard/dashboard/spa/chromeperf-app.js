@@ -60,7 +60,7 @@ tr.exportTo('cp', () => {
     }
   }
 
-  class ChromeperfApp extends Polymer.GestureEventListeners(cp.ElementBase) {
+  class ChromeperfApp extends cp.ElementBase {
     get clientId() {
       return CLIENT_ID;
     }
@@ -286,6 +286,10 @@ tr.exportTo('cp', () => {
           isLoading: false,
           readied: true,
         })(dispatch, getState);
+
+        if (cp.IS_DEBUG) {
+          cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState);
+        }
       },
 
     reportSectionShowing: (statePath, showingReportSection) =>
@@ -335,15 +339,22 @@ tr.exportTo('cp', () => {
 
     onSignin: statePath => async(dispatch, getState) => {
       const user = gapi.auth2.getAuthInstance().currentUser.get();
-      let response = user.getAuthResponse();
+      const response = user.getAuthResponse();
       cp.ElementBase.actions.updateObject('', {
         userEmail: user.getBasicProfile().getEmail(),
       })(dispatch, getState);
+      await Promise.all([
+        cp.ReadReportNames()(dispatch, getState),
+        cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState),
+        cp.ReadTestSuites()(dispatch, getState),
+      ]);
+    },
 
+    getRecentBugs: () => async(dispatch, getState) => {
       // TODO The AlertsHandler should be able to serve recent bugs without
       // requiring authorization.
       const request = new RecentBugsRequest({});
-      response = await request.response;
+      const response = await request.response;
       cp.ElementBase.actions.updateObject('', {
         recentPerformanceBugs: response.bugs.map(cp.AlertsSection.transformBug),
       })(dispatch, getState);

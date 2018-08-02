@@ -7,6 +7,8 @@ tr.exportTo('cp', () => {
   class RaisedButton extends cp.ElementBase {
   }
 
+  RaisedButton.properties = {};
+
   cp.ElementBase.register(RaisedButton);
 
   return {

@@ -10,16 +10,26 @@ found in the LICENSE file.
 <dom-module id="column-head">
   <template>
     <style>
-      paper-button {
-        margin: 0;
-        text-transform: none;
+      :host {
+        align-items: center;
+        background-position: center;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        transition: background var(--transition-long);
+      }
+      :host(:hover) {
+        background: white radial-gradient(circle, transparent 1%, white 1%) center/15000%;
+      }
+      :host(:active) {
+        background-color: var(--paper-indigo-100);
+        background-size: 100%;
+        transition: background 0s;
       }
     </style>
 
-    <paper-button>
-      <iron-icon icon="[[getIcon_(name, sortColumn, sortDescending)]]"></iron-icon>
-      <slot></slot>
-    </paper-button>
+    <iron-icon icon="[[getIcon_(name, sortColumn, sortDescending)]]"></iron-icon>
+    <slot></slot>
   </template>
 </dom-module>
 <script src="/dashboard/spa/column-head.js"></script>

@@ -52,20 +52,20 @@ tr.exportTo('cp', () => {
       return bugId <= 0;
     }
 
-    onSelectAll_(event) {
+    async onSelectAll_(event) {
       event.target.checked = !event.target.checked;
-      this.dispatch('selectAllAlerts', this.statePath);
+      await this.dispatch('selectAllAlerts', this.statePath);
       this.dispatchEvent(new CustomEvent('selected', {
         bubbles: true,
         composed: true,
       }));
     }
 
-    onSelect_(event) {
-      this.dispatch('selectAlert', this.statePath,
+    async onSelect_(event) {
+      await this.dispatch('selectAlert', this.statePath,
           event.model.parentModel.alertGroupIndex,
           event.model.alertIndex,
-          event.detail.sourceEvent.shiftKey);
+          event.shiftKey);
       this.dispatchEvent(new CustomEvent('selected', {
         bubbles: true,
         composed: true,
@@ -73,15 +73,15 @@ tr.exportTo('cp', () => {
       document.getSelection().removeAllRanges();
     }
 
-    onSort_(event) {
-      this.dispatch('sort', this.statePath, event.target.name);
+    async onSort_(event) {
+      await this.dispatch('sort', this.statePath, event.target.name);
       this.dispatchEvent(new CustomEvent('sort', {
         bubbles: true,
         composed: true,
       }));
     }
 
-    onRowTap_(event) {
+    async onRowTap_(event) {
       if (event.target.tagName !== 'TD') return;
       this.dispatchEvent(new CustomEvent('select-alert', {
         bubbles: true,

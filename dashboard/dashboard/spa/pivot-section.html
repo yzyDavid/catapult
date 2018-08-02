@@ -46,7 +46,7 @@ found in the LICENSE file.
           href="#"
           target="_blank"
           title="Documentation">
-        <paper-icon-button icon="help"></paper-icon-button>
+        <iron-icon icon="help"></iron-icon>
       </a>
 
       <dropdown-input
@@ -55,19 +55,19 @@ found in the LICENSE file.
           on-option-select="onSelect_">
       </dropdown-input>
 
-      <paper-icon-button
+      <iron-icon
           id="open_url"
           icon="cloud-upload"
-          on-tap="openUrl_">
-      </paper-icon-button>
+          on-click="openUrl_">
+      </iron-icon>
 
       <span id="spacer">&nbsp;</span>
 
-      <paper-icon-button
+      <iron-icon
           id="close"
           icon="close"
-          on-tap="closeSection_">
-      </paper-icon-button>
+          on-click="closeSection_">
+      </iron-icon>
     </div>
 
     <pivot-table state-path="[[statePath]]">

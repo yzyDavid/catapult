@@ -142,7 +142,7 @@ found in the LICENSE file.
             width="100%"
             height$="[[graphHeight]]"
             preserveAspectRatio="none"
-            on-tap="onMainClick_">
+            on-click="onMainClick_">
           <template is="dom-if" if="[[yAxis.showTickLines]]">
             <template is="dom-repeat" items="[[yAxis.ticks]]" as="tick">
               <line
@@ -197,7 +197,7 @@ found in the LICENSE file.
                     y$="[[datum.y]]"
                     width$="[[datum.width]]"
                     height$="[[datum.height]]"
-                    on-tap="onBarClick_"
+                    on-click="onBarClick_"
                     on-mouseover="onBarMouseOver_"
                     on-mouseout="onBarMouseOut_">
                 </rect>
@@ -219,7 +219,7 @@ found in the LICENSE file.
                     y$="[[datum.y]]"
                     width$="[[datum.width]]"
                     height$="[[datum.height]]"
-                    on-tap="onColumnClick_"
+                    on-click="onColumnClick_"
                     on-mouseover="onColumnMouseOver_"
                     on-mouseout="onColumnMouseOut_">
                 </rect>
@@ -260,7 +260,7 @@ found in the LICENSE file.
                     fill$="[[line.color]]"
                     cursor$="[[dotCursor]]"
                     opacity="0"
-                    on-tap="onDotClick_"
+                    on-click="onDotClick_"
                     on-mouseover="onDotMouseOver_"
                     on-mouseout="onDotMouseOut_">
                 </circle>
@@ -279,7 +279,7 @@ found in the LICENSE file.
                 <body xmlns="http://www.w3.org/1999/xhtml">
                   <iron-icon
                       icon="[[datum.icon]]"
-                      on-tap="onDotClick_"
+                      on-click="onDotClick_"
                       on-mouseover="onDotMouseOver_"
                       on-mouseout="onDotMouseOut_">
                   </iron-icon>

@@ -18,7 +18,7 @@ found in the LICENSE file.
         flex-direction: column;
       }
 
-      row {
+      .row {
         display: flex;
         align-items: center;
         min-height: 26px;
@@ -26,8 +26,8 @@ found in the LICENSE file.
         margin-left: 8px;
       }
 
-      row[indent] {
-        margin-left: 74px;
+      .row[indent] {
+        margin-left: 60px;
       }
 
       option-group {
@@ -35,21 +35,15 @@ found in the LICENSE file.
       }
 
       expand-button {
-        --paper-button: {
-          border-radius: 0;
-          height: 100%;
-          justify-content: space-between;
-          margin: 0;
-          min-width: 0;
-          padding: 0 8px 0 16px;
-          width: 66px;
-          --paper-button-ink-color: var(--paper-indigo-300);
-          flex-shrink: 0;
-        };
-        --iron-icon: {
-          height: 20px;
-          width: 20px;
-        };
+        align-items: center;
+        border-radius: 0;
+        height: 100%;
+        justify-content: space-between;
+        margin: 0;
+        min-width: 0;
+        padding: 0 8px 0 0;
+        width: 44px;
+        flex-shrink: 0;
       }
 
       paper-checkbox {
@@ -63,9 +57,11 @@ found in the LICENSE file.
 
     <template is="dom-repeat" items="[[options]]" as="option" index-as="optionIndex">
       <template is="dom-if" if="[[matches_(option, query)]]">
-        <row indent$="[[indentRow_(option)]]">
+        <div class="row" indent$="[[indentRow_(option)]]">
           <template is="dom-if" if="[[option.options]]">
-            <expand-button state-path="[[statePath]].options.[[optionIndex]]">
+            <expand-button
+                state-path="[[statePath]].options.[[optionIndex]]"
+                tabindex="0">
               [[countDescendents_(option.options)]]
             </expand-button>
           </template>
@@ -76,7 +72,7 @@ found in the LICENSE file.
               on-change="onSelect_">
             [[label_(option)]]
           </paper-checkbox>
-        </row>
+        </div>
 
         <template is="dom-if" if="[[shouldStampSubOptions_(option, query)]]">
           <iron-collapse opened="[[isExpanded_(option, query)]]">

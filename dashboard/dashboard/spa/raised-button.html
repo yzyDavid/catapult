@@ -6,20 +6,51 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/element-base.html">
 
 <dom-module id="raised-button">
   <template>
     <style include="paper-material-styles">
-      button {
+      :host {
         @apply --paper-material-elevation-1;
+        align-items: center;
         background-color: var(--paper-indigo-50);
+        background-position: center;
         border-radius: 24px;
+        border: 0px none rgb(63, 81, 181);
         color: var(--paper-indigo-500);
-        padding: 4px;
+        cursor: pointer;
+        display: flex;
+        font-size: 12px;
+        height: 24px;
+        justify-content: center;
+        margin: 4px 8px;
+        padding: 4px 8px;
+        text-transform: uppercase;
+        transition: background var(--transition-long);
+        user-select: none;
+      }
+      * {
+        flex-grow: 1
+      }
+      :host([disabled]) {
+        box-shadow: none;
+        background-color: var(--paper-grey-100);
+        color: var(--paper-grey-500);
+        pointer-events: none;
+        cursor: auto;
+      }
+      :host(:hover) {
+        background: var(--paper-indigo-50) radial-gradient(circle, transparent 1%, var(--paper-indigo-50) 1%) center/15000%;
+      }
+      :host(:active) {
+        background-color: var(--paper-indigo-100);
+        background-size: 100%;
+        transition: background 0s;
       }
     </style>
 
-    <button><slot></slot></button>
+    <slot></slot>
   </template>
 </dom-module>
 <script src="/dashboard/spa/raised-button.js"></script>

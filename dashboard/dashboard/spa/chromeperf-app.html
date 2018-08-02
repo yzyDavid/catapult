@@ -11,14 +11,13 @@ found in the LICENSE file.
 <link rel="import" href="/bower_components/iron-icons/communication-icons.html">
 <link rel="import" href="/bower_components/iron-icons/editor-icons.html">
 <link rel="import" href="/bower_components/iron-icons/iron-icons.html">
-<link rel="import" href="/bower_components/paper-icon-button/paper-icon-button.html">
-<link rel="import" href="/bower_components/paper-input/paper-textarea.html">
 <link rel="import" href="/bower_components/paper-progress/paper-progress.html">
 <link rel="import" href="/bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="/dashboard/spa/alerts-section.html">
 <link rel="import" href="/dashboard/spa/chart-section.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/pivot-section.html">
+<link rel="import" href="/dashboard/spa/raised-button.html">
 <link rel="import" href="/dashboard/spa/report-section.html">
 <link rel="import" href="/dashboard/spa/session-ids.html">
 <link rel="import" href="/dashboard/spa/test-suites.html">
@@ -29,8 +28,8 @@ found in the LICENSE file.
     <style>
       :host {
         /* https://material.io/guidelines/motion/material-motion.html#material-motion-how-does-material-move */
-        --transition-long: 0.4s;
-        --transition-short: 0.2s;
+        --transition-long: 0.8s;
+        --transition-short: 0.4s;
       }
 
       #nav {
@@ -90,30 +89,16 @@ found in the LICENSE file.
         border-bottom: 1px solid var(--paper-indigo-100);
       }
 
-      .buttons paper-button {
-        background-color: var(--paper-indigo-50);
-        color: var(--paper-indigo-500);
-        border-radius: 24px;
-        display: block;
-        margin: 4px 8px;
-        padding: 4px 8px;
-        text-align: center;
-        flex-grow: 1;
-      }
-
-      paper-button[disabled] {
-        background-color: var(--paper-grey-100);
-        color: var(--paper-grey-500);
-      }
-
       .buttons {
-        margin: 0 8px;
         display: flex;
         justify-content: space-evenly;
       }
 
       .bottom.buttons {
-        margin-top: 12px;
+        margin: 12px 0;
+      }
+      .bottom.buttons raised-button {
+        flex-grow: 1;
       }
 
       #please_signin {
@@ -122,8 +107,8 @@ found in the LICENSE file.
         font-weight: bold;
       }
 
-      #reopen_chart {
-        text-transform: none;
+      paper-toast {
+        cursor: pointer;
       }
 
       @media (max-width: 1100px) {
@@ -138,81 +123,77 @@ found in the LICENSE file.
 
     <template is="dom-if" if="[[enableNav]]">
       <div id="nav">
-        <a href="/" id="title" on-tap="onReset_">
+        <a href="/" id="title" on-click="onReset_">
           Chromium Performance
         </a>
 
         <span class="spacer"></span>
 
         <div class="buttons">
-          <paper-button
-              raised
+          <raised-button
               title="Open Report"
-              disabled="[[showingReportSection]]"
-              on-tap="onShowReportSection_">
+              disabled$="[[showingReportSection]]"
+              on-click="onShowReportSection_">
             <iron-icon icon="communication:business">
             </iron-icon>
             Report
-          </paper-button>
+          </raised-button>
 
-          <paper-button
-              raised
+          <raised-button
               title="New Alerts section"
-              on-tap="onNewAlertsSection_">
+              on-click="onNewAlertsSection_">
             <iron-icon icon="add-alert">
             </iron-icon>
             <span class="nav_button_label">
               Alerts
             </span>
-          </paper-button>
+          </raised-button>
 
-          <paper-button
-              raised
+          <raised-button
               title="New Chart"
-              on-tap="onNewChart_">
+              on-click="onNewChart_">
             <iron-icon icon="editor:show-chart">
             </iron-icon>
             <span class="nav_button_label">
               New Chart
             </span>
-          </paper-button>
+          </raised-button>
 
-          <paper-button
-              raised
+          <raised-button
               title="Close all charts"
-              disabled="[[_empty(chartSectionIds)]]"
-              on-tap="onCloseAllCharts_">
+              disabled$="[[_empty(chartSectionIds)]]"
+              on-click="onCloseAllCharts_">
             <iron-icon icon="close">
             </iron-icon>
             <span class="nav_button_label">
               Close charts
             </span>
-          </paper-button>
+          </raised-button>
         </div>
 
         <span class="spacer"></span>
 
         <a href="https://github.com/catapult-project/catapult/tree/master/dashboard"
-          target="_blank"
-          title="Documentation">
-          <paper-icon-button icon="help">
-          </paper-icon-button>
+            target="_blank"
+            title="Documentation">
+          <iron-icon icon="help">
+          </iron-icon>
         </a>
 
         <template is="dom-if" if="[[isInternal_(userEmail)]]">
           <a href="http://go/chromeperf-v2-status"
-            target="_blank"
-            title="Status of this prototype">
-            <paper-icon-button icon="update">
-            </paper-icon-button>
+              target="_blank"
+              title="Status of this prototype">
+            <iron-icon icon="update">
+            </iron-icon>
           </a>
         </template>
 
         <a href$="https://bugs.chromium.org/p/chromium/issues/entry?description=Describe+the+problem:+%0A%0A%0AURL:+[[escapedUrl_(route.path)]]&components=Speed%3EDashboard&summary=[chromeperf2]+"
-          target="_blank"
-          title="File a bug">
-          <paper-icon-button icon="feedback">
-          </paper-icon-button>
+            target="_blank"
+            title="File a bug">
+          <iron-icon icon="feedback">
+          </iron-icon>
         </a>
 
         <template is="dom-if" if="[[isProduction]]">
@@ -275,33 +256,30 @@ found in the LICENSE file.
       <div class="buttons bottom">
         <span class="spacer"></span>
 
-        <paper-button
-            raised
+        <raised-button
             title="New Alerts section"
-            on-tap="onNewAlertsSection_">
+            on-click="onNewAlertsSection_">
           <iron-icon icon="add-alert">
           </iron-icon>
           Alerts
-        </paper-button>
+        </raised-button>
 
-        <paper-button
-            raised
+        <raised-button
             title="New Chart"
-            on-tap="onNewChart_">
+            on-click="onNewChart_">
           <iron-icon icon="editor:show-chart">
           </iron-icon>
           New Chart
-        </paper-button>
+        </raised-button>
 
-        <paper-button
-            raised
+        <raised-button
             title="Close all charts"
-            disabled="[[_empty(chartSectionIds)]]"
-            on-tap="onCloseAllCharts_">
+            disabled$="[[_empty(chartSectionIds)]]"
+            on-click="onCloseAllCharts_">
           <iron-icon icon="close">
           </iron-icon>
           Close charts
-        </paper-button>
+        </raised-button>
 
         <span class="spacer"></span>
       </div>
@@ -311,20 +289,16 @@ found in the LICENSE file.
       [[vulcanizedDate]]
     </span>
 
-    <paper-toast opened="[[closedAlertsIds]]">
-      <paper-button
-          id="reopen_alerts"
-          on-tap="onReopenClosedAlerts_">
-        Reopen [[getAlertsTitle_(closedAlertsIds)]]
-      </paper-button>
+    <paper-toast
+        opened="[[closedAlertsIds]]"
+        on-click="onReopenClosedAlerts_">
+      Reopen [[getAlertsTitle_(closedAlertsIds)]]
     </paper-toast>
 
-    <paper-toast opened="[[closedChartIds]]">
-      <paper-button
-          id="reopen_chart"
-          on-tap="onReopenClosedChart_">
-        Reopen [[getChartTitle_(closedChartIds)]]
-      </paper-button>
+    <paper-toast
+        opened="[[closedChartIds]]"
+        on-click="onReopenClosedChart_">
+      Reopen [[getChartTitle_(closedChartIds)]]
     </paper-toast>
   </template>
 </dom-module>

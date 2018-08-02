@@ -6,7 +6,6 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
-<link rel="import" href="/bower_components/paper-button/paper-button.html">
 <link rel="import" href="/bower_components/paper-progress/paper-progress.html">
 <link rel="import" href="/bower_components/paper-tabs/paper-tabs.html">
 <link rel="import" href="/dashboard/spa/chart-legend.html">
@@ -75,21 +74,15 @@ found in the LICENSE file.
         flex-shrink: 0;
         margin: 0;
         min-width: 0;
-        padding: 8px;
-        --paper-button: {
-          margin: 0;
-          min-width: 0;
-          padding: 0;
-        };
-        --iron-icon: {
-          height: 24px;
-          width: 24px;
-        };
+        padding: 0 8px;
       }
 
       #close {
         align-self: flex-start;
+        cursor: pointer;
         flex-shrink: 0;
+        height: 24px;
+        width: 24px;
       }
 
       #chart_container {
@@ -178,10 +171,6 @@ found in the LICENSE file.
         margin-top: 15px;
       }
 
-      paper-dialog {
-        margin: 0;
-      }
-
       .sparkline_container {
         display: flex;
         flex-wrap: wrap;
@@ -201,7 +190,7 @@ found in the LICENSE file.
 
           <a id="documentation" target="_blank" title="Documentation"
              href="[[testSuiteHref_(testSuite.selectedOptions)]]">
-            <paper-icon-button icon="help"></paper-icon-button>
+            <iron-icon icon="help"></iron-icon>
           </a>
 
           <chart-parameter
@@ -243,11 +232,11 @@ found in the LICENSE file.
           state-path="[[statePath]]">
       </expand-button>
 
-      <paper-icon-button
+      <iron-icon
           id="close"
           icon="close"
-          on-tap="onClose_">
-      </paper-icon-button>
+          on-click="onClose_">
+      </iron-icon>
     </div>
 
     <paper-progress indeterminate="[[isLoading_(isLoading, minimapLayout, chartLayout)]]">
@@ -272,7 +261,7 @@ found in the LICENSE file.
           id="legend_container"
           horizontal
           opened="[[isLegendOpen_(isExpanded, legend, histograms)]]"
-          on-tap="onLegendTap_">
+          on-click="onLegendTap_">
         <chart-legend
             items="[[legend]]"
             on-leaf-mouseover="onLegendMouseOver_"
@@ -294,7 +283,7 @@ found in the LICENSE file.
         <div id="related_tabstrip">
           <paper-tabs selected="[[selectedRelatedTabIndex]]">
             <template is="dom-repeat" items="[[relatedTabs]]" as="tab" index-as="tabIndex">
-              <paper-tab on-tap="onRelatedTabTap_">
+              <paper-tab on-click="onRelatedTabTap_">
                 [[tab.name]]
               </paper-tab>
             </template>
@@ -310,7 +299,7 @@ found in the LICENSE file.
                 <div
                     class="sparkline_tile"
                     empty$="[[_empty(sparkline.layout.lines)]]"
-                    on-tap="onSparklineTap_">
+                    on-click="onSparklineTap_">
                   <div class="sparkline_name">[[sparkline.name]]</div>
                   <chart-timeseries
                       state-path="[[statePath]].relatedTabs.[[tabIndex]].renderedSparklines.[[sparklineIndex]].layout">

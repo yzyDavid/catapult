@@ -4,7 +4,29 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
+  function elementIsChildOf(el, potentialParent) {
+    if (el === potentialParent) return false;
+    while (Polymer.dom(el).parentNode) {
+      if (el === potentialParent) return true;
+      el = Polymer.dom(el).parentNode;
+    }
+    return false;
+  }
+
   class TriageExisting extends cp.ElementBase {
+    ready() {
+      super.ready();
+      this.addEventListener('blur', this.onBlur_.bind(this));
+      this.addEventListener('keyup', this.onKeyup_.bind(this));
+      this.style.minWidth = (window.innerWidth * 0.6) + 'px';
+    }
+
+    async onKeyup_(event) {
+      if (event.key === 'Escape') {
+        await this.dispatch('close', this.statePath);
+      }
+    }
+
     filterBugs_(recentPerformanceBugs, onlyIntersectingBugs, selectedRange) {
       return TriageExisting.filterBugs(
           recentPerformanceBugs, onlyIntersectingBugs, selectedRange);
@@ -14,43 +36,65 @@ tr.exportTo('cp', () => {
       return bugId && bugId.match(/^\d+$/) !== null;
     }
 
-    onSubmit_(event) {
-      this.dispatch('close', this.statePath);
+    async onSubmit_(event) {
+      await this.dispatch('close', this.statePath);
       this.dispatchEvent(new CustomEvent('submit', {
         bubbles: true,
         composed: true,
       }));
     }
 
-    onCancel_(event) {
-      this.dispatch('close', this.statePath);
+    async onBlur_(event) {
+      if (event.relatedTarget === this ||
+          elementIsChildOf(event.relatedTarget, this)) {
+        this.$.bug_input.focus();
+        return;
+      }
+      await this.dispatch('close', this.statePath);
     }
 
-    onToggleOnlyIntersectingBugs_(event) {
-      this.dispatch('toggleOnlyIntersectingBugs', this.statePath);
-      this.$.dialog.style.maxHeight = '';
+    observeIsOpen_() {
+      if (this.isOpen) {
+        this.$.bug_input.focus();
+      }
     }
 
-    onRecentPerformanceBugTap_(event) {
-      this.dispatch('recentPerformanceBug', this.statePath, event.model.bug.id);
+    async onToggleOnlyIntersectingBugs_(event) {
+      await this.dispatch('toggleOnlyIntersectingBugs', this.statePath);
     }
 
-    onIdKeyup_(event) {
+    async onRecentPerformanceBugTap_(event) {
+      await this.dispatch('recentPerformanceBug', this.statePath,
+          event.model.bug.id);
+      this.$.bug_input.focus();
+    }
+
+    async onIdKeyup_(event) {
       if (event.key === 'Enter' && this.isIdValid_(this.bugId)) {
         this.onSubmit_(event);
         return;
       }
-      this.dispatch('recentPerformanceBug', this.statePath, event.target.value);
+      await this.dispatch('recentPerformanceBug', this.statePath,
+          event.target.value);
     }
   }
 
-  TriageExisting.properties = cp.ElementBase.statePathProperties('statePath', {
-    bugId: {type: String},
-    isOpen: {type: Boolean},
-    onlyIntersectingBugs: {type: Boolean},
-    recentPerformanceBugs: {type: Array},
-    selectedRange: {type: Object},
-  });
+  TriageExisting.properties = {
+    ...cp.ElementBase.statePathProperties('statePath', {
+      bugId: {type: String},
+      isOpen: {
+        type: Boolean,
+        reflectToAttribute: true,
+        observer: 'observeIsOpen_',
+      },
+      onlyIntersectingBugs: {type: Boolean},
+      selectedRange: {type: Object},
+    }),
+    recentPerformanceBugs: {
+      type: Array,
+      statePath: 'recentPerformanceBugs',
+    },
+  };
 
   TriageExisting.DEFAULT_STATE = {
     bugId: '',

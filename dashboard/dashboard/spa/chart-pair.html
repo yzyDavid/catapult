@@ -47,8 +47,8 @@ found in the LICENSE file.
 
       #options {
         color: var(--paper-indigo-500);
-        height: 30px;
-        max-height: 30px;
+        cursor: pointer;
+        height: 24px;
         padding: 0;
       }
 
@@ -93,12 +93,12 @@ found in the LICENSE file.
           id="options_container"
           hidden$="[[hideOptions_(minimapLayout)]]">
         <!-- TODO show when isLoading || !_empty(lines) -->
-        <paper-icon-button
+        <iron-icon
             id="options"
             icon="settings"
             style$="width: calc([[chartLayout.yAxisWidth]]px - 8px);"
-            on-tap="onOptionsToggle_">
-        </paper-icon-button>
+            on-click="onOptionsToggle_">
+        </iron-icon>
 
         <paper-dialog
             opened="[[isShowingOptions]]"

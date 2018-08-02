@@ -6,11 +6,9 @@
 tr.exportTo('cp', () => {
   function elementIsChildOf(el, potentialParent) {
     if (el === potentialParent) return false;
-
-    let cur = el;
-    while (Polymer.dom(cur).parentNode) {
-      if (cur === potentialParent) return true;
-      cur = Polymer.dom(cur).parentNode;
+    while (Polymer.dom(el).parentNode) {
+      if (el === potentialParent) return true;
+      el = Polymer.dom(el).parentNode;
     }
     return false;
   }

@@ -10,6 +10,8 @@ found in the LICENSE file.
 <link rel="import" href="/bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/dashboard/spa/raised-button.html">
+<link rel="import" href="/dashboard/spa/report-names.html">
 <link rel="import" href="/dashboard/spa/scalar-span.html">
 <link rel="import" href="/dashboard/spa/team-filter.html">
 <link rel="import" href="/dashboard/spa/test-suites.html">
@@ -28,23 +30,9 @@ found in the LICENSE file.
         width: 100%;
       }
 
-      #controls paper-button {
-        @apply --paper-material-elevation-1;
-        background-color: var(--paper-indigo-50);
-        border-radius: 24px;
-        color: var(--paper-indigo-500);
-        margin: 0 16px;
-        padding: 4px 8px;
-      }
-
       #prev_mstone,
       #next_mstone {
         font-size: larger;
-      }
-
-      #controls paper-button[disabled] {
-        background-color: var(--paper-grey-100);
-        color: var(--paper-grey-500);
       }
 
       #alerts {
@@ -57,7 +45,10 @@ found in the LICENSE file.
 
       #close {
         align-self: flex-start;
+        cursor: pointer;
         flex-shrink: 0;
+        height: 24px;
+        width: 24px;
       }
 
       #tables {
@@ -106,11 +97,12 @@ found in the LICENSE file.
       #copy,
       #documentation {
         color: var(--paper-indigo-500);
+        cursor: pointer;
         flex-shrink: 0;
         margin: 0 0 0 8px;
         padding: 0;
-        width: 25px;
-        height: 25px;
+        width: 24px;
+        height: 24px;
       }
 
       .report_name span {
@@ -151,21 +143,9 @@ found in the LICENSE file.
         margin-right: 16px;
       }
 
-      .edit_form_controls paper-button iron-icon {
-        margin: 0 4px;
-      }
-
-      .edit_form_controls paper-button[disabled] {
-        background-color: var(--paper-grey-500);
-      }
-
-      .template_cancel, .template_save {
-        background-color: var(--paper-indigo-500);
-        color: white;
-        padding: 4px;
-        text-align: center;
-        white-space: nowrap;
-        width: 30%;
+      .template_cancel,
+      .template_save {
+        flex-grow: 1;
       }
 
       .template_row_button {
@@ -173,8 +153,10 @@ found in the LICENSE file.
         width: 40px;
       }
 
-      paper-dialog {
-        margin: 0;
+      .template_row_button iron-icon {
+        cursor: pointer;
+        height: 24px;
+        width: 24px;
       }
 
       #scratch {
@@ -203,27 +185,26 @@ found in the LICENSE file.
           on-option-select="onSelectSource_">
       </dropdown-input>
 
-      <paper-button
+      <raised-button
           id="alerts"
-          raised
           title="Alerts"
-          on-tap="onAlerts_">
+          on-click="onAlerts_">
         <iron-icon icon="add-alert">
         </iron-icon>
         <span class="nav_button_label">
           Alerts
         </span>
-      </paper-button>
+      </raised-button>
 
       <span class="spacer">&nbsp;</span>
 
       <template is="dom-if" if="[[isPreviousMilestone_(milestone)]]">
-        <paper-button
+        <raised-button
             id="prev_mstone"
-            on-tap="onPreviousMilestone_">
+            on-click="onPreviousMilestone_">
           [[prevMstoneButtonLabel_(milestone, maxRevision)]]
           <iron-icon icon="chevron-left"></iron-icon>
-        </paper-button>
+        </raised-button>
       </template>
 
       <paper-input
@@ -248,21 +229,21 @@ found in the LICENSE file.
       </paper-input>
 
       <template is="dom-if" if="[[isNextMilestone_(milestone)]]">
-        <paper-button
+        <raised-button
             id="next_mstone"
-            on-tap="onNextMilestone_">
+            on-click="onNextMilestone_">
           <iron-icon icon="chevron-right"></iron-icon>
           M[[_add(milestone, 1)]]
-        </paper-button>
+        </raised-button>
       </template>
 
       <span class="spacer">&nbsp;</span>
 
-      <paper-icon-button
+      <iron-icon
           id="close"
           icon="close"
-          on-tap="onCloseSection_">
-      </paper-icon-button>
+          on-click="onCloseSection_">
+      </iron-icon>
     </div>
 
     <paper-progress indeterminate="[[isLoading]]">
@@ -343,17 +324,17 @@ found in the LICENSE file.
                         </dropdown-input>
                       </td>
                       <td class="template_row_button">
-                        <paper-icon-button
+                        <iron-icon
                             icon="add"
-                            on-tap="onTemplateAddRow_">
-                        </paper-icon-button>
+                            on-click="onTemplateAddRow_">
+                        </iron-icon>
                       </td>
                       <td class="template_row_button">
                         <template is="dom-if" if="[[!isLastRow_(table.rows)]]">
-                          <paper-icon-button
+                          <iron-icon
                               icon="remove"
-                              on-tap="onTemplateRemoveRow_">
-                          </paper-icon-button>
+                              on-click="onTemplateRemoveRow_">
+                          </iron-icon>
                         </template>
                       </td>
                     </tr>
@@ -362,23 +343,22 @@ found in the LICENSE file.
               </table>
 
               <div class="edit_form_controls">
-                <paper-button
+                <raised-button
                     class="template_cancel"
                     icon="close"
-                    on-tap="onToggleEditing_">
+                    on-click="onToggleEditing_">
                   <iron-icon icon="cancel">
                   </iron-icon>
                   Cancel
-                </paper-button>
-                <paper-button
+                </raised-button>
+                <raised-button
                     class="template_save"
                     disabled="[[!isValid_(table)]]"
-                    raised
-                    on-tap="onTemplateSave_">
+                    on-click="onTemplateSave_">
                   <iron-icon icon="save">
                   </iron-icon>
                   Save
-                </paper-button>
+                </raised-button>
               </div>
             </iron-collapse>
           </iron-collapse>
@@ -398,19 +378,20 @@ found in the LICENSE file.
                 </a>
               </template>
 
-              <paper-icon-button
+              <iron-icon
                   id="copy"
                   icon="content-copy"
                   title="Copy measurements"
-                  on-tap="onCopy_">
-              </paper-icon-button>
+                  on-click="onCopy_">
+              </iron-icon>
 
               <template is="dom-if" if="[[canEdit_(table, userEmail)]]">
-                <paper-icon-button
+                <iron-icon
                     id="edit"
                     icon="editor:mode-edit"
-                    on-tap="onToggleEditing_">
-                </paper-icon-button>
+                    title="Edit template"
+                    on-click="onToggleEditing_">
+                </iron-icon>
               </template>
             </div>
 
@@ -453,7 +434,7 @@ found in the LICENSE file.
                       <template is="dom-if" if="[[labelPart.isFirst]]">
                         <td row-span="[[labelPart.rowCount]]">
                           <a href="[[labelPart.href]]"
-                              on-tap="onOpenChart_">
+                              on-click="onOpenChart_">
                             [[labelPart.label]]
                           </a>
                         </td>

@@ -31,11 +31,10 @@ tr.exportTo('cp', () => {
     }
 
     testSuiteHref_(testSuites) {
-      return 'go/chrome-speed';
+      return 'http://go/chrome-speed';
     }
 
     onTestSuiteSelect_(event) {
-      event.cancelBubble = true;
       this.dispatch('describeTestSuites', this.statePath);
       this.dispatch('maybeLoadTimeseries', this.statePath);
     }
@@ -45,12 +44,10 @@ tr.exportTo('cp', () => {
     }
 
     onMeasurementSelect_(event) {
-      event.cancelBubble = true;
       this.dispatch('measurement', this.statePath);
     }
 
     onBotSelect_(event) {
-      event.cancelBubble = true;
       this.dispatch('bot', this.statePath);
     }
 
@@ -59,7 +56,6 @@ tr.exportTo('cp', () => {
     }
 
     onTestCaseSelect_(event) {
-      event.cancelBubble = true;
       this.dispatch('testCase', this.statePath);
     }
 
@@ -68,7 +64,6 @@ tr.exportTo('cp', () => {
     }
 
     onStatisticSelect_(event) {
-      event.cancelBubble = true;
       this.dispatch('statistic', this.statePath);
     }
 
@@ -123,16 +118,15 @@ tr.exportTo('cp', () => {
           event.detail.lineDescriptor);
     }
 
-    onLegendTap_(event) {
+    async onLegendTap_(event) {
       this.dispatch('legendTap', this.statePath);
     }
 
-    onRelatedTabTap_(event) {
-      event.cancelBubble = true;
+    async onRelatedTabTap_(event) {
       this.dispatch('selectRelatedTab', this.statePath, event.model.tabIndex);
     }
 
-    onSparklineTap_(event) {
+    async onSparklineTap_(event) {
       this.dispatchEvent(new CustomEvent('new-chart', {
         bubbles: true,
         composed: true,

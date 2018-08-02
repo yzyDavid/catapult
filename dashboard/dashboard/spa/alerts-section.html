@@ -6,7 +6,7 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/iron-icon/iron-icon.html">
-<link rel="import" href="/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/bower_components/paper-dialog/paper-dialog.html">
 <link rel="import" href="/bower_components/paper-progress/paper-progress.html">
 <link rel="import" href="/bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="/bower_components/paper-toggle-button/paper-toggle-button.html">
@@ -93,7 +93,10 @@ found in the LICENSE file.
 
       #close {
         align-self: flex-start;
+        cursor: pointer;
         flex-shrink: 0;
+        height: 24px;
+        width: 24px;
       }
 
       #triage_controls {
@@ -108,12 +111,15 @@ found in the LICENSE file.
         color: var(--paper-indigo-500);
       }
 
-      #triage_controls paper-button {
-        font-weight: bold;
+      #triage_controls .button {
         background: unset;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 8px;
+        text-transform: uppercase;
       }
 
-      #triage_controls paper-button[disabled] {
+      #triage_controls .button[disabled] {
         color: var(--paper-grey-500);
         font-weight: normal;
       }
@@ -124,6 +130,7 @@ found in the LICENSE file.
 
       #edit, #documentation {
         color: var(--paper-indigo-500);
+        padding: 8px;
       }
 
       paper-toast a {
@@ -194,17 +201,17 @@ found in the LICENSE file.
 
       <template is="dom-if" if="[[alertGroups]]">
         <template is="dom-if" if="[[isOwner]]">
-          <paper-icon-button
+          <iron-icon
               id="edit"
               icon="editor:mode-edit">
-          </paper-icon-button>
+          </iron-icon>
         </template>
         <template is="dom-if" if="[[!isOwner]]">
           <a id="documentation"
              href="#"
              target="_blank"
              title="Documentation">
-            <paper-icon-button icon="help"></paper-icon-button>
+            <iron-icon icon="help"></iron-icon>
           </a>
         </template>
       </template>
@@ -232,13 +239,12 @@ found in the LICENSE file.
       </span>
 
       <span>
-        <paper-button
+        <raised-button
             id="recent_bugs"
-            raised
             disabled$="[[_empty(recentlyModifiedBugs)]]"
-            on-tap="onTapRecentlyModifiedBugs_">
+            on-click="onTapRecentlyModifiedBugs_">
           Recent Bugs
-        </paper-button>
+        </raised-button>
 
         <paper-dialog
             opened="[[hasTriagedNew]]"
@@ -300,11 +306,11 @@ found in the LICENSE file.
         </paper-dialog>
       </span>
 
-      <paper-icon-button
+      <iron-icon
           id="close"
           icon="close"
-          on-tap="onClose_">
-      </paper-icon-button>
+          on-click="onClose_">
+      </iron-icon>
     </div>
 
     <paper-progress indeterminate="[[isLoading_(isLoading, preview.isLoading)]]">
@@ -318,18 +324,18 @@ found in the LICENSE file.
           alert[[_plural(selectedAlertsCount)]]
         </div>
 
-        <paper-button
+        <div class="button"
             disabled$="[[_eq(0, selectedAlertsCount)]]"
-            on-tap="onCharts_">
+            on-click="onCharts_">
           Open Chart[[_plural(selectedAlertsCount)]]
-        </paper-button>
+        </div>
 
-        <span>
-          <paper-button
+        <span style="position: relative;">
+          <div class="button"
               disabled$="[[!canTriage_(alertGroups)]]"
-              on-tap="onTriageNew_">
+              on-click="onTriageNew_">
             New Bug
-          </paper-button>
+          </div>
 
           <triage-new
               state-path="[[statePath]].newBug"
@@ -337,30 +343,31 @@ found in the LICENSE file.
           </triage-new>
         </span>
 
-        <span>
-          <paper-button
+        <span style="position: relative;">
+          <div class="button"
               disabled$="[[!canTriage_(alertGroups)]]"
-              on-tap="onTriageExisting_">
+              on-click="onTriageExisting_">
             Existing Bug
-          </paper-button>
+          </div>
 
           <triage-existing
+              tabindex="0"
               state-path="[[statePath]].existingBug"
               on-submit="onTriageExistingSubmit_">
           </triage-existing>
         </span>
 
-        <paper-button
+        <div class="button"
             disabled$="[[!canTriage_(alertGroups)]]"
-            on-tap="onIgnore_">
+            on-click="onIgnore_">
           Ignore
-        </paper-button>
+        </div>
 
-        <paper-button
+        <div class="button"
             disabled$="[[!canUnassignAlerts_(alertGroups)]]"
-            on-tap="onUnassign_">
+            on-click="onUnassign_">
           Unassign
-        </paper-button>
+        </div>
       </div>
     </template>
 

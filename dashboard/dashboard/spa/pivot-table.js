@@ -4,7 +4,7 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  class PivotTable extends Polymer.GestureEventListeners(cp.ElementBase) {
+  class PivotTable extends cp.ElementBase {
     static get properties() {
       return cp.ElementBase.statePathProperties('statePath', {
         collapsedCellStatistics: {type: Array},

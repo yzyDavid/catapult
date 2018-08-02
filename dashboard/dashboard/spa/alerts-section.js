@@ -609,11 +609,14 @@ tr.exportTo('cp', () => {
     },
 
     loadReportNames: statePath => async(dispatch, getState) => {
+      const reportTemplateIds = await cp.ReadReportNames()(dispatch, getState);
       const rootState = getState();
-      if (!rootState.reportTemplateIds) return;
+      const teamFilter = cp.TeamFilter.get(rootState.teamName);
+      const reportNames = await teamFilter.reportNames(
+          reportTemplateIds.map(t => t.name));
       cp.ElementBase.actions.updateObject(statePath + '.report', {
-        options: cp.OptionGroup.groupValues(rootState.reportTemplateIds.keys()),
-        label: `Reports (${rootState.reportTemplateIds.size})`,
+        options: cp.OptionGroup.groupValues(reportNames),
+        label: `Reports (${reportNames.length})`,
       })(dispatch, getState);
     },
 
@@ -859,13 +862,18 @@ tr.exportTo('cp', () => {
         ...state.bug.selectedOptions.map(bug => {
           return {bug_id: bug, ...revisions};
         }),
-        ...state.report.selectedOptions.map(report => {
-          return {
-            report: rootState.reportTemplateIds.get(report).id,
-            ...revisions,
-          };
-        }),
       ];
+      if (state.report.selectedOptions.length) {
+        const reportTemplateIds = await dispatch(cp.ReadReportNames());
+        for (const name of state.report.selectedOptions) {
+          for (const reportId of reportTemplateIds) {
+            if (reportId.name === name) {
+              sources.push({report: reportId.id, ...revisions});
+              break;
+            }
+          }
+        }
+      }
       if (sources.length > 0) {
         dispatch(cp.DropdownInput.actions.blurAll());
       }
@@ -1157,7 +1165,8 @@ tr.exportTo('cp', () => {
           showTestCaseColumn: true,
         };
         if (state.sheriff.selectedOptions.length === 0 &&
-            state.bug.selectedOptions.length === 0) {
+            state.bug.selectedOptions.length === 0 &&
+            state.report.selectedOptions.length === 0) {
           return state;
         }
         return {

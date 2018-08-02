@@ -5,25 +5,24 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-button/paper-button.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 
 <dom-module id="expand-button">
   <template>
     <style>
-      paper-button {
-        @apply --paper-button;
+      :host {
+        display: flex;
+        cursor: pointer;
       }
       iron-icon {
-        @apply --iron-icon;
+        height: 20px;
+        width: 20px;
       }
     </style>
 
-    <paper-button on-tap="toggle_">
-      <iron-icon icon="[[icon_(isExpanded)]]">
-      </iron-icon>
-      <slot></slot>
-    </paper-button>
+    <iron-icon icon="[[icon_(isExpanded)]]">
+    </iron-icon>
+    <slot></slot>
   </template>
 </dom-module>
 <script src="/dashboard/spa/expand-button.js"></script>
