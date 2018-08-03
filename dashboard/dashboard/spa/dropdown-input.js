@@ -20,24 +20,10 @@ tr.exportTo('cp', () => {
     }
 
     async observeIsFocused_() {
-      while (!this.$.input.$.nativeInput) {
-        await cp.ElementBase.afterRender();
-      }
       if (this.isFocused) {
-        while (this.isFocused &&
-               cp.ElementBase.getActiveElement() !==
-               this.$.input.$.nativeInput) {
-          this.$.input.$.nativeInput.focus();
-          await cp.ElementBase.timeout(100);
-        }
+        this.$.input.focus();
       } else {
-        this.$.input.$.nativeInput.blur();
-        while (!this.isFocused &&
-               cp.ElementBase.getActiveElement() ===
-               this.$.input.$.nativeInput) {
-          this.$.input.$.nativeInput.blur();
-          await cp.ElementBase.timeout(100);
-        }
+        this.$.input.blur();
       }
     }
 
@@ -83,7 +69,6 @@ tr.exportTo('cp', () => {
     }
 
     async onKeyup_(event) {
-      if (this.required) this.$.input.validate();
       if (event.key === 'Escape') {
         this.$.input.blur();
         return;

@@ -6,9 +6,9 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
-<link rel="import" href="/bower_components/paper-input/paper-input.html">
-<link rel="import" href="/bower_components/paper-input/paper-textarea.html">
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/cp-input.html">
+<link rel="import" href="/dashboard/spa/cp-textarea.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 
 <dom-module id="triage-new">
@@ -29,24 +29,27 @@ found in the LICENSE file.
       :host([is-open]) {
         display: flex;
       }
+      cp-input {
+        margin-bottom: 8px;
+      }
       paper-checkbox {
         line-height: 32px;
       }
     </style>
 
-    <paper-input
-        label="Summary"
+    <cp-input
+        placeholder="Summary"
         value="[[summary]]"
         on-change="onSummary_">
-    </paper-input>
+    </cp-input>
 
-    <paper-textarea
+    <cp-textarea
         autofocus
         id="description"
-        label="Description"
+        placeholder="Description"
         value="[[description]]"
         on-keyup="onDescription_">
-    </paper-textarea>
+    </cp-textarea>
 
     <template is="dom-repeat" items="[[labels]]" as="label" index-as="labelIndex">
       <paper-checkbox
@@ -64,17 +67,17 @@ found in the LICENSE file.
       </paper-checkbox>
     </template>
 
-    <paper-input
-        label="Owner"
+    <cp-input
+        placeholder="Owner"
         value="[[owner]]"
         on-change="onOwner_">
-    </paper-input>
+    </cp-input>
 
-    <paper-input
-        label="CC"
+    <cp-input
+        placeholder="CC"
         value="[[cc]]"
         on-change="onCC_">
-    </paper-input>
+    </cp-input>
 
     <raised-button on-click="onSubmit_">
       Submit

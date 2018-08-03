@@ -6,6 +6,7 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/cp-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 
 <dom-module id="triage-existing">
@@ -76,16 +77,16 @@ found in the LICENSE file.
     </style>
 
     <div id="controls">
-      <paper-input
+      <cp-input
           id="bug_input"
           autofocus
-          label="Bug Number"
+          placeholder="Bug Number"
           value="[[bugId]]"
           on-keyup="onIdKeyup_">
-      </paper-input>
+      </cp-input>
 
       <raised-button
-          disabled="[[!isIdValid_(bugId)]]"
+          disabled$="[[!isIdValid_(bugId)]]"
           on-click="onSubmit_">
         Submit
       </raised-button>

@@ -40,13 +40,6 @@ found in the LICENSE file.
         margin-left: 8px;
       }
 
-      #title {
-        flex-grow: 1;
-        --paper-input-container: {
-          padding: 0 !important;
-        }
-      }
-
       #spacer {
         flex-grow: 1;
       }
@@ -217,11 +210,12 @@ found in the LICENSE file.
         </iron-collapse>
 
         <iron-collapse opened="[[!isExpanded]]">
-          <paper-input id="title"
-                       value="[[title]]"
-                       label="Title"
-                       on-keyup="onTitleKeyup_">
-          </paper-input>
+          <cp-input
+              id="title"
+              value="[[title]]"
+              placeholder="Title"
+              on-keyup="onTitleKeyup_">
+          </cp-input>
         </iron-collapse>
       </div>
 

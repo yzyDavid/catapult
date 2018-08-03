@@ -153,8 +153,7 @@ tr.exportTo('cp', () => {
     async onSelectSource_(event) {
       await this.dispatch('loadReports', this.statePath);
       if (this.source.selectedOptions.includes(ReportSection.CREATE)) {
-        const name = this.shadowRoot.querySelector(
-            'paper-input[label="Report Name"]');
+        const name = this.shadowRoot.querySelector('.report_name_input');
         if (name) {
           name.focus();
         }
@@ -290,7 +289,7 @@ tr.exportTo('cp', () => {
       await this.dispatch('toggleEditing', this.statePath,
           event.model.tableIndex);
       if (this.tables[event.model.tableIndex].isEditing) {
-        this.shadowRoot.querySelector('paper-input').focus();
+        this.shadowRoot.querySelector('cp-input').focus();
       }
     }
 

@@ -40,10 +40,6 @@ found in the LICENSE file.
         margin-right: 8px;
       }
 
-      paper-input div[slot="suffix"] {
-        height: 32px;
-      }
-
       paper-toggle-button {
         display: inline-flex;
       }
@@ -177,27 +173,19 @@ found in the LICENSE file.
         </dropdown-input>
       </iron-collapse>
 
-      <paper-input
+      <cp-input
           id="min_revision"
           value="[[minRevision]]"
-          label="min revision"
-          size="6"
+          placeholder="min revision"
           on-keyup="onMinRevisionKeyup_">
-        <div slot="suffix">
-          &nbsp;
-        </div>
-      </paper-input>
+      </cp-input>
 
-      <paper-input
+      <cp-input
           id="max_revision"
           value="[[maxRevision]]"
-          label="max revision"
-          size="6"
+          placeholder="max revision"
           on-keyup="onMaxRevisionKeyup_">
-        <div slot="suffix">
-          &nbsp;
-        </div>
-      </paper-input>
+      </cp-input>
 
       <template is="dom-if" if="[[alertGroups]]">
         <template is="dom-if" if="[[isOwner]]">
