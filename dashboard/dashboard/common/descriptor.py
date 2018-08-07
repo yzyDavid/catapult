@@ -102,9 +102,19 @@ class Descriptor(object):
       cls.CONFIGURATION[key] = (yield stored_object.GetAsync(key)) or default
     raise ndb.Return(cls.CONFIGURATION[key])
 
+  BOT_ALIASES = {}
+
+  @classmethod
+  @ndb.tasklet
+  def _GetAliases(cls, bot):
+    if bot not in cls.BOT_ALIASES:
+      cls.BOT_ALIASES[bot] = (yield bot_configurations.GetAliasesAsync(bot))
+    raise ndb.Return(cls.BOT_ALIASES[bot])
+
   @classmethod
   def ResetMemoizedConfigurationForTesting(cls):
     cls.CONFIGURATION = {}
+    cls.BOT_ALIASES = {}
 
   @classmethod
   @ndb.tasklet
@@ -271,7 +281,7 @@ class Descriptor(object):
   @ndb.tasklet
   def _BotTestPaths(self):
     master, slave = self.bot.split(':')
-    aliases = yield bot_configurations.GetAliasesAsync(slave)
+    aliases = yield self._GetAliases(slave)
     raise ndb.Return({master + '/' + alias for alias in aliases})
 
   @ndb.tasklet
