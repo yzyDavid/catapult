@@ -5,14 +5,14 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/cp-checkbox.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
 
 <dom-module id="chart-parameter">
   <template>
     <style include="paper-material-styles">
-      paper-checkbox {
+      cp-checkbox {
         margin-top: 8px;
       }
 
@@ -45,14 +45,14 @@ found in the LICENSE file.
       </template>
     </dropdown-input>
 
-    <paper-checkbox
+    <cp-checkbox
         id="aggregate"
         disabled$="[[!isMultiple_(selectedOptions]]"
         checked="[[isAggregated]]"
         hidden$="[[!canAggregate]]"
         on-change="onAggregateChange_">
       Aggregate
-    </paper-checkbox>
+    </cp-checkbox>
   </template>
 </dom-module>
 <script src="/dashboard/spa/chart-parameter.js"></script>

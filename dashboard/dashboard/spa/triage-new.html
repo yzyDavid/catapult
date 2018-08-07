@@ -5,8 +5,8 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
 <link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="/dashboard/spa/cp-checkbox.html">
 <link rel="import" href="/dashboard/spa/cp-input.html">
 <link rel="import" href="/dashboard/spa/cp-textarea.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
@@ -32,7 +32,7 @@ found in the LICENSE file.
       cp-input {
         margin-bottom: 8px;
       }
-      paper-checkbox {
+      cp-checkbox {
         line-height: 32px;
       }
     </style>
@@ -52,19 +52,19 @@ found in the LICENSE file.
     </cp-textarea>
 
     <template is="dom-repeat" items="[[labels]]" as="label" index-as="labelIndex">
-      <paper-checkbox
+      <cp-checkbox
           checked="[[label.isEnabled]]"
           on-change="onLabel_">
         [[label.name]]
-      </paper-checkbox>
+      </cp-checkbox>
     </template>
 
     <template is="dom-repeat" items="[[components]]" as="component" index-as="componentIndex">
-      <paper-checkbox
+      <cp-checkbox
           checked="[[component.isEnabled]]"
           on-change="onComponent_">
         [[component.name]]
-      </paper-checkbox>
+      </cp-checkbox>
     </template>
 
     <cp-input

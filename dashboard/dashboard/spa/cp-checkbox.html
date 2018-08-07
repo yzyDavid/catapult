@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="cp-checkbox">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        position: relative;
+      }
+      :host([hidden]) {
+        visibility: hidden;
+      }
+      label {
+        cursor: pointer;
+      }
+      label:before, label:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      label:before {
+        background: #fff;
+        border-radius: 2px;
+        border: 2px solid black;
+        cursor: pointer;
+        height: 18px;
+        transition: background .3s;
+        width: 18px;
+      }
+      input {
+        outline: 0;
+        visibility: hidden;
+      }
+      input:checked + label:before {
+        background: var(--paper-indigo-500);
+        border: 2px solid var(--paper-indigo-500);
+      }
+      input:checked + label:after {
+        border-color: white;
+        border-style: none none solid solid;
+        border-width: 2px;
+        height: 6px;
+        left: 4px;
+        top: 5px;
+        transform: rotate(-45deg);
+        width: 12px;
+      }
+      input:disabled + label:before {
+        border-color: var(--paper-grey-500);
+      }
+      input:disabled:checked + label:before {
+        background: var(--paper-grey-500);
+      }
+      *, *:before, *:after {
+        box-sizing: border-box;
+      }
+    </style>
+
+    <input
+        type="checkbox"
+        id="native"
+        checked="{{checked}}"
+        disabled="[[disabled]]"
+        on-change="onChange_">
+    <label for="native"><slot></slot></label>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/cp-checkbox.js"></script>

@@ -5,8 +5,8 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-checkbox/paper-checkbox.html">
 <link rel="import" href="/dashboard/spa/column-head.html">
+<link rel="import" href="/dashboard/spa/cp-checkbox.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/expand-button.html">
 <link rel="import" href="/dashboard/spa/scalar-span.html">
@@ -117,11 +117,11 @@ found in the LICENSE file.
               </th>
 
               <th class="checkbox">
-                <paper-checkbox
+                <cp-checkbox
                     checked="[[anySelectedAlerts_(alertGroups)]]"
                     disabled="[[areAlertGroupsPlaceholders]]"
                     on-change="onSelectAll_">
-                </paper-checkbox>
+                </cp-checkbox>
               </th>
 
               <template is="dom-if" if="[[showBugColumn]]">
@@ -237,14 +237,14 @@ found in the LICENSE file.
                     </td>
 
                     <td>
-                      <paper-checkbox
+                      <cp-checkbox
                           checked="[[alert.isSelected]]"
                           disabled="[[areAlertGroupsPlaceholders]]"
-                          on-click="onSelect_">
+                          on-change="onSelect_">
                         <template is="dom-if" if="[[_eq(0, alertIndex)]]">
                           [[selectedCount_(alertGroup)]]
                         </template>
-                      </paper-checkbox>
+                      </cp-checkbox>
                     </td>
 
                     <template is="dom-if" if="[[showBugColumn]]">
