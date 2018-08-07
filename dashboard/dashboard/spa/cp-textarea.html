@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="cp-textarea">
+  <template>
+    <style>
+      :host {
+        border-bottom: 1px solid var(--paper-indigo-500);
+        display: flex;
+      }
+      textarea {
+        border: 0;
+        flex-grow: 1;
+        font-family: inherit;
+        font-size: 12px;
+        outline: none;
+        padding: 8px;
+      }
+    </style>
+
+    <textarea
+        id="input"
+        value="[[value]]"
+        placeholder="[[placeholder]]"
+        on-keyup="onKeyup_">
+    </textarea>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/cp-textarea.js"></script>
