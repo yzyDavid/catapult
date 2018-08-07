@@ -33,7 +33,7 @@ found in the LICENSE file.
         margin-bottom: 8px;
       }
       cp-checkbox {
-        line-height: 32px;
+        margin-top: 4px;
       }
     </style>
 
@@ -54,6 +54,7 @@ found in the LICENSE file.
     <template is="dom-repeat" items="[[labels]]" as="label" index-as="labelIndex">
       <cp-checkbox
           checked="[[label.isEnabled]]"
+          tabindex="0"
           on-change="onLabel_">
         [[label.name]]
       </cp-checkbox>
@@ -62,6 +63,7 @@ found in the LICENSE file.
     <template is="dom-repeat" items="[[components]]" as="component" index-as="componentIndex">
       <cp-checkbox
           checked="[[component.isEnabled]]"
+          tabindex="0"
           on-change="onComponent_">
         [[component.name]]
       </cp-checkbox>

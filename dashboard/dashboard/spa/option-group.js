@@ -49,8 +49,8 @@ tr.exportTo('cp', () => {
       return this.statePath === this.rootStatePath;
     }
 
-    onSelect_(event) {
-      this.dispatch('select', this.rootStatePath, event.model.option);
+    async onSelect_(event) {
+      await this.dispatch('select', this.rootStatePath, event.model.option);
       this.dispatchEvent(new CustomEvent('option-select', {
         bubbles: true,
         composed: true,
