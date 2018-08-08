@@ -32,7 +32,7 @@ class UpdateTestSuiteDescriptorsTest(testing_common.TestCase):
     stored_object.Set(descriptor.GROUPABLE_TEST_SUITE_PREFIXES_KEY, [
         'TEST_GROUPABLE%',
     ])
-    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
+    stored_object.ResetCacheForTesting()
 
   def testInternal(self):
     internal_key = namespaced_stored_object.NamespaceKey(

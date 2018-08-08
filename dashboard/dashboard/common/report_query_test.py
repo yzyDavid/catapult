@@ -31,7 +31,7 @@ class ReportQueryTest(testing_common.TestCase):
             'alias': 'b',
         },
     })
-    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
+    stored_object.ResetCacheForTesting()
 
   def testBotAliases(self):
     test = graph_data.TestMetadata(

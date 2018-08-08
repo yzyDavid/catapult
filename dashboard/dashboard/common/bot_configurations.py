@@ -11,29 +11,40 @@ from dashboard.common import namespaced_stored_object
 
 BOT_CONFIGURATIONS_KEY = 'bot_configurations'
 
+@ndb.tasklet
+def Prefetch():
+  yield namespaced_stored_object.GetCachedAsync(BOT_CONFIGURATIONS_KEY)
+
 
 def Get(name):
-  configurations = namespaced_stored_object.Get(BOT_CONFIGURATIONS_KEY)
+  configurations = namespaced_stored_object.GetCached(BOT_CONFIGURATIONS_KEY)
   configuration = configurations[name]
   if 'alias' in configuration:
     return configurations[configuration['alias']]
   return configuration
 
 
-@ndb.tasklet
-def GetAliasesAsync(bot):
+def GetAliasesIfCached(bot):
   aliases = {bot}
-  configurations = yield namespaced_stored_object.GetAsync(
-      BOT_CONFIGURATIONS_KEY)
-  if not configurations or bot not in configurations:
-    raise ndb.Return(aliases)
+  configurations = namespaced_stored_object.GetIfCached(BOT_CONFIGURATIONS_KEY)
+  if configurations is None:
+    return None
+  if bot not in configurations:
+    return aliases
   if 'alias' in configurations[bot]:
     bot = configurations[bot]['alias']
     aliases.add(bot)
   for name, configuration in configurations.iteritems():
     if configuration.get('alias') == bot:
       aliases.add(name)
-  raise ndb.Return(aliases)
+  return aliases
+
+@ndb.tasklet
+def GetAliasesAsync(bot):
+  configurations = namespaced_stored_object.GetIfCached(BOT_CONFIGURATIONS_KEY)
+  if configurations is None:
+    yield namespaced_stored_object.GetCachedAsync(BOT_CONFIGURATIONS_KEY)
+  raise ndb.Return(GetAliasesIfCached(bot))
 
 
 def List():

@@ -44,7 +44,7 @@ class DescriptorTest(testing_common.TestCase):
             'alias': 'b',
         },
     })
-    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
+    stored_object.ResetCacheForTesting()
 
   def testFromTestPath_Empty(self):
     desc = descriptor.Descriptor.FromTestPathSync('')

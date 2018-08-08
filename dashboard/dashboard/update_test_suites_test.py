@@ -33,7 +33,7 @@ class ListTestSuitesTest(testing_common.TestCase):
     stored_object.Set(descriptor.GROUPABLE_TEST_SUITE_PREFIXES_KEY, [
         'TEST_GROUPABLE%',
     ])
-    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
+    stored_object.ResetCacheForTesting()
 
   def testFetchCachedTestSuites_NotEmpty(self):
     # If the cache is set, then whatever's there is returned.

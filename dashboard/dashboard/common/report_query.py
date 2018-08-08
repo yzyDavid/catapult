@@ -6,6 +6,7 @@ import logging
 
 from google.appengine.ext import ndb
 
+from dashboard.common import bot_configurations
 from dashboard.common import descriptor
 from dashboard.common import utils
 from dashboard.models import graph_data
@@ -70,6 +71,8 @@ class ReportQuery(object):
 
   @ndb.tasklet
   def FetchAsync(self):
+    yield [bot_configurations.Prefetch(), descriptor.PrefetchConfiguration()]
+
     # Get data for each descriptor in each table row in parallel.
     futures = []
     for tri, table_row in enumerate(self._report['rows']):

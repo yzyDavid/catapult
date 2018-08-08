@@ -16,11 +16,28 @@ def Get(key):
   result = yield GetAsync(key)
   raise ndb.Return(result)
 
-
 @ndb.tasklet
 def GetAsync(key):
   namespaced_key = NamespaceKey(key)
   result = yield stored_object.GetAsync(namespaced_key)
+  raise ndb.Return(result)
+
+
+@ndb.synctasklet
+def GetCached(key, cache_seconds=stored_object.DEFAULT_CACHE_SECONDS):
+  result = yield GetCachedAsync(key, cache_seconds)
+  raise ndb.Return(result)
+
+
+def GetIfCached(key, cache_seconds=stored_object.DEFAULT_CACHE_SECONDS):
+  namespaced_key = NamespaceKey(key)
+  return stored_object.GetIfCached(namespaced_key, cache_seconds)
+
+
+@ndb.tasklet
+def GetCachedAsync(key, cache_seconds=stored_object.DEFAULT_CACHE_SECONDS):
+  namespaced_key = NamespaceKey(key)
+  result = yield stored_object.GetCachedAsync(namespaced_key, cache_seconds)
   raise ndb.Return(result)
 
 

@@ -62,6 +62,17 @@ COMPLEX_TEST_SUITES = [
 ]
 
 
+@ndb.tasklet
+def PrefetchConfiguration():
+  yield [
+      stored_object.GetCachedAsync(COMPOSITE_TEST_SUITES_KEY),
+      stored_object.GetCachedAsync(GROUPABLE_TEST_SUITE_PREFIXES_KEY),
+      stored_object.GetCachedAsync(PARTIAL_TEST_SUITES_KEY),
+      stored_object.GetCachedAsync(POLY_MEASUREMENT_TEST_SUITES_KEY),
+      stored_object.GetCachedAsync(TWO_TWO_TEST_SUITES_KEY),
+  ]
+
+
 class Descriptor(object):
   """Describe a timeseries by its characteristics.
 
@@ -92,29 +103,6 @@ class Descriptor(object):
 
   def __lt__(self, other):
     return repr(self) < repr(other)
-
-  CONFIGURATION = {}
-
-  @classmethod
-  @ndb.tasklet
-  def _GetConfiguration(cls, key, default=None):
-    if key not in cls.CONFIGURATION:
-      cls.CONFIGURATION[key] = (yield stored_object.GetAsync(key)) or default
-    raise ndb.Return(cls.CONFIGURATION[key])
-
-  BOT_ALIASES = {}
-
-  @classmethod
-  @ndb.tasklet
-  def _GetAliases(cls, bot):
-    if bot not in cls.BOT_ALIASES:
-      cls.BOT_ALIASES[bot] = (yield bot_configurations.GetAliasesAsync(bot))
-    raise ndb.Return(cls.BOT_ALIASES[bot])
-
-  @classmethod
-  def ResetMemoizedConfigurationForTesting(cls):
-    cls.CONFIGURATION = {}
-    cls.BOT_ALIASES = {}
 
   @classmethod
   @ndb.tasklet
@@ -152,7 +140,11 @@ class Descriptor(object):
       raise ndb.Return((measurement, path.pop(0).replace('_', ':').replace(
           'long:running:tools', 'long_running_tools')))
 
-    if test_suite in (yield cls._GetConfiguration(TWO_TWO_TEST_SUITES_KEY, [])):
+    two_two_suites = stored_object.GetIfCached(TWO_TWO_TEST_SUITES_KEY)
+    if two_two_suites is None:
+      two_two_suites = yield stored_object.GetCachedAsync(
+          TWO_TWO_TEST_SUITES_KEY)
+    if two_two_suites and test_suite in two_two_suites:
       parts, path[:] = path[:], []
       raise ndb.Return(':'.join(parts[:2]), ':'.join(parts[2:]))
 
@@ -165,8 +157,13 @@ class Descriptor(object):
         raise ndb.Return((measurement, None))
       raise ndb.Return((measurement, case + ':' + path.pop(0)))
 
-    if test_suite in (yield cls._GetConfiguration(
-        POLY_MEASUREMENT_TEST_SUITES_KEY, [])):
+    poly_measurement_test_suites = stored_object.GetIfCached(
+        POLY_MEASUREMENT_TEST_SUITES_KEY)
+    if poly_measurement_test_suites is None:
+      poly_measurement_test_suites = yield stored_object.GetCachedAsync(
+          POLY_MEASUREMENT_TEST_SUITES_KEY)
+    if (poly_measurement_test_suites and
+        test_suite in poly_measurement_test_suites):
       parts, path[:] = path[:], []
       case = None
       if parts[-1] == NO_MITIGATIONS_CASE:
@@ -200,7 +197,11 @@ class Descriptor(object):
 
     test_suite = path.pop(0)
 
-    if test_suite in (yield cls._GetConfiguration(PARTIAL_TEST_SUITES_KEY, [])):
+    partial_suites = stored_object.GetIfCached(PARTIAL_TEST_SUITES_KEY)
+    if partial_suites is None:
+      partial_suites = yield stored_object.GetCachedAsync(
+          PARTIAL_TEST_SUITES_KEY)
+    if partial_suites and test_suite in partial_suites:
       if len(path) == 0:
         raise ndb.Return(cls(bot=bot))
       test_suite += ':' + path.pop(0)
@@ -208,11 +209,16 @@ class Descriptor(object):
     if test_suite.startswith('resource_sizes '):
       test_suite = 'resource_sizes:' + test_suite[16:-1]
     else:
-      for prefix in (yield cls._GetConfiguration(
-          GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])):
-        if test_suite.startswith(prefix):
-          test_suite = prefix[:-1] + ':' + test_suite[len(prefix):]
-          break
+      groupable_prefixes = stored_object.GetIfCached(
+          GROUPABLE_TEST_SUITE_PREFIXES_KEY)
+      if groupable_prefixes is None:
+        groupable_prefixes = yield stored_object.GetCachedAsync(
+            GROUPABLE_TEST_SUITE_PREFIXES_KEY)
+      if groupable_prefixes is not None:
+        for prefix in groupable_prefixes:
+          if test_suite.startswith(prefix):
+            test_suite = prefix[:-1] + ':' + test_suite[len(prefix):]
+            break
 
     if len(path) == 0:
       raise ndb.Return(cls(test_suite=test_suite, bot=bot))
@@ -258,7 +264,9 @@ class Descriptor(object):
     if not self.bot:
       raise ndb.Return(set())
 
-    test_paths = yield self._BotTestPaths()
+    test_paths = self._BotTestPathsSync()
+    if test_paths is None:
+      test_paths = yield self._BotTestPathsAsync()
     if not self.test_suite:
       raise ndb.Return(test_paths)
 
@@ -278,10 +286,17 @@ class Descriptor(object):
 
     raise ndb.Return(test_paths)
 
-  @ndb.tasklet
-  def _BotTestPaths(self):
+  def _BotTestPathsSync(self):
     master, slave = self.bot.split(':')
-    aliases = yield self._GetAliases(slave)
+    aliases = bot_configurations.GetAliasesIfCached(slave)
+    if aliases is None:
+      return None
+    return {master + '/' + alias for alias in aliases}
+
+  @ndb.tasklet
+  def _BotTestPathsAsync(self):
+    master, slave = self.bot.split(':')
+    aliases = yield bot_configurations.GetAliasesAsync(slave)
     raise ndb.Return({master + '/' + alias for alias in aliases})
 
   @ndb.tasklet
@@ -290,28 +305,38 @@ class Descriptor(object):
       raise ndb.Return({p + '/resource_sizes (%s)' % self.test_suite[15:]
                         for p in test_paths})
 
-    composite_test_suites = yield self._GetConfiguration(
-        COMPOSITE_TEST_SUITES_KEY, [])
-    if self.test_suite in composite_test_suites:
+    composite_test_suites = stored_object.GetIfCached(COMPOSITE_TEST_SUITES_KEY)
+    if composite_test_suites is None:
+      composite_test_suites = yield stored_object.GetCachedAsync(
+          COMPOSITE_TEST_SUITES_KEY)
+    if composite_test_suites and self.test_suite in composite_test_suites:
       raise ndb.Return({p + '/' + self.test_suite.replace(':', '/')
                         for p in test_paths})
 
     first_part = self.test_suite.split(':')[0]
-    groupable_prefixes = yield self._GetConfiguration(
-        GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])
-    for prefix in groupable_prefixes:
-      if prefix[:-1] == first_part:
-        raise ndb.Return({
-            p + '/' + prefix + self.test_suite[len(first_part) + 1:]
-            for p in test_paths})
+    groupable_prefixes = stored_object.GetIfCached(
+        GROUPABLE_TEST_SUITE_PREFIXES_KEY)
+    if groupable_prefixes is None:
+      groupable_prefixes = yield stored_object.GetCachedAsync(
+          GROUPABLE_TEST_SUITE_PREFIXES_KEY)
+    if groupable_prefixes is not None:
+      for prefix in groupable_prefixes:
+        if prefix[:-1] == first_part:
+          raise ndb.Return({
+              p + '/' + prefix + self.test_suite[len(first_part) + 1:]
+              for p in test_paths})
 
     raise ndb.Return({p + '/' + self.test_suite for p in test_paths})
 
   @ndb.tasklet
   def _AppendMeasurement(self, test_paths):
-    poly_measurement_test_suites = yield self._GetConfiguration(
-        POLY_MEASUREMENT_TEST_SUITES_KEY, [])
-    if self.test_suite in poly_measurement_test_suites:
+    poly_measurement_test_suites = stored_object.GetIfCached(
+        POLY_MEASUREMENT_TEST_SUITES_KEY)
+    if poly_measurement_test_suites is None:
+      poly_measurement_test_suites = yield stored_object.GetCachedAsync(
+          POLY_MEASUREMENT_TEST_SUITES_KEY)
+    if (poly_measurement_test_suites and
+        self.test_suite in poly_measurement_test_suites):
       raise ndb.Return({p + '/' + self.measurement.replace(':', '/')
                         for p in test_paths})
 
@@ -339,8 +364,12 @@ class Descriptor(object):
         'memory.top_10_mobile',
         'v8:runtime_stats.top_25',
     ]
-    poly_case_test_suites += yield self._GetConfiguration(
-        TWO_TWO_TEST_SUITES_KEY, [])
+    two_two_suites = stored_object.GetIfCached(TWO_TWO_TEST_SUITES_KEY)
+    if two_two_suites is None:
+      two_two_suites = yield stored_object.GetCachedAsync(
+          TWO_TWO_TEST_SUITES_KEY)
+    if two_two_suites is not None:
+      poly_case_test_suites += two_two_suites
     if self.test_suite in poly_case_test_suites:
       raise ndb.Return({p + '/' + self.test_case.replace(':', '/')
                         for p in test_paths})

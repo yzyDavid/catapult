@@ -30,7 +30,7 @@ class ReportTemplateTest(testing_common.TestCase):
     stored_object.Set(descriptor.PARTIAL_TEST_SUITES_KEY, [])
     stored_object.Set(descriptor.COMPOSITE_TEST_SUITES_KEY, [])
     stored_object.Set(descriptor.GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])
-    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
+    stored_object.ResetCacheForTesting()
 
     report_template.ReportTemplate(
         id='ex-id',
