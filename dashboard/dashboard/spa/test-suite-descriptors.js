@@ -127,8 +127,7 @@ tr.exportTo('cp', () => {
         testCases: new Set(),
         testCaseTags: new Set(),
       };
-      const batches = cp.RequestBase.batchResponses(
-          promises, options.getDelayPromise);
+      const batches = cp.batchResponses(promises, options.getDelayPromise);
       for await (const {results} of batches) {
         for (const descriptor of results) {
           if (!descriptor) continue;

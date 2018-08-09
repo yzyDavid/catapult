@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="cp-radio">
+  <template>
+    <style>
+      input {
+        display: none;
+      }
+      input:checked + label:before {
+        border-color: #337ab7;
+      }
+      input:checked + label:after {
+        transform: scale(1);
+      }
+      label {
+        align-items: center;
+        display: inline-flex;
+        height: 20px;
+        position: relative;
+        padding: 0 30px;
+        margin-bottom: 0;
+        cursor: pointer;
+        vertical-align: bottom;
+        white-space: nowrap;
+      }
+      label:before, label:after {
+        position: absolute;
+        content: '';
+        border-radius: 50%;
+        transition: all var(--transition-short) ease;
+        transition-property: transform, border-color;
+      }
+      label:before {
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(0, 0, 0, 0.54);
+      }
+      label:after {
+        top: 5px;
+        left: 5px;
+        width: 10px;
+        height: 10px;
+        transform: scale(0);
+        background: #337ab7;
+      }
+    </style>
+
+    <input
+        type="radio"
+        id="native"
+        checked="{{checked}}"
+        disabled="[[disabled]]"
+        on-change="onChange_">
+    <label for="native"><slot></slot></label>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/cp-radio.js"></script>

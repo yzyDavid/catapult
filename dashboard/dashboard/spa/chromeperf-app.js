@@ -258,7 +258,7 @@ tr.exportTo('cp', () => {
         })(dispatch, getState);
 
         // Wait for ChromeperfApp and its reducers to be registered.
-        await cp.ElementBase.afterRender();
+        await cp.afterRender();
 
         // Create the First Contentful Paint with a placeholder table in the
         // ReportSection. ReportSection will also fetch public /api/report/names
@@ -325,7 +325,7 @@ tr.exportTo('cp', () => {
       });
       cp.ChromeperfApp.actions.updateLocation(statePath)(dispatch, getState);
 
-      await cp.ElementBase.timeout(5000);
+      await cp.timeout(5000);
       const state = Polymer.Path.get(getState(), statePath);
       if (state.closedAlertsIds && !state.closedAlertsIds.includes(sectionId)) {
         // This alerts section was reopened.
@@ -562,7 +562,7 @@ tr.exportTo('cp', () => {
       });
       cp.ChromeperfApp.actions.updateLocation(statePath)(dispatch, getState);
 
-      await cp.ElementBase.timeout(5000);
+      await cp.timeout(5000);
       const state = Polymer.Path.get(getState(), statePath);
       if (state.closedChartIds && !state.closedChartIds.includes(sectionId)) {
         // This chart was reopened.

@@ -3,8 +3,10 @@
    found in the LICENSE file.
 */
 'use strict';
-tr.exportTo('cp', () => {
-  class CpInput extends cp.ElementBase {
+(() => {
+  class CpInput extends Polymer.Element {
+    static get is() { return 'cp-input'; }
+
     connectedCallback() {
       super.connectedCallback();
       if (this.autofocus) {
@@ -18,16 +20,16 @@ tr.exportTo('cp', () => {
 
     async focus() {
       this.nativeInput.focus();
-      while (cp.ElementBase.getActiveElement() !== this.nativeInput) {
-        await cp.ElementBase.timeout(50);
+      while (cp.getActiveElement() !== this.nativeInput) {
+        await cp.timeout(50);
         this.nativeInput.focus();
       }
     }
 
     async blur() {
       this.nativeInput.blur();
-      while (cp.ElementBase.getActiveElement() === this.nativeInput) {
-        await cp.ElementBase.timeout(50);
+      while (cp.getActiveElement() === this.nativeInput) {
+        await cp.timeout(50);
         this.nativeInput.blur();
       }
     }
@@ -47,9 +49,5 @@ tr.exportTo('cp', () => {
     value: {type: String},
   };
 
-  cp.ElementBase.register(CpInput);
-
-  return {
-    CpInput,
-  };
-});
+  customElements.define(CpInput.is, CpInput);
+})();

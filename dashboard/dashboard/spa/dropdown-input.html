@@ -6,16 +6,16 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
-<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
 <link rel="import" href="/dashboard/spa/cp-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/option-group.html">
+<link rel="import" href="/dashboard/spa/utils.html">
 
 <dom-module id="dropdown-input">
   <template>
-    <style include="paper-material-styles">
+    <style>
       .error {
-        color: red;
+        color: var(--error-color);
         visibility: hidden;
       }
       .error[show] {
@@ -24,19 +24,19 @@ found in the LICENSE file.
 
       #input_clear {
         cursor: pointer;
-        height: 24px;
-        width: 24px;
+        flex-shrink: 0;
+        height: var(--icon-size);
+        width: var(--icon-size);
       }
 
       #dropdown {
-        @apply --paper-material-elevation-2;
-        background-color: white;
-        font-size: 12px;
+        @apply --elevation-2;
+        background-color: var(--background-color);
         max-height: 600px;
         overflow: auto;
         padding-right: 8px;
         position: absolute;
-        z-index: 100;
+        z-index: var(--layer-menu);
       }
 
       #dropdown iron-collapse {
@@ -45,7 +45,7 @@ found in the LICENSE file.
       }
 
       #recommended, #columns {
-        border-bottom: 1px solid var(--paper-indigo-500);
+        border-bottom: 1px solid var(--primary-color-dark);
         display: flex;
         padding-bottom: 4px;
       }

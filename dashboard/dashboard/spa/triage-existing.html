@@ -5,16 +5,15 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
 <link rel="import" href="/dashboard/spa/cp-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 
 <dom-module id="triage-existing">
   <template>
-    <style include="paper-material-styles">
+    <style>
       :host {
-        @apply --paper-material-elevation-2;
-        background: white;
+        @apply --elevation-2;
+        background: var(--background-color);
         color: initial;
         display: none;
         flex-direction: column;
@@ -22,7 +21,7 @@ found in the LICENSE file.
         padding: 16px;
         position: absolute;
         right: 0;
-        z-index: 100;
+        z-index: var(--layer-menu);
       }
       :host([is-open]) {
         display: flex;
@@ -39,7 +38,7 @@ found in the LICENSE file.
         flex-grow: 1;
       }
 
-      paper-toggle-button {
+      cp-switch {
         margin-right: 16px;
       }
 
@@ -93,11 +92,11 @@ found in the LICENSE file.
 
       <span class="spacer">&nbsp;</span>
 
-      <paper-toggle-button
-          checked$="[[onlyIntersectingBugs]]"
+      <cp-switch
+          checked="[[onlyIntersectingBugs]]"
           on-change="onToggleOnlyIntersectingBugs_">
         Intersecting Bugs Only
-      </paper-toggle-button>
+      </cp-switch>
     </div>
 
     <div id="table_container">

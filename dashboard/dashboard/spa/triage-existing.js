@@ -4,15 +4,6 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  function elementIsChildOf(el, potentialParent) {
-    if (el === potentialParent) return false;
-    while (Polymer.dom(el).parentNode) {
-      if (el === potentialParent) return true;
-      el = Polymer.dom(el).parentNode;
-    }
-    return false;
-  }
-
   class TriageExisting extends cp.ElementBase {
     ready() {
       super.ready();
@@ -46,7 +37,7 @@ tr.exportTo('cp', () => {
 
     async onBlur_(event) {
       if (event.relatedTarget === this ||
-          elementIsChildOf(event.relatedTarget, this)) {
+          cp.isElementChildOf(event.relatedTarget, this)) {
         this.$.bug_input.focus();
         return;
       }

@@ -123,7 +123,7 @@ tr.exportTo('cp', () => {
     }
 
     async onRelatedTabTap_(event) {
-      this.dispatch('selectRelatedTab', this.statePath, event.model.tabIndex);
+      this.dispatch('selectRelatedTab', this.statePath, event.model.tab.name);
     }
 
     async onSparklineTap_(event) {
@@ -174,7 +174,7 @@ tr.exportTo('cp', () => {
       center: {type: Boolean},
       relatedTabs: {type: Array},
       sectionId: {type: String},
-      selectedRelatedTabIndex: {type: Number},
+      selectedRelatedTabName: {type: String},
       showHistogramsControls: {type: Boolean},
       title: {type: String},
       zeroYAxis: {type: Boolean},
@@ -408,7 +408,7 @@ tr.exportTo('cp', () => {
       // effectively just prefetching the timeseries and pre-stamping the DOM.
       let state = Polymer.Path.get(getState(), statePath);
       for (let tabIndex = 0; tabIndex < state.relatedTabs.length; ++tabIndex) {
-        await cp.ElementBase.idlePeriod();
+        await cp.idle();
         state = Polymer.Path.get(getState(), statePath);
         if (tabIndex >= state.relatedTabs.length) break;
         cp.ElementBase.actions.updateObject(
@@ -419,13 +419,15 @@ tr.exportTo('cp', () => {
       */
     },
 
-    selectRelatedTab: (statePath, selectedRelatedTabIndex) =>
+    selectRelatedTab: (statePath, selectedRelatedTabName) =>
       async(dispatch, getState) => {
         const state = Polymer.Path.get(getState(), statePath);
-        if (selectedRelatedTabIndex === state.selectedRelatedTabIndex) {
-          selectedRelatedTabIndex = -1;
+        if (selectedRelatedTabName === state.selectedRelatedTabName) {
+          selectedRelatedTabName = '';
         }
 
+        const selectedRelatedTabIndex = state.relatedTabs.findIndex(tab =>
+          tab.name === selectedRelatedTabName);
         if (selectedRelatedTabIndex >= 0 &&
             state.relatedTabs[selectedRelatedTabIndex].renderedSparklines ===
             undefined) {
@@ -437,7 +439,7 @@ tr.exportTo('cp', () => {
         }
 
         cp.ElementBase.actions.updateObject(statePath, {
-          selectedRelatedTabIndex,
+          selectedRelatedTabName,
         })(dispatch, getState);
       },
 
@@ -884,15 +886,14 @@ tr.exportTo('cp', () => {
       maybeAddParameterTab('bot', 'Bots', 'botses');
       maybeAddParameterTab('testCase', 'Test cases', 'testCaseses');
 
-      let selectedRelatedTabIndex = -1;
       if (state.selectedRelatedTabName) {
-        selectedRelatedTabIndex = relatedTabs.findIndex(tab =>
+        const selectedRelatedTabIndex = relatedTabs.findIndex(tab =>
           tab.name === state.selectedRelatedTabName);
         relatedTabs[selectedRelatedTabIndex].renderedSparklines =
           relatedTabs[selectedRelatedTabIndex].sparklines;
       }
 
-      return {...state, relatedTabs, selectedRelatedTabIndex};
+      return {...state, relatedTabs};
     },
 
     updateSparklineRevisions: (state, action, rootState) => {
@@ -984,7 +985,6 @@ tr.exportTo('cp', () => {
       showHistogramsControls: false,
       relatedTabs: [],
       selectedRelatedTabName,
-      selectedRelatedTabIndex: -1,
       selectedLineDescriptorHash: options.selectedLineDescriptorHash,
       testSuite: {
         label: 'Test suites (loading)',
@@ -1195,11 +1195,6 @@ tr.exportTo('cp', () => {
   };
 
   ChartSection.getSessionState = state => {
-    let selectedRelatedTabName;
-    if (state.selectedRelatedTabIndex >= 0) {
-      selectedRelatedTabName = state.relatedTabs[
-          state.selectedRelatedTabIndex].name;
-    }
     return {
       parameters: {
         testSuites: state.testSuite.selectedOptions,
@@ -1218,7 +1213,7 @@ tr.exportTo('cp', () => {
       zeroYAxis: state.zeroYAxis,
       fixedXAxis: state.fixedXAxis,
       mode: state.mode,
-      selectedRelatedTabName,
+      selectedRelatedTabName: state.selectedRelatedTabName,
       selectedLineDescriptorHash: state.selectedLineDescriptorHash,
     };
   };
@@ -1284,10 +1279,8 @@ tr.exportTo('cp', () => {
     if (state.zeroYAxis) {
       routeParams.set('zeroY', '');
     }
-    if (state.selectedRelatedTabIndex >= 0 &&
-        state.relatedTabs[state.selectedRelatedTabIndex]) {
-      routeParams.set('spark',
-          state.relatedTabs[state.selectedRelatedTabIndex].name);
+    if (state.selectedRelatedTabName) {
+      routeParams.set('spark', state.selectedRelatedTabName);
     }
     if (!state.isExpanded) {
       routeParams.set('compact', '');

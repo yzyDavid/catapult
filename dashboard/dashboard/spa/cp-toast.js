@@ -4,8 +4,11 @@
 */
 'use strict';
 (() => {
-  class RaisedButton extends Polymer.Element {
-    static get is() { return 'raised-button'; }
+  class CpToast extends Polymer.Element {
+    static get is() { return 'cp-toast'; }
   }
-  customElements.define(RaisedButton.is, RaisedButton);
+  CpToast.properties = {
+    opened: {type: Boolean},
+  };
+  customElements.define(CpToast.is, CpToast);
 })();

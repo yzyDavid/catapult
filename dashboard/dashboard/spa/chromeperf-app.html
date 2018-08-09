@@ -11,10 +11,10 @@ found in the LICENSE file.
 <link rel="import" href="/bower_components/iron-icons/communication-icons.html">
 <link rel="import" href="/bower_components/iron-icons/editor-icons.html">
 <link rel="import" href="/bower_components/iron-icons/iron-icons.html">
-<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
-<link rel="import" href="/bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="/dashboard/spa/alerts-section.html">
 <link rel="import" href="/dashboard/spa/chart-section.html">
+<link rel="import" href="/dashboard/spa/cp-loading.html">
+<link rel="import" href="/dashboard/spa/cp-toast.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/pivot-section.html">
 <link rel="import" href="/dashboard/spa/raised-button.html">
@@ -26,12 +26,6 @@ found in the LICENSE file.
 <dom-module id="chromeperf-app">
   <template>
     <style>
-      :host {
-        /* https://material.io/guidelines/motion/material-motion.html#material-motion-how-does-material-move */
-        --transition-long: 0.8s;
-        --transition-short: 0.4s;
-      }
-
       #nav {
         align-items: center;
         display: flex;
@@ -57,18 +51,12 @@ found in the LICENSE file.
       }
 
       #nav a {
-        color: var(--paper-indigo-500);
+        color: var(--primary-color-dark);
       }
 
       google-signin {
         margin: 0;
         padding: 8px;
-      }
-
-      paper-progress {
-        --paper-progress-active-color: var(--paper-indigo-500);
-        --paper-progress-container-color: white;
-        width: 100%;
       }
 
       report-section,
@@ -86,7 +74,7 @@ found in the LICENSE file.
         /* Use full-bleed dividers between sections.
            https://material.io/guidelines/components/dividers.html
          */
-        border-bottom: 1px solid var(--paper-indigo-100);
+        border-bottom: 1px solid var(--primary-color-medium);
       }
 
       .buttons {
@@ -102,13 +90,9 @@ found in the LICENSE file.
       }
 
       #please_signin {
-        color: var(--paper-red-500);
+        color: var(--error-color);
         font-size: larger;
         font-weight: bold;
-      }
-
-      paper-toast {
-        cursor: pointer;
       }
 
       @media (max-width: 1100px) {
@@ -217,8 +201,7 @@ found in the LICENSE file.
       </div>
     </template>
 
-    <paper-progress indeterminate="[[isLoading]]">
-    </paper-progress>
+    <cp-loading loading$="[[isLoading]]"></cp-loading>
 
     <template is="dom-if" if="[[reportSection]]">
       <iron-collapse opened="[[showingReportSection]]">
@@ -289,17 +272,17 @@ found in the LICENSE file.
       [[vulcanizedDate]]
     </span>
 
-    <paper-toast
-        opened="[[closedAlertsIds]]"
-        on-click="onReopenClosedAlerts_">
-      Reopen [[getAlertsTitle_(closedAlertsIds)]]
-    </paper-toast>
+    <cp-toast opened="[[closedAlertsIds]]">
+      <raised-button on-click="onReopenClosedAlerts_">
+        Reopen [[getAlertsTitle_(closedAlertsIds)]]
+      </raised-button>
+    </cp-toast>
 
-    <paper-toast
-        opened="[[closedChartIds]]"
-        on-click="onReopenClosedChart_">
-      Reopen [[getChartTitle_(closedChartIds)]]
-    </paper-toast>
+    <cp-toast opened="[[closedChartIds]]">
+      <raised-button on-click="onReopenClosedChart_">
+        Reopen [[getChartTitle_(closedChartIds)]]
+      </raised-button>
+    </cp-toast>
   </template>
 </dom-module>
 <script src="/dashboard/spa/chromeperf-app.js"></script>

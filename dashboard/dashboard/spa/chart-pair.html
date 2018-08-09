@@ -6,12 +6,10 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/iron-collapse/iron-collapse.html">
-<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
-<link rel="import" href="/bower_components/paper-radio-button/paper-radio-button.html">
-<link rel="import" href="/bower_components/paper-radio-group/paper-radio-group.html">
-<link rel="import" href="/bower_components/paper-tabs/paper-tabs.html">
 <link rel="import" href="/dashboard/spa/chart-parameter.html">
 <link rel="import" href="/dashboard/spa/chart-timeseries.html">
+<link rel="import" href="/dashboard/spa/cp-radio-group.html">
+<link rel="import" href="/dashboard/spa/cp-switch.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/expand-button.html">
 <link rel="import" href="/dashboard/spa/test-suite-descriptors.html">
@@ -46,10 +44,12 @@ found in the LICENSE file.
       }
 
       #options {
-        color: var(--paper-indigo-500);
+        color: var(--primary-color-dark);
         cursor: pointer;
-        height: 24px;
+        height: var(--icon-size);
+        outline: none;
         padding: 0;
+        width: var(--icon-size);
       }
 
       #options_container {
@@ -57,12 +57,21 @@ found in the LICENSE file.
         margin-top: 20px;
       }
 
-      paper-dialog {
-        margin: 0;
+      #options_menu {
+        @apply --elevation-2;
+        background-color: var(--background-color);
+        max-height: 600px;
+        overflow: hidden;
+        outline: none;
+        padding-right: 8px;
+        position: absolute;
+        z-index: var(--layer-menu);
       }
 
-      paper-dialog div {
+      #options_menu_inner {
         display: flex;
+        padding: 16px;
+        overflow: hidden;
       }
 
       .column {
@@ -76,16 +85,6 @@ found in the LICENSE file.
         flex-direction: column;
         white-space: nowrap;
       }
-
-      paper-toggle-button {
-        padding: 4px;
-      }
-
-      paper-radio-group {
-        display: flex;
-        flex-direction: column;
-        --paper-radio-group-item-padding: 4px;
-      }
     </style>
 
     <iron-collapse opened="[[isExpanded]]">
@@ -97,54 +96,57 @@ found in the LICENSE file.
             id="options"
             icon="settings"
             style$="width: calc([[chartLayout.yAxisWidth]]px - 8px);"
+            tabindex="0"
             on-click="onOptionsToggle_">
         </iron-icon>
 
-        <paper-dialog
+        <iron-collapse
+            id="options_menu"
             opened="[[isShowingOptions]]"
-            horizontal-align="left"
-            vertical-align="top"
-            on-iron-overlay-canceled="onOptionsToggle_">
-          <div>
+            tabindex="0"
+            on-blur="onMenuBlur_"
+            on-keyup="onMenuKeyup_">
+          <iron-collapse id="options_menu_inner" horizontal opened="[[isShowingOptions]]">
             <div id="toggles" class="column">
               <b>Options</b>
-              <paper-toggle-button
-                  checked$="[[isLinked]]"
+              <cp-switch
+                  checked="[[isLinked]]"
                   on-change="onToggleLinked_">
                 Link to other charts
-              </paper-toggle-button>
-              <paper-toggle-button
-                  checked$="[[zeroYAxis]]"
+              </cp-switch>
+              <cp-switch
+                  checked="[[zeroYAxis]]"
                   on-change="onToggleZeroYAxis_">
                 Zero Y-Axis
-              </paper-toggle-button>
-              <paper-toggle-button
-                  checked$="[[fixedXAxis]]"
+              </cp-switch>
+              <cp-switch
+                  checked="[[fixedXAxis]]"
                   on-change="onToggleFixedXAxis_">
                 Fixed X-Axis
-              </paper-toggle-button>
+              </cp-switch>
             </div>
             <div class="column">
               <b>Mode</b>
-              <paper-radio-group
+              <cp-radio-group
                   selected="[[mode]]"
                   on-selected-changed="onModeChange_">
-                <paper-radio-button name="normalizeUnit">
+                <cp-radio name="normalizeUnit">
                   Normalize per unit
-                </paper-radio-button>
-                <paper-radio-button name="normalizeLine">
+                </cp-radio>
+                <cp-radio name="normalizeLine">
                   Normalize per line
-                </paper-radio-button>
-                <paper-radio-button name="center">
+                </cp-radio>
+                <cp-radio name="center">
                   Center
-                </paper-radio-button>
-                <paper-radio-button name="delta">
+                </cp-radio>
+                <cp-radio name="delta">
                   Delta
-                </paper-radio-button>
-              </paper-radio-group>
+                </cp-radio>
+              </cp-radio-group>
             </div>
           </div>
-        </paper-dialog>
+          </iron-collapse>
+        </iron-collapse>
       </span>
 
       <chart-timeseries

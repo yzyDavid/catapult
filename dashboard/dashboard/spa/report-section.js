@@ -558,7 +558,7 @@ tr.exportTo('cp', () => {
         }
       }
 
-      const batches = cp.RequestBase.batchResponses(promises);
+      const batches = cp.batchResponses(promises);
       for await (const {results} of batches) {
         rootState = getState();
         state = Polymer.Path.get(rootState, statePath);
@@ -613,7 +613,7 @@ tr.exportTo('cp', () => {
     renderEditForms: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
       await Promise.all(state.tables.map(async(table, tableIndex) => {
-        await cp.ElementBase.idlePeriod();
+        await cp.idle();
         await ReportSection.actions.renderEditForm(statePath, tableIndex)(
             dispatch, getState);
       }));
@@ -638,7 +638,7 @@ tr.exportTo('cp', () => {
         }
       }
       for (let i = 0; i < lineDescriptors.length; i += 5) {
-        await cp.ElementBase.idlePeriod();
+        await cp.idle();
         await cp.ChartTimeseries.actions.prefetch(
             statePath, lineDescriptors.slice(i, i + 5))(dispatch, getState);
       }
@@ -773,7 +773,7 @@ tr.exportTo('cp', () => {
       cp.ElementBase.actions.updateObject(statePath, {
         copiedMeasurements: true,
       })(dispatch, getState);
-      await cp.ElementBase.timeout(5000);
+      await cp.timeout(5000);
       // TODO return if a different table was copied during the timeout.
       cp.ElementBase.actions.updateObject(statePath, {
         copiedMeasurements: false,

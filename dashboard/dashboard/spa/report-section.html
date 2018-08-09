@@ -5,9 +5,8 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
-<link rel="import" href="/bower_components/paper-styles/element-styles/paper-material-styles.html">
-<link rel="import" href="/bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="/dashboard/spa/cp-loading.html">
+<link rel="import" href="/dashboard/spa/cp-toast.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/raised-button.html">
@@ -18,7 +17,7 @@ found in the LICENSE file.
 
 <dom-module id="report-section">
   <template>
-    <style include="paper-material-styles">
+    <style>
       #controls {
         display: flex;
         align-items: center;
@@ -28,19 +27,13 @@ found in the LICENSE file.
         width: 250px;
       }
 
-      paper-progress {
-        --paper-progress-active-color: var(--paper-indigo-500);
-        --paper-progress-container-color: white;
-        width: 100%;
-      }
-
       #prev_mstone,
       #next_mstone {
         font-size: larger;
       }
 
       #alerts {
-        color: var(--paper-indigo-500);
+        color: var(--primary-color-dark);
       }
 
       #min_revision {
@@ -56,8 +49,8 @@ found in the LICENSE file.
         align-self: flex-start;
         cursor: pointer;
         flex-shrink: 0;
-        height: 24px;
-        width: 24px;
+        height: var(--icon-size);
+        width: var(--icon-size);
       }
 
       #tables {
@@ -81,7 +74,7 @@ found in the LICENSE file.
       }
 
       table[placeholder] {
-        color: var(--paper-grey-500);
+        color: var(--neutral-color-dark);
       }
 
       h2 {
@@ -105,13 +98,13 @@ found in the LICENSE file.
       #edit,
       #copy,
       #documentation {
-        color: var(--paper-indigo-500);
+        color: var(--primary-color-dark);
         cursor: pointer;
         flex-shrink: 0;
         margin: 0 0 0 8px;
         padding: 0;
-        width: 24px;
-        height: 24px;
+        width: var(--icon-size);
+        height: var(--icon-size);
       }
 
       .report_name span {
@@ -154,22 +147,22 @@ found in the LICENSE file.
 
       .template_row_button iron-icon {
         cursor: pointer;
-        height: 24px;
-        width: 24px;
+        height: var(--icon-size);
+        width: var(--icon-size);
       }
 
       #scratch {
         opacity: 0;
         position: absolute;
-        z-index: -100;
+        z-index: var(--layer-hidden);
       }
 
       #tooltip {
-        background-color: white;
-        border: 2px solid var(--paper-indigo-500);
+        background-color: var(--background-color);
+        border: 2px solid var(--primary-color-dark);
         padding: 8px;
         position: absolute;
-        z-index: 100;
+        z-index: var(--layer-menu);
       }
 
       #tooltip td {
@@ -177,7 +170,12 @@ found in the LICENSE file.
       }
 
       .error {
-        color: red;
+        color: var(--error-color);
+      }
+
+      #copied {
+        @apply --elevation-2;
+        padding: 8px;
       }
     </style>
 
@@ -242,8 +240,7 @@ found in the LICENSE file.
       </iron-icon>
     </div>
 
-    <paper-progress indeterminate="[[isLoading]]">
-    </paper-progress>
+    <cp-loading loading$="[[isLoading]]"></cp-loading>
 
     <div id="tables">
       <template is="dom-repeat" items="[[tables]]" as="table" index-as="tableIndex">
@@ -476,9 +473,11 @@ found in the LICENSE file.
       </template>
     </div>
 
-    <paper-toast opened="[[copiedMeasurements]]">
-      Copied measurements!
-    </paper-toast>
+    <cp-toast opened="[[copiedMeasurements]]">
+      <span id="copied">
+        Copied measurements!
+      </span>
+    </cp-toast>
 
     <div id="scratch">
     </div>

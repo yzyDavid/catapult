@@ -4,8 +4,8 @@
 */
 'use strict';
 (() => {
-  class CpCheckbox extends Polymer.Element {
-    static get is() { return 'cp-checkbox'; }
+  class CpRadio extends Polymer.Element {
+    static get is() { return 'cp-radio'; }
 
     onChange_(event) {
       this.dispatchEvent(new CustomEvent('change', {
@@ -15,10 +15,11 @@
     }
   }
 
-  CpCheckbox.properties = {
+  CpRadio.properties = {
+    name: {type: String},
     checked: {type: Boolean},
     disabled: {type: Boolean},
   };
 
-  customElements.define(CpCheckbox.is, CpCheckbox);
+  customElements.define(CpRadio.is, CpRadio);
 })();

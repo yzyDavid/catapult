@@ -5,12 +5,60 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 <title>Chromeperf Dashboard</title>
+
+<custom-style>
 <style>
+  :root {
+    --layer-menu: 100;
+    --layer-hidden: -100;
+    --icon-size: 24px;
+
+    /* https://material.io/guidelines/motion/material-motion.html#material-motion-how-does-material-move */
+    --transition-long: 0.8s;
+    --transition-short: 0.4s;
+
+    --primary-color-dark: #3f51b5;  /* paper-indigo-500 */
+    --primary-color-medium: #c5cae9;  /* paper-indigo-100 */
+    --primary-color-light: #e8eaf6;  /* paper-indigo-50 */
+    --secondary-color-dark: #ebe252;
+    --secondary-color-light: #faf6c8;
+    --neutral-color-dark: #9e9e9e;  /* paper-grey-500 */
+    --neutral-color-light: #f5f5f5;  /* paper-grey-100 */
+    --error-color: #f44336;  /* paper-red-500 */
+    --improvement-color: #4caf50;  /* paper-green-500 */
+    --background-color: white;
+    --foreground-color: black;
+
+    /* paper-material-styles */
+    --elevation-1: {
+      box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
+                  0 1px 5px 0 rgba(0, 0, 0, 0.12),
+                  0 3px 1px -2px rgba(0, 0, 0, 0.2);
+    };
+    --elevation-2: {
+      box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+                  0 1px 10px 0 rgba(0, 0, 0, 0.12),
+                  0 2px 4px -1px rgba(0, 0, 0, 0.4);
+    };
+    --elevation-3: {
+      box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+                  0 1px 18px 0 rgba(0, 0, 0, 0.12),
+                  0 3px 5px -1px rgba(0, 0, 0, 0.4);
+    };
+    --elevation-4: {
+      box-shadow: 0 8px 10px 1px rgba(0, 0, 0, 0.14),
+                  0 3px 14px 2px rgba(0, 0, 0, 0.12),
+                  0 5px 5px -3px rgba(0, 0, 0, 0.4);
+    };
+  }
   body {
     margin: 0;
-    font: 12px helvetica,arial,sans-serif;
+    font-family: helvetica,arial,sans-serif;
+    font-size: 13px;
   }
 </style>
+</custom-style>
+
 <script>
 'use strict';
 // Use native shadow DOM to encapsulate web components instead of the slower
@@ -42,6 +90,7 @@ ga('create', 'UA-98760012-3', 'auto');
   document.head.appendChild(script);
 })();
 </script>
+
 <link rel="import" href="/bower_components/polymer/polymer.html" data-suppress-import-order>
 <link rel="import" href="/tracing/base/base.html" data-suppress-import-order>
 <script src="/dashboard/spa/measure_element.js"></script>

@@ -271,8 +271,6 @@ tr.exportTo('cp', () => {
         timeserieses = timeserieses.filter(ts => ts.data.length > 0);
         if (timeserieses.length === 0) return;
 
-        await cp.ElementBase.afterRender(); // TODO remove
-
         const state = Polymer.Path.get(getState(), statePath);
 
         if (!state) {

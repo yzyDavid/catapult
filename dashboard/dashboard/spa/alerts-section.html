@@ -6,12 +6,10 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/iron-icon/iron-icon.html">
-<link rel="import" href="/bower_components/paper-dialog/paper-dialog.html">
-<link rel="import" href="/bower_components/paper-progress/paper-progress.html">
-<link rel="import" href="/bower_components/paper-toast/paper-toast.html">
-<link rel="import" href="/bower_components/paper-toggle-button/paper-toggle-button.html">
 <link rel="import" href="/dashboard/spa/alerts-table.html">
 <link rel="import" href="/dashboard/spa/chart-pair.html">
+<link rel="import" href="/dashboard/spa/cp-loading.html">
+<link rel="import" href="/dashboard/spa/cp-switch.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/triage-existing.html">
@@ -40,10 +38,6 @@ found in the LICENSE file.
         margin-right: 8px;
       }
 
-      paper-toggle-button {
-        display: inline-flex;
-      }
-
       #triaged {
         margin-left: 8px;
         margin-right: 8px;
@@ -54,26 +48,24 @@ found in the LICENSE file.
         text-align: center;
       }
 
-      paper-progress {
-        --paper-progress-active-color: var(--paper-indigo-500);
-        --paper-progress-container-color: white;
-        width: 100%;
-      }
-
       chart-pair {
         height: 215px;
         margin-bottom: 8px;
       }
 
-      #recent_bugs {
-        border-radius: 24px;
-        background-color: var(--paper-indigo-50);
-        color: var(--paper-indigo-500);
+      #recent_bugs_container {
+        position: relative;
       }
 
-      #recent_bugs[disabled] {
-        background-color: var(--paper-grey-100);
-        color: var(--paper-grey-500);
+      .bug_notification {
+        @apply --elevation-2;
+        background-color: var(--background-color);
+        overflow: hidden;
+        padding: 8px;
+        position: absolute;
+        right: 0;
+        white-space: nowrap;
+        z-index: var(--layer-menu);
       }
 
       #recent_bugs_table {
@@ -81,18 +73,12 @@ found in the LICENSE file.
         padding: 0;
       }
 
-      paper-dialog {
-        margin: 0;
-        padding: 8px;
-        position: absolute !important;
-      }
-
       #close {
         align-self: flex-start;
         cursor: pointer;
         flex-shrink: 0;
-        height: 24px;
-        width: 24px;
+        height: var(--icon-size);
+        width: var(--icon-size);
       }
 
       #triage_controls {
@@ -103,8 +89,8 @@ found in the LICENSE file.
       }
 
       #triage_controls[anySelected] {
-        background-color: var(--paper-indigo-50);
-        color: var(--paper-indigo-500);
+        background-color: var(--primary-color-light);
+        color: var(--primary-color-dark);
       }
 
       #triage_controls .button {
@@ -116,7 +102,7 @@ found in the LICENSE file.
       }
 
       #triage_controls .button[disabled] {
-        color: var(--paper-grey-500);
+        color: var(--neutral-color-dark);
         font-weight: normal;
       }
 
@@ -125,12 +111,8 @@ found in the LICENSE file.
       }
 
       #edit, #documentation {
-        color: var(--paper-indigo-500);
+        color: var(--primary-color-dark);
         padding: 8px;
-      }
-
-      paper-toast a {
-        color: var(--paper-indigo-300);
       }
     </style>
 
@@ -204,21 +186,21 @@ found in the LICENSE file.
         </template>
       </template>
 
-      <paper-toggle-button
+      <cp-switch
           id="improvements"
           disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingImprovements]]"
           on-change="onToggleImprovements_">
         Improvements
-      </paper-toggle-button>
+      </cp-switch>
 
-      <paper-toggle-button
+      <cp-switch
           id="triaged"
           disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingTriaged]]"
           on-change="onToggleTriaged_">
         Triaged
-      </paper-toggle-button>
+      </cp-switch>
 
       <span id="summary">
         <template is="dom-if" if="[[!areAlertGroupsPlaceholders]]">
@@ -226,7 +208,7 @@ found in the LICENSE file.
         </template>
       </span>
 
-      <span>
+      <span id="recent_bugs_container">
         <raised-button
             id="recent_bugs"
             disabled$="[[_empty(recentlyModifiedBugs)]]"
@@ -234,45 +216,34 @@ found in the LICENSE file.
           Recent Bugs
         </raised-button>
 
-        <paper-dialog
-            opened="[[hasTriagedNew]]"
-            horizontal-align="right"
-            vertical-align="top"
-            no-overlap
-            on-iron-overlay-canceled="onCancelTriagedNew_">
+        <iron-collapse
+            class="bug_notification"
+            opened="[[hasTriagedNew]]">
           Created
           <a href="[[crbug_(triagedBugId)]]" target="_blank">
             [[triagedBugId]]
           </a>
-        </paper-dialog>
+        </iron-collapse>
 
-        <paper-dialog
-            opened="[[hasTriagedExisting]]"
-            horizontal-align="right"
-            vertical-align="top"
-            no-overlap
-            on-iron-overlay-canceled="onCancelTriagedExisting_">
+        <iron-collapse
+            class="bug_notification"
+            opened="[[hasTriagedExisting]]">
           Updated
           <a href="[[crbug_(triagedBugId)]]" target="_blank">
             [[triagedBugId]]
           </a>
-        </paper-dialog>
+        </iron-collapse>
 
-        <paper-dialog
-            opened="[[hasIgnored]]"
-            horizontal-align="right"
-            vertical-align="top"
-            no-overlap
-            on-iron-overlay-canceled="onCancelIgnored_">
+        <iron-collapse
+            class="bug_notification"
+            opened="[[hasIgnored]]">
           Ignored [[ignoredCount]] alert[[_plural(ignoredCount)]]
-        </paper-dialog>
+        </iron-collapse>
 
-        <paper-dialog
+        <iron-collapse
+            class="bug_notification"
             opened="[[showingRecentlyModifiedBugs]]"
-            horizontal-align="right"
-            vertical-align="top"
-            no-overlap
-            on-iron-overlay-canceled="onCancelRecentlyModifiedBugs_">
+            on-blur="onRecentlyModifiedBugsBlur_">
           <table id="recent_bugs_table">
             <thead>
               <tr>
@@ -291,7 +262,7 @@ found in the LICENSE file.
               </tr>
             </template>
           </table>
-        </paper-dialog>
+        </iron-collapse>
       </span>
 
       <iron-icon
@@ -301,8 +272,8 @@ found in the LICENSE file.
       </iron-icon>
     </div>
 
-    <paper-progress indeterminate="[[isLoading_(isLoading, preview.isLoading)]]">
-    </paper-progress>
+    <cp-loading loading$="[[isLoading_(isLoading, preview.isLoading)]]">
+    </cp-loading>
 
     <template is="dom-if" if="[[!_empty(alertGroups)]]">
       <div id="triage_controls"

@@ -4,15 +4,6 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  function elementIsChildOf(el, potentialParent) {
-    if (el === potentialParent) return false;
-    while (Polymer.dom(el).parentNode) {
-      if (el === potentialParent) return true;
-      el = Polymer.dom(el).parentNode;
-    }
-    return false;
-  }
-
   class DropdownInput extends cp.ElementBase {
     connectedCallback() {
       super.connectedCallback();
@@ -60,8 +51,8 @@ tr.exportTo('cp', () => {
 
     async onBlur_(event) {
       if (event.relatedTarget === this.$.dropdown ||
-          elementIsChildOf(event.relatedTarget, this) ||
-          elementIsChildOf(event.relatedTarget, this.$.dropdown)) {
+          cp.isElementChildOf(event.relatedTarget, this) ||
+          cp.isElementChildOf(event.relatedTarget, this.$.dropdown)) {
         this.$.input.focus();
         return;
       }

@@ -11,16 +11,16 @@ found in the LICENSE file.
   <template>
     <style>
       :host {
-        border-bottom: 1px solid var(--paper-indigo-500);
+        border-bottom: 1px solid var(--primary-color-dark);
         display: flex;
         padding-bottom: 1px;
       }
       :host([error]) {
-        border-bottom: 2px solid var(--paper-red-500);
+        border-bottom: 2px solid var(--error-color);
         padding-bottom: 0px;
       }
       :host([disabled]) {
-        border-bottom: 1px solid var(--paper-grey-500);
+        border-bottom: 1px solid var(--neutral-color-dark);
         padding-bottom: 1px;
       }
       :host([disabled]) input {
@@ -29,9 +29,9 @@ found in the LICENSE file.
       input {
         border: 0;
         flex-grow: 1;
-        font-size: 12px;
+        font-size: inherit;
         outline: none;
-        padding: 8px;
+        padding: calc(var(--icon-size) - 1em - 6px) 4px 4px 4px;
         width: 100%;
       }
     </style>

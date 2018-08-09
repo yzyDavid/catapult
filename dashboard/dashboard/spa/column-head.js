@@ -3,8 +3,10 @@
    found in the LICENSE file.
 */
 'use strict';
-tr.exportTo('cp', () => {
-  class ColumnHead extends cp.ElementBase {
+(() => {
+  class ColumnHead extends Polymer.Element {
+    static get is() { return 'column-head'; }
+
     getIcon_(name, sortColumn, sortDescending) {
       if (name !== sortColumn) return '';
       return sortDescending ? 'arrow-downward' : 'arrow-upward';
@@ -26,9 +28,5 @@ tr.exportTo('cp', () => {
     },
   };
 
-  cp.ElementBase.register(ColumnHead);
-
-  return {
-    ColumnHead,
-  };
-});
+  customElements.define(ColumnHead.is, ColumnHead);
+})();

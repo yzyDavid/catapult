@@ -4,8 +4,8 @@
 */
 'use strict';
 (() => {
-  class RaisedButton extends Polymer.Element {
-    static get is() { return 'raised-button'; }
+  class CpLoading extends Polymer.Element {
+    static get is() { return 'cp-loading'; }
   }
-  customElements.define(RaisedButton.is, RaisedButton);
+  customElements.define(CpLoading.is, CpLoading);
 })();

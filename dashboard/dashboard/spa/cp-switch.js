@@ -4,8 +4,8 @@
 */
 'use strict';
 (() => {
-  class CpCheckbox extends Polymer.Element {
-    static get is() { return 'cp-checkbox'; }
+  class CpSwitch extends Polymer.Element {
+    static get is() { return 'cp-switch'; }
 
     onChange_(event) {
       this.dispatchEvent(new CustomEvent('change', {
@@ -15,10 +15,10 @@
     }
   }
 
-  CpCheckbox.properties = {
+  CpSwitch.properties = {
     checked: {type: Boolean},
     disabled: {type: Boolean},
   };
 
-  customElements.define(CpCheckbox.is, CpCheckbox);
+  customElements.define(CpSwitch.is, CpSwitch);
 })();

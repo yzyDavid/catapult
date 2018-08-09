@@ -3,14 +3,16 @@
    found in the LICENSE file.
 */
 'use strict';
-tr.exportTo('cp', () => {
-  class CpTextarea extends cp.ElementBase {
+(() => {
+  class CpTextarea extends Polymer.Element {
+    static get is() { return 'cp-textarea'; }
+
     async connectedCallback() {
       super.connectedCallback();
       if (this.autofocus) {
-        while (cp.ElementBase.getActiveElement() !== this.nativeInput) {
+        while (cp.getActiveElement() !== this.nativeInput) {
           this.$.input.focus();
-          await cp.ElementBase.timeout(50);
+          await cp.timeout(50);
         }
       }
     }
@@ -34,9 +36,5 @@ tr.exportTo('cp', () => {
     placeholder: {type: String},
   };
 
-  cp.ElementBase.register(CpTextarea);
-
-  return {
-    CpTextarea,
-  };
-});
+  customElements.define(CpTextarea.is, CpTextarea);
+})();

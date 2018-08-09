@@ -41,7 +41,7 @@ tr.exportTo('cp', () => {
       if (cp.IS_DEBUG) {
         // Simulate network latency in order to test loading state e.g. progress
         // bars.
-        await cp.ElementBase.timeout(1000);
+        await cp.timeout(1000);
         return this.postProcess_(await this.localhostResponse_());
       }
 
@@ -152,66 +152,6 @@ tr.exportTo('cp', () => {
       return await this.fetch_();
     }
   }
-
-  /* Processing results can be costly. Help callers batch process
-   * results by waiting a bit to see if more promises resolve.
-   * This is similar to Polymer.Debouncer, but as an async generator.
-   * Usage:
-   * async function fetchThings(things) {
-   *   const responses = things.map(thing => new ThingRequest(thing).response);
-   *   for await (const {results, errors} of
-   *              cp.RequestBase.batchResponses(responses)) {
-   *     dispatch({
-   *       type: ...mergeAndDisplayThings.typeName,
-   *       results, errors,
-   *     });
-   *   }
-   *   dispatch({
-   *     type: ...doneReceivingThings.typeName,
-   *   });
-   * }
-   *
-   * |promises| can be any promise, need not be RequestBase.response.
-   */
-  RequestBase.batchResponses = async function* (promises, opt_getDelayPromise) {
-    const getDelayPromise = opt_getDelayPromise || (() =>
-      cp.ElementBase.timeout(500));
-    let delay;
-    let results = [];
-    let errors = [];
-    promises = promises.map(narcissus => {
-      const socrates = (async() => {
-        try {
-          results.push(await narcissus);
-        } catch (err) {
-          errors.push(err);
-        } finally {
-          promises.splice(promises.indexOf(socrates), 1);
-        }
-      })();
-      return socrates;
-    });
-
-    while (promises.length) {
-      if (delay) {
-        await Promise.race([delay, ...promises]);
-        if (delay.isResolved) {
-          yield {results, errors};
-          results = [];
-          errors = [];
-          delay = undefined;
-        }
-      } else {
-        await Promise.race(promises);
-        delay = (async() => {
-          await getDelayPromise();
-          delay.isResolved = true;
-        })();
-        delay.isResolved = false;
-      }
-    }
-    yield {results, errors};
-  };
 
   return {
     CacheBase,

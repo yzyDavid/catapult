@@ -11,59 +11,74 @@ tr.exportTo('cp', () => {
           (minimapLayout ? minimapLayout.lines : []));
     }
 
-    onOptionsToggle_(event) {
-      this.dispatch('showOptions', this.statePath, !this.isShowingOptions);
+    async onMenuKeyup_(event) {
+      if (event.key === 'Escape') {
+        await this.dispatch('showOptions', this.statePath, false);
+      }
     }
 
-    onMinimapBrush_(event) {
+    async onMenuBlur_(event) {
+      if (cp.isElementChildOf(event.relatedTarget, this.$.options_container)) {
+        return;
+      }
+      await this.dispatch('showOptions', this.statePath, false);
+    }
+
+    async onOptionsToggle_(event) {
+      await this.dispatch('showOptions', this.statePath,
+          !this.isShowingOptions);
+    }
+
+    async onMinimapBrush_(event) {
       if (event.detail.sourceEvent.detail.state !== 'end') return;
-      this.dispatch('brushMinimap', this.statePath);
+      await this.dispatch('brushMinimap', this.statePath);
       if (this.isLinked) {
-        this.dispatch('updateLinkedRevisions', this.linkedStatePath,
+        await this.dispatch('updateLinkedRevisions', this.linkedStatePath,
             this.minRevision, this.maxRevision);
       }
     }
 
-    onChartClick_(event) {
-      this.dispatch('chartClick', this.statePath);
+    async onChartClick_(event) {
+      await this.dispatch('chartClick', this.statePath);
     }
 
-    onDotClick_(event) {
-      this.dispatch('dotClick', this.statePath,
+    async onDotClick_(event) {
+      await this.dispatch('dotClick', this.statePath,
           event.detail.ctrlKey,
           event.detail.lineIndex,
           event.detail.datumIndex);
     }
 
-    onDotMouseOver_(event) {
-      this.dispatch('dotMouseOver', this.statePath, event.detail.lineIndex);
+    async onDotMouseOver_(event) {
+      await this.dispatch('dotMouseOver', this.statePath,
+          event.detail.lineIndex);
     }
 
-    onDotMouseOut_(event) {
-      this.dispatch('dotMouseOut', this.statePath);
+    async onDotMouseOut_(event) {
+      await this.dispatch('dotMouseOut', this.statePath);
     }
 
-    onBrush_(event) {
-      this.dispatch('brushChart', this.statePath,
+    async onBrush_(event) {
+      await this.dispatch('brushChart', this.statePath,
           event.detail.brushIndex,
           event.detail.value);
     }
 
-    onToggleLinked_(event) {
-      this.dispatch('toggleLinked', this.statePath, this.linkedStatePath);
+    async onToggleLinked_(event) {
+      await this.dispatch('toggleLinked', this.statePath, this.linkedStatePath);
     }
 
-    onToggleZeroYAxis_(event) {
-      this.dispatch('toggleZeroYAxis', this.statePath);
+    async onToggleZeroYAxis_(event) {
+      await this.dispatch('toggleZeroYAxis', this.statePath);
       if (this.isLinked) {
-        this.dispatch('toggleLinkedZeroYAxis', this.linkedStatePath);
+        await this.dispatch('toggleLinkedZeroYAxis', this.linkedStatePath);
       }
     }
 
-    onToggleFixedXAxis_(event) {
-      this.dispatch('toggleFixedXAxis', this.statePath);
+    async onToggleFixedXAxis_(event) {
+      await this.dispatch('toggleFixedXAxis', this.statePath);
       if (this.isLinked) {
-        this.dispatch('toggleLinkedFixedXAxis', this.linkedStatePath);
+        await this.dispatch('toggleLinkedFixedXAxis', this.linkedStatePath);
       }
     }
 

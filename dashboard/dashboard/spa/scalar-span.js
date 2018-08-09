@@ -3,8 +3,10 @@
    found in the LICENSE file.
 */
 'use strict';
-tr.exportTo('cp', () => {
-  class ScalarSpan extends cp.ElementBase {
+(() => {
+  class ScalarSpan extends Polymer.Element {
+    static get is() { return 'scalar-span'; }
+
     change_(unit, value) {
       if (!unit) return '';
       if (!unit.isDelta) return '';
@@ -36,9 +38,5 @@ tr.exportTo('cp', () => {
     value: {type: Number},
   };
 
-  cp.ElementBase.register(ScalarSpan);
-
-  return {
-    ScalarSpan,
-  };
-});
+  customElements.define(ScalarSpan.is, ScalarSpan);
+})();

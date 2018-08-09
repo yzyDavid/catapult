@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/element-base.html">
+
+<dom-module id="cp-tab">
+  <template>
+    <style>
+      :host {
+        display: flex;
+        border-bottom: 2px solid var(--primary-color-light);
+        cursor: pointer;
+        padding: 4px 8px;
+      }
+      :host([checked]) {
+        font-weight: bold;
+        border-bottom: 2px solid var(--primary-color-dark);
+      }
+    </style>
+
+    <slot></slot>
+  </template>
+</dom-module>
+<script src="/dashboard/spa/cp-tab.js"></script>
