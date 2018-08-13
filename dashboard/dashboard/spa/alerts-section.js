@@ -328,7 +328,7 @@ tr.exportTo('cp', () => {
     async onCharts_(event) {
       const selectedAlerts = AlertsSection.getSelectedAlerts(
           this.alertGroups);
-      if (event.detail.sourceEvent.ctrlKey) {
+      if (event.detail.ctrlKey) {
         // TODO open V2SPA charts instead of V1 charts
         for (const alert of selectedAlerts) {
           window.open(alert.v1ReportLink, '_blank');
