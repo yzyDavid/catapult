@@ -43,9 +43,9 @@ tr.exportTo('cp', () => {
   ExpandButton.icon = (isExpanded, horizontal, after) => {
     if (after) isExpanded = !isExpanded;
     if (horizontal) {
-      return (isExpanded ? 'chevron-left' : 'chevron-right');
+      return (isExpanded ? 'cp:left' : 'cp:right');
     }
-    return (isExpanded ? 'expand-less' : 'expand-more');
+    return (isExpanded ? 'cp:less' : 'cp:more');
   };
 
   cp.ElementBase.register(ExpandButton);

@@ -9,7 +9,7 @@
 
     getIcon_(name, sortColumn, sortDescending) {
       if (name !== sortColumn) return '';
-      return sortDescending ? 'arrow-downward' : 'arrow-upward';
+      return sortDescending ? 'cp:arrow-downward' : 'cp:arrow-upward';
     }
   }
 

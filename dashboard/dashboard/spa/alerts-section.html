@@ -5,9 +5,9 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/bower_components/iron-icon/iron-icon.html">
 <link rel="import" href="/dashboard/spa/alerts-table.html">
 <link rel="import" href="/dashboard/spa/chart-pair.html">
+<link rel="import" href="/dashboard/spa/cp-icons.html">
 <link rel="import" href="/dashboard/spa/cp-loading.html">
 <link rel="import" href="/dashboard/spa/cp-switch.html">
 <link rel="import" href="/dashboard/spa/dropdown-input.html">
@@ -171,9 +171,7 @@ found in the LICENSE file.
 
       <template is="dom-if" if="[[alertGroups]]">
         <template is="dom-if" if="[[isOwner]]">
-          <iron-icon
-              id="edit"
-              icon="editor:mode-edit">
+          <iron-icon id="edit" icon="cp:edit">
           </iron-icon>
         </template>
         <template is="dom-if" if="[[!isOwner]]">
@@ -181,7 +179,7 @@ found in the LICENSE file.
              href="#"
              target="_blank"
              title="Documentation">
-            <iron-icon icon="help"></iron-icon>
+            <iron-icon icon="cp:help"></iron-icon>
           </a>
         </template>
       </template>
@@ -265,10 +263,7 @@ found in the LICENSE file.
         </iron-collapse>
       </span>
 
-      <iron-icon
-          id="close"
-          icon="close"
-          on-click="onClose_">
+      <iron-icon id="close" icon="cp:close" on-click="onClose_">
       </iron-icon>
     </div>
 

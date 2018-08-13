@@ -190,7 +190,7 @@ found in the LICENSE file.
           id="alerts"
           title="Alerts"
           on-click="onAlerts_">
-        <iron-icon icon="add-alert">
+        <iron-icon icon="cp:alert">
         </iron-icon>
         <span class="nav_button_label">
           Alerts
@@ -204,7 +204,7 @@ found in the LICENSE file.
             id="prev_mstone"
             on-click="onPreviousMilestone_">
           [[prevMstoneButtonLabel_(milestone, maxRevision)]]
-          <iron-icon icon="chevron-left"></iron-icon>
+          <iron-icon icon="cp:left"></iron-icon>
         </raised-button>
       </template>
 
@@ -226,17 +226,14 @@ found in the LICENSE file.
         <raised-button
             id="next_mstone"
             on-click="onNextMilestone_">
-          <iron-icon icon="chevron-right"></iron-icon>
+          <iron-icon icon="cp:right"></iron-icon>
           M[[_add(milestone, 1)]]
         </raised-button>
       </template>
 
       <span class="spacer">&nbsp;</span>
 
-      <iron-icon
-          id="close"
-          icon="close"
-          on-click="onCloseSection_">
+      <iron-icon id="close" icon="cp:close" on-click="onCloseSection_">
       </iron-icon>
     </div>
 
@@ -323,14 +320,14 @@ found in the LICENSE file.
                       </td>
                       <td class="template_row_button">
                         <iron-icon
-                            icon="add"
+                            icon="cp:add"
                             on-click="onTemplateAddRow_">
                         </iron-icon>
                       </td>
                       <td class="template_row_button">
                         <template is="dom-if" if="[[!isLastRow_(table.rows)]]">
                           <iron-icon
-                              icon="remove"
+                              icon="cp:remove"
                               on-click="onTemplateRemoveRow_">
                           </iron-icon>
                         </template>
@@ -343,9 +340,8 @@ found in the LICENSE file.
               <div class="edit_form_controls">
                 <raised-button
                     class="template_cancel"
-                    icon="close"
                     on-click="onToggleEditing_">
-                  <iron-icon icon="cancel">
+                  <iron-icon icon="cp:cancel">
                   </iron-icon>
                   Cancel
                 </raised-button>
@@ -353,7 +349,7 @@ found in the LICENSE file.
                     class="template_save"
                     disabled="[[!isValid_(table)]]"
                     on-click="onTemplateSave_">
-                  <iron-icon icon="save">
+                  <iron-icon icon="cp:save">
                   </iron-icon>
                   Save
                 </raised-button>
@@ -371,14 +367,14 @@ found in the LICENSE file.
                     href="[[table.url]]"
                     target="_blank"
                     title="Documentation">
-                  <iron-icon icon="help">
+                  <iron-icon icon="cp:help">
                   </iron-icon>
                 </a>
               </template>
 
               <iron-icon
                   id="copy"
-                  icon="content-copy"
+                  icon="cp:copy"
                   title="Copy measurements"
                   on-click="onCopy_">
               </iron-icon>
@@ -386,7 +382,7 @@ found in the LICENSE file.
               <template is="dom-if" if="[[canEdit_(table, userEmail)]]">
                 <iron-icon
                     id="edit"
-                    icon="editor:mode-edit"
+                    icon="cp:edit"
                     title="Edit template"
                     on-click="onToggleEditing_">
                 </iron-icon>

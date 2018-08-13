@@ -957,7 +957,7 @@ tr.exportTo('cp', () => {
       icons: [ // TODO ChartTimeseries should get this from the backend
         {
           revision: alert.endRevision,
-          icon: alert.improvement ? 'thumb-up' : 'error',
+          icon: alert.improvement ? 'cp:thumb-up' : 'cp:error',
         },
       ],
     };
