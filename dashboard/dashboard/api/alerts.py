@@ -13,7 +13,6 @@ from dashboard.api import api_request_handler
 from dashboard.api import utils as api_utils
 from dashboard.common import descriptor
 from dashboard.common import request_handler
-from dashboard.common import report_query
 from dashboard.common import utils
 from dashboard.models import anomaly
 from dashboard.models import report_template
