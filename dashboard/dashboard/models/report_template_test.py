@@ -16,11 +16,11 @@ from dashboard.models import report_template
 
 @report_template.Static(
     internal_only=False,
-    template_id='static-id',
+    template_id=584630894,
     name='Test:External',
     modified=datetime.datetime.now())
 def _External(unused_revisions):
-  return 'external'
+  return {'url': 'external'}
 
 
 class ReportTemplateTest(testing_common.TestCase):
@@ -30,7 +30,7 @@ class ReportTemplateTest(testing_common.TestCase):
     stored_object.Set(descriptor.PARTIAL_TEST_SUITES_KEY, [])
     stored_object.Set(descriptor.COMPOSITE_TEST_SUITES_KEY, [])
     stored_object.Set(descriptor.GROUPABLE_TEST_SUITE_PREFIXES_KEY, [])
-    stored_object.ResetCacheForTesting()
+    descriptor.Descriptor.ResetMemoizedConfigurationForTesting()
 
     report_template.ReportTemplate(
         id='ex-id',
@@ -69,7 +69,7 @@ class ReportTemplateTest(testing_common.TestCase):
 
     with self.assertRaises(ValueError):
       report_template.PutTemplate(
-          'static-id', 'bad', [testing_common.INTERNAL_USER.email()],
+          584630894, 'bad', [testing_common.INTERNAL_USER.email()],
           {'rows': []})
 
     report_template.PutTemplate(
@@ -129,6 +129,8 @@ class ReportTemplateTest(testing_common.TestCase):
     self.assertTrue(report['internal'])
     self.assertEqual(0, len(report['report']['rows']))
     self.assertEqual('internal', report['name'])
+    self.assertTrue(report['editable'])
+    self.assertEqual([testing_common.INTERNAL_USER.email()], report['owners'])
 
   def testAnonymous_GetReport(self):
     self.SetCurrentUser('')
@@ -137,6 +139,17 @@ class ReportTemplateTest(testing_common.TestCase):
     self.assertFalse(report['internal'])
     self.assertEqual(0, len(report['report']['rows']))
     self.assertEqual('external', report['name'])
+    self.assertFalse(report['editable'])
+    self.assertEqual([testing_common.EXTERNAL_USER.email()], report['owners'])
+
+  def testGetReport_Static(self):
+    self.SetCurrentUser(testing_common.EXTERNAL_USER.email())
+    report = report_template.GetReport(584630894, [10, 20])
+    self.assertFalse(report['internal'])
+    self.assertEqual({'url': 'external'}, report['report'])
+    self.assertEqual('Test:External', report['name'])
+    self.assertFalse(report['editable'])
+    self.assertNotIn('owners', report)
 
 
 if __name__ == '__main__':

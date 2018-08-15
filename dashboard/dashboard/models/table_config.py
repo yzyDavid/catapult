@@ -35,15 +35,6 @@ from dashboard.common import utils
 from dashboard.models import internal_only_model
 
 
-class ReportTemplate(internal_only_model.InternalOnlyModel):
-  name = ndb.StringProperty()
-  owners = ndb.StringProperty(repeated=True)
-  url = ndb.StringProperty()
-  template = ndb.JsonProperty()
-  internal_only = ndb.BooleanProperty(indexed=True)
-  modified = ndb.DateTimeProperty(indexed=False, auto_now=True)
-
-
 class BadRequestError(Exception):
   """An error indicating that a 400 response status should be returned."""
   pass
@@ -122,3 +113,4 @@ def CreateTableConfig(name, bots, tests, layout, username, override):
                              username=username)
   table_config.put()
   return table_config
+

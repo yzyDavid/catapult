@@ -20,25 +20,6 @@ from dashboard.models import report_template
 from dashboard.services import issue_tracker_service
 
 
-def _TestKeysForReportTemplate(template_id):
-  template = ndb.Key('ReportTemplate', int(template_id)).get()
-  if not template:
-    if any(template_id == handler.template.key.id()
-           for handler in report_template.STATIC_TEMPLATES):
-      # Static report templates don't necessarily use a predictable set
-      # of test paths so they can't support filtering alerts.
-      return
-
-    raise api_request_handler.BadRequestError(
-        'Invalid report id %r' % template_id)
-
-  for table_row in template.template['rows']:
-    for desc in report_query.TableRowDescriptors(table_row):
-      for test_path in desc.ToTestPathsSync():
-        yield utils.TestMetadataKey(test_path)
-        yield utils.OldStyleTestKey(test_path)
-
-
 class AlertsHandler(api_request_handler.ApiRequestHandler):
   """API handler for various alert requests."""
 
@@ -133,7 +114,8 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
 
         test_keys = [test_key
                      for template_id in self.request.get_all('report')
-                     for test_key in _TestKeysForReportTemplate(template_id)]
+                     for test_key in report_template.TestKeysForReportTemplate(
+                         template_id)]
 
         try:
           alert_list, next_cursor, _ = anomaly.Anomaly.QueryAsync(
