@@ -27,6 +27,7 @@ THIRD_PARTY_LIBRARIES = [
     'polymer',
     'six',
     'gae_ts_mon',
+    'idb',
 ]
 
 # Files and directories in catapult/dashboard.
