@@ -1,21 +1,29 @@
 'use strict';
 /**
- * Represents the data to be displayed on a graph and enables processing
- * of the data for display. This class is to be used as input to a
- * graph plotter.
+ * Represents the data to be displayed on a graph and provides
+ * the endpoints allowing for the plotting of this data.
  */
 class GraphData {
   constructor() {
-    /** @private @const {xAxis: string, yAxis:string} */
+    /** @private @const {xAxis: string, yAxis:string, title:string} labels */
     this.labels = {
       xAxis: '',
       yAxis: '',
       title: '',
     };
-    /** @private @const {Array<Object>} */
+    /** @const {Array<Object>} */
     this.dataSources = [];
-    /** @private @const {Object} */
+    /** @private @const {GraphPlotter} */
     this.plotter_ = new GraphPlotter(this);
+    /** @private @const {Array<string>} colors_
+     * Each new datasource is assigned a color.
+     * At first an attempt will be made to assign an unused color
+     * from this array and failing that old colors are reused.
+     */
+    this.colors_ = [
+      'green',
+      'orange',
+    ];
   }
 
   /**
@@ -65,35 +73,52 @@ class GraphData {
 
   /**
    * Registers the supplied data as a dataSource, enabling it to be plotted and
-   * processed. The data source can supply various attributes: the color is
-   * optional and defines the line color to be used (useful for when multiple
-   * data sources are being plotted), the data attribute is the supply of raw
-   * data to be processed and the key attribute is the label which will be
-   * assigned to the data on the legend.
-   * @param {{data: Array<Object>, color: string, key: string}} dataSource
+   * processed. The data source should be in the form of an object where
+   * the keys are the desired display labels (for the legend) corresponding
+   * to the supplied values, each of which should be an array of numbers.
+   * For example:
+   * {
+   *   labelOne: [numbers...],
+   *   labelTwo: [numbers...],
+   * }
+   * @param {Object} data
    * @return {GraphData}
    */
-  addData(dataSource) {
-    const { data, color, key } = dataSource;
-    if (!(data instanceof Array)) {
-      throw new Error(
-          'The data attribute of the supplied dataSource must be an Array');
+  addData(data) {
+    if (typeof data !== 'object') {
+      throw new TypeError('Expected an object to be supplied.');
     }
-    this.dataSources.push({
-      data,
-      color: color ? color : 'black',
-      key: key ? key : `Line ${this.dataSources.length}`,
-    });
+    for (const [displayLabel, values] of Object.entries(data)) {
+      if (values.constructor !== Array ||
+        !values.every((val) => typeof val === 'number')) {
+        throw new TypeError(
+            'The supplied values should be an array of numbers.');
+      }
+      this.dataSources.push({
+        data: values,
+        color: this.nextColor_(),
+        key: displayLabel,
+      });
+    }
     return this;
   }
 
+  /**
+   * Returns the next color to be assigned to a data source from
+   * the colors array. This will cycle through old colors once
+   * the unused colors are exhausted.
+   * @return {string}
+   */
+  nextColor_() {
+    return this.colors_[this.dataSources.length % this.colors_.length];
+  }
   /**
    * Returns the maximum value from all dataSources based on the value
    * computed by projection.
    * @param {function(Object): number} projection
    * @return {number}
    */
-  max_(projection) {
+  max(projection) {
     const projectAll = dataSource => dataSource.data.map(projection);
     const maxReducer =
       (acc, curr) => Math.max(acc, Math.max(...projectAll(curr)));
@@ -101,51 +126,61 @@ class GraphData {
   }
 
   /**
-   * Finds the maximum value along the points for the x-axis.
-   * This is useful when computing appropriate scales for the x-axis.
-   * @return {number}
-   */
-  xAxisMax() {
-    return this.max_(point => point.x);
-  }
-
-  /**
-   * Finds the maximum value along the points for the y-axis.
-   * This is useful when computing appropriate scales for the y-axis.
-   * @return {number}
-   */
-  yAxisMax() {
-    return this.max_(point => point.y);
-  }
-
-  /**
    * Applies the supplied processingFn to all of the dataSources held
-   * in this instance and replaces the old data with the newly processed data.
+   * in this instance and returns an array of the processed data along
+   * with it's additional plotting information.
    * The processing function supplied to process should return data in
    * a format suitable for plotting (e.g., an array of
    * objects, consisting of x and y co-ordinates, for a line plot).
    * @param {function(Array<?>): Array<Object>} processingFn
-   * @returns {GraphData}
+   * @returns {Array<Object>}
    */
-  process(processingFn) {
+  process(processingFn, ...args) {
     if (typeof processingFn !== 'function') {
       const type = typeof processingFn;
       throw new TypeError(
           `Expected argument of type function, but got: ${type}`);
     }
-    this.dataSources.forEach(
-        source => source.data = processingFn(source.data));
-    return this;
+    return this.dataSources.map(({ key, color, data}) => {
+      return {
+        key,
+        color,
+        data: processingFn(data, ...args)
+      };
+    });
+  }
+
+  /**
+   * Returns all of the labels associated with each data source.
+   * @returns {Array<string>}
+   */
+  keys() {
+    return this.dataSources.map(({ key }) => key);
   }
 
   /**
    * Computes the cumulative frequency for all data sources provided
-   * and plots the results to the screen. The provided
-   * data field in the dataSource must be a list of numbers.
+   * and plots the results to the screen.
    */
   plotCumulativeFrequency() {
-    this.process(GraphData.computeCumulativeFrequencies);
-    this.plotter_.linePlot();
+    this.plotter_.plot(new LinePlotter());
+  }
+
+  /**
+   * Orders the data so that it's percentiles can be identified
+   * and plots a box and whisker plot.
+   */
+  plotBoxPlot() {
+    this.plotter_.plot(new BoxPlotter());
+  }
+
+  /**
+   * Plot a dot plot. This will assign stack offsets to each of the data points
+   * where the dots would otherwise overlap (so that instead they are stacked
+   * atop each other).
+   */
+  plotDot() {
+    this.plotter_.plot(new DotPlotter());
   }
 
   /**
