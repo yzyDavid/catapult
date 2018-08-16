@@ -38,6 +38,17 @@ tr.exportTo('cp', () => {
           'startup',
           'size',
         ],
+        caseTags: {
+          'ggg': [
+            'browse:media:imgur',
+            'load:media:imgur',
+            'search:portal:google',
+          ],
+          'lll': [
+            'browse:news:flipboard',
+            'load:chrome:blank',
+          ],
+        },
         cases: [
           'browse:media:facebook_photos',
           'browse:media:imgur',
@@ -115,6 +126,14 @@ tr.exportTo('cp', () => {
     for (const testCase of descriptor.cases) {
       merged.testCases.add(testCase);
     }
+    for (const [tag, cases] of Object.entries(descriptor.caseTags || {})) {
+      if (!merged.testCaseTags.has(tag)) {
+        merged.testCaseTags.set(tag, new Set());
+      }
+      for (const testCase of cases) {
+        merged.testCaseTags.get(tag).add(testCase);
+      }
+    }
   }
 
   const ReadTestSuiteDescriptors = options =>
@@ -125,7 +144,7 @@ tr.exportTo('cp', () => {
         measurements: new Set(),
         bots: new Set(),
         testCases: new Set(),
-        testCaseTags: new Set(),
+        testCaseTags: new Map(),
       };
       const batches = cp.batchResponses(promises, options.getDelayPromise);
       for await (const {results} of batches) {

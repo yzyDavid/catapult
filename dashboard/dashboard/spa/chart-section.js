@@ -230,7 +230,7 @@ tr.exportTo('cp', () => {
             measurements: new Set(),
             bots: new Set(),
             testCases: new Set(),
-            testCaseTags: new Set(),
+            testCaseTags: new Map(),
           },
         });
         dispatch({
@@ -597,43 +597,44 @@ tr.exportTo('cp', () => {
       return {...state, legend: state.legend.map(handleLegendEntry)};
     },
 
-    receiveDescriptor: (state, action, rootState) => {
+    receiveDescriptor: (state, {descriptor}, rootState) => {
       const measurement = {
         ...state.measurement,
-        optionValues: action.descriptor.measurements,
-        options: cp.OptionGroup.groupValues(action.descriptor.measurements),
-        label: `Measurements (${action.descriptor.measurements.size})`,
+        optionValues: descriptor.measurements,
+        options: cp.OptionGroup.groupValues(descriptor.measurements),
+        label: `Measurements (${descriptor.measurements.size})`,
       };
 
-      const botOptions = cp.OptionGroup.groupValues(action.descriptor.bots);
+      const botOptions = cp.OptionGroup.groupValues(descriptor.bots);
       const bot = {
         ...state.bot,
-        optionValues: action.descriptor.bots,
+        optionValues: descriptor.bots,
         options: botOptions.map(option => {
           return {...option, isExpanded: true};
         }),
-        label: `Bots (${action.descriptor.bots.size})`,
+        label: `Bots (${descriptor.bots.size})`,
       };
 
       const testCaseOptions = [];
-      if (action.descriptor.testCases.size) {
+      if (descriptor.testCases.size) {
         testCaseOptions.push({
-          label: `All ${action.descriptor.testCases.size} test cases`,
+          label: `All test cases`,
           isExpanded: true,
-          options: cp.OptionGroup.groupValues(action.descriptor.testCases),
+          options: cp.OptionGroup.groupValues(descriptor.testCases),
         });
       }
 
-      const testCase = {
+      const testCase = cp.ChartParameter.reducers.tagFilter({
         ...state.testCase,
-        optionValues: action.descriptor.testCases,
+        optionValues: descriptor.testCases,
         options: testCaseOptions,
-        label: `Test cases (${action.descriptor.testCases.size})`,
+        label: `Test cases (${descriptor.testCases.size})`,
         tags: {
           ...state.testCase.tags,
-          options: cp.OptionGroup.groupValues(action.descriptor.testCaseTags),
+          map: descriptor.testCaseTags,
+          options: cp.OptionGroup.groupValues(descriptor.testCaseTags.keys()),
         },
-      };
+      });
 
       return {...state, measurement, bot, testCase};
     },
@@ -948,6 +949,7 @@ tr.exportTo('cp', () => {
         bots: routeParams.getAll('bot'),
         botsAggregated: routeParams.get('splitBots') === null,
         testCases: routeParams.getAll('testCase'),
+        testCaseTags: routeParams.getAll('caseTag'),
         testCasesAggregated: routeParams.get('splitCases') === null,
         statistics: routeParams.get('stat') ? routeParams.getAll('stat') :
           ['avg'],
@@ -968,7 +970,6 @@ tr.exportTo('cp', () => {
     const testSuites = parameters.testSuites || [];
     const measurements = parameters.measurements || [];
     const bots = parameters.bots || [];
-    const testCases = parameters.testCases || [];
     const statistics = parameters.statistics || ['avg'];
     const selectedRelatedTabName = options.selectedRelatedTabName || undefined;
     return {
@@ -1014,11 +1015,11 @@ tr.exportTo('cp', () => {
         canAggregate: true,
         isAggregated: parameters.testCasesAggregated !== false,
         query: '',
-        selectedOptions: testCases,
+        selectedOptions: parameters.testCases || [],
         options: [],
         tags: {
           options: [],
-          selectedOptions: [],
+          selectedOptions: parameters.testCaseTags || [],
         },
       },
       statistic: {
@@ -1251,6 +1252,9 @@ tr.exportTo('cp', () => {
     }
     for (const testCase of state.testCase.selectedOptions) {
       routeParams.append('testCase', testCase);
+    }
+    for (const tag of state.testCase.tags.selectedOptions) {
+      routeParams.append('caseTag', tag);
     }
     if (!state.testCase.isAggregated) {
       routeParams.set('splitCases', '');

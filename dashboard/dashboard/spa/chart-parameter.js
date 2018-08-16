@@ -13,6 +13,10 @@ tr.exportTo('cp', () => {
       this.dispatch('toggleAggregate', this.statePath);
       this.dispatchEvent(new CustomEvent('aggregate'));
     }
+
+    onTagSelect_(event) {
+      this.dispatch('tagFilter', this.statePath);
+    }
   }
 
   ChartParameter.properties = cp.ElementBase.statePathProperties('statePath', {
@@ -23,9 +27,38 @@ tr.exportTo('cp', () => {
   });
 
   ChartParameter.actions = {
+    tagFilter: statePath => async(dispatch, getState) => {
+      dispatch({
+        type: ChartParameter.reducers.tagFilter.name,
+        statePath,
+      });
+    },
+
     toggleAggregate: (statePath, isAggregated) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.isAggregated`));
+      cp.ElementBase.actions.toggleBoolean(
+          `${statePath}.isAggregated`)(dispatch, getState);
+    },
+  };
+
+  ChartParameter.reducers = {
+    tagFilter: state => {
+      const testCases = new Set(state.optionValues);
+      if (state.tags.selectedOptions.length) {
+        testCases.clear();
+        for (const tag of state.tags.selectedOptions) {
+          for (const testCase of state.tags.map.get(tag)) {
+            testCases.add(testCase);
+          }
+        }
+      }
+      const options = [
+        {
+          label: `All test cases`,
+          isExpanded: true,
+          options: cp.OptionGroup.groupValues(testCases),
+        },
+      ];
+      return {...state, options};
     },
   };
 

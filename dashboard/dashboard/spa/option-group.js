@@ -119,6 +119,9 @@ tr.exportTo('cp', () => {
     for (const option of options) {
       if (option.options) {
         count += OptionGroup.countDescendents(option.options);
+        if (option.value) {
+          count += 1;
+        }
       } else {
         count += 1;
       }
