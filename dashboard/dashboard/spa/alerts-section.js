@@ -1106,6 +1106,7 @@ tr.exportTo('cp', () => {
 
     openNewBugDialog: (state, action, rootState) => {
       const alerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      if (alerts.length === 0) return state;
       return {
         ...state,
         newBug: cp.TriageNew.newState(alerts, action.userEmail),
@@ -1114,6 +1115,7 @@ tr.exportTo('cp', () => {
 
     openExistingBugDialog: (state, action, rootState) => {
       const alerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      if (alerts.length === 0) return state;
       return {
         ...state,
         existingBug: {
