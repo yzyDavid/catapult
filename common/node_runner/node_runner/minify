@@ -39,11 +39,7 @@ for (const node of dom5.nodeWalkAll(parsedHtml, () => true)) {
   } else if (dom5.predicates.hasTagName('script')(node) &&
              !dom5.predicates.hasAttr('src')(node)) {
     let text = dom5.getTextContent(node);
-    const ast = espree.parse(text, {
-      attachComment: true,
-      comments: true,
-      ecmaVersion: 2018,
-    });
+    const ast = espree.parse(text, {ecmaVersion: 2018});
     text = escodegen.generate(ast, {format: {indent: {style: ''}}});
     dom5.setTextContent(node, text);
   } else if (dom5.predicates.hasTagName('style')(node)) {
