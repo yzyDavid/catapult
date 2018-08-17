@@ -22,7 +22,9 @@ tr.exportTo('cp', () => {
 
   class ReportNamesCache extends cp.CacheBase {
     computeCacheKey_() {
-      return 'reportTemplateIds';
+      let internal = '';
+      if (this.rootState_.userEmail) internal = 'Internal';
+      return `reportTemplateIds${internal}`;
     }
 
     get isInCache_() {
