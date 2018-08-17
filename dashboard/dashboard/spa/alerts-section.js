@@ -99,7 +99,6 @@ tr.exportTo('cp', () => {
         this.body_.set(key, value);
       }
       this.improvements = options.body.improvements;
-      this.triaged = options.body.triaged;
     }
 
     get url_() {
@@ -108,7 +107,6 @@ tr.exportTo('cp', () => {
 
     async localhostResponse_() {
       const improvements = Boolean(this.improvements);
-      const triaged = Boolean(this.triaged);
       const alerts = [];
       const measurements = [
         'memory:a_size',
@@ -145,7 +143,7 @@ tr.exportTo('cp', () => {
         revs.addValue(parseInt(1e6 * Math.random()));
         revs.addValue(parseInt(1e6 * Math.random()));
         let bugId = undefined;
-        if (triaged && (Math.random() > 0.5)) {
+        if (this.bugId !== '' && (Math.random() > 0.5)) {
           if (Math.random() > 0.5) {
             bugId = -1;
           } else {
@@ -670,18 +668,18 @@ tr.exportTo('cp', () => {
           statePath, {isLoading: true}));
       const rootState = getState();
       let state = Polymer.Path.get(rootState, statePath);
-      const alerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      const selectedAlerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      const alertKeys = new Set(selectedAlerts.map(a => a.key));
       try {
-        const request = new ExistingBugRequest({
-          alertKeys: alerts.map(a => a.key),
-          bugId,
-        });
+        const request = new ExistingBugRequest({alertKeys, bugId});
         await request.response;
         dispatch({
-          type: AlertsSection.reducers.removeSelectedAlerts.typeName,
+          type: AlertsSection.reducers.removeOrUpdateAlerts.typeName,
           statePath,
+          alertKeys,
           bugId,
         });
+
         state = Polymer.Path.get(getState(), statePath);
         dispatch(AlertsSection.actions.prefetchPreviewAlertGroup_(
             statePath, state.alertGroups[0]));
@@ -748,11 +746,12 @@ tr.exportTo('cp', () => {
           statePath, {isLoading: true}));
       const rootState = getState();
       let state = Polymer.Path.get(rootState, statePath);
-      const alerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      const selectedAlerts = AlertsSection.getSelectedAlerts(state.alertGroups);
+      const alertKeys = new Set(selectedAlerts.map(a => a.key));
       let bugId;
       try {
         const request = new NewBugRequest({
-          alertKeys: alerts.map(a => a.key),
+          alertKeys,
           ...state.newBug,
           labels: state.newBug.labels.filter(
               x => x.isEnabled).map(x => x.name),
@@ -774,8 +773,9 @@ tr.exportTo('cp', () => {
             state.recentlyModifiedBugs));
 
         dispatch({
-          type: AlertsSection.reducers.removeSelectedAlerts.typeName,
+          type: AlertsSection.reducers.removeOrUpdateAlerts.typeName,
           statePath,
+          alertKeys,
           bugId,
         });
         state = Polymer.Path.get(getState(), statePath);
@@ -1080,28 +1080,39 @@ tr.exportTo('cp', () => {
       };
     },
 
-    removeSelectedAlerts: (state, action, rootState) => {
+    updateSelectedAlertsCount: state => {
+      const selectedAlertsCount = AlertsSection.getSelectedAlerts(
+          state.alertGroups).length;
+      return {...state, selectedAlertsCount};
+    },
+
+    removeAlerts: (state, {alertKeys}, rootState) => {
       const alertGroups = [];
       for (const group of state.alertGroups) {
-        let alerts = group.alerts;
-        if (state.showingTriaged) {
-          alerts = alerts.map(alert => {
-            return {
-              ...alert,
-              bugId: action.bugId,
-            };
-          });
-        } else {
-          alerts = alerts.filter(a => !a.isSelected);
-          if (alerts.length === 0) continue;
+        const alerts = group.alerts.filter(a => !alertKeys.has(a.key));
+        if (alerts.length) {
+          alertGroups.push({...group, alerts});
         }
-        alertGroups.push({...group, alerts});
       }
-      return {
-        ...state,
-        alertGroups,
-        selectedAlertsCount: 0,
-      };
+      state = {...state, alertGroups};
+      return AlertsSection.reducers.updateSelectedAlertsCount(state);
+    },
+
+    updateBugId: (state, {alertKeys, bugId}, rootState) => {
+      const alertGroups = state.alertGroups.map(alertGroup => {
+        const alerts = alertGroup.alerts.map(a =>
+          alertKeys.has(a.key) ? {...a, bugId} : a);
+        return {...alertGroup, alerts};
+      });
+      state = {...state, alertGroups};
+      return AlertsSection.reducers.updateSelectedAlertsCount(state);
+    },
+
+    removeOrUpdateAlerts: (state, action, rootState) => {
+      if (state.showingTriaged) {
+        return AlertsSection.reducers.updateBugId(state, action, rootState);
+      }
+      return AlertsSection.reducers.removeAlerts(state, action, rootState);
     },
 
     openNewBugDialog: (state, action, rootState) => {

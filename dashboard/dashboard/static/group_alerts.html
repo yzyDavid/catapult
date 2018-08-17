@@ -24,6 +24,7 @@ tr.exportTo('d', function() {
    * @return {boolean}
    */
   function shouldMerge(a, b) {
+    if (a.bug_id && b.bug_id && a.bug_id === b.bug_id) return true;
     if (!rangeIntersects(a.start_revision, a.end_revision,
         b.start_revision, b.end_revision)) {
       return false;
