@@ -832,9 +832,10 @@ tr.exportTo('cp', () => {
       }
 
       for (const measurement of state.measurement.selectedOptions) {
-        if (d.MEMORY_PROCESS_RELATED_NAMES.has(measurement)) {
+        const measurementAvg = measurement + '_avg';
+        if (d.MEMORY_PROCESS_RELATED_NAMES.has(measurementAvg)) {
           for (let relatedMeasurement of d.MEMORY_PROCESS_RELATED_NAMES.get(
-              measurement)) {
+              measurementAvg)) {
             if (relatedMeasurement.endsWith('_avg')) {
               relatedMeasurement = relatedMeasurement.slice(0, -4);
             }
@@ -847,9 +848,9 @@ tr.exportTo('cp', () => {
                 }));
           }
         }
-        if (d.MEMORY_COMPONENT_RELATED_NAMES.has(measurement)) {
+        if (d.MEMORY_COMPONENT_RELATED_NAMES.has(measurementAvg)) {
           for (let relatedMeasurement of d.MEMORY_COMPONENT_RELATED_NAMES.get(
-              measurement)) {
+              measurementAvg)) {
             if (relatedMeasurement.endsWith('_avg')) {
               relatedMeasurement = relatedMeasurement.slice(0, -4);
             }
