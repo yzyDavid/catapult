@@ -194,11 +194,11 @@ tr.exportTo('cp', () => {
           });
         } else {
           // Only toggle this alert.
-          alerts = Polymer.Path.setImmutable(
+          alerts = cp.setImmutable(
               alerts, `${action.alertIndex}.isSelected`, isSelected);
         }
 
-        alertGroups = Polymer.Path.setImmutable(
+        alertGroups = cp.setImmutable(
             state.alertGroups, `${action.alertGroupIndex}.alerts`, alerts);
       }
 

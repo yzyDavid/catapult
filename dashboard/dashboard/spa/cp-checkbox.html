@@ -5,8 +5,6 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/dashboard/spa/element-base.html">
-
 <dom-module id="cp-checkbox">
   <template>
     <style>
@@ -28,9 +26,9 @@ found in the LICENSE file.
         top: 0;
       }
       label:before {
-        background: #fff;
+        background: var(--background-color, white);
         border-radius: 2px;
-        border: 2px solid black;
+        border: 2px solid var(--foreground-color, black);
         cursor: pointer;
         height: 18px;
         transition: background .3s;
@@ -41,11 +39,11 @@ found in the LICENSE file.
         visibility: hidden;
       }
       input:checked + label:before {
-        background: var(--primary-color-dark);
-        border: 2px solid var(--primary-color-dark);
+        background: var(--primary-color-dark, blue);
+        border: 2px solid var(--primary-color-dark, blue);
       }
       input:checked + label:after {
-        border-color: var(--background-color);
+        border-color: var(--background-color, white);
         border-style: none none solid solid;
         border-width: 2px;
         height: 6px;
@@ -55,10 +53,10 @@ found in the LICENSE file.
         width: 12px;
       }
       input:disabled + label:before {
-        border-color: var(--neutral-color-dark);
+        border-color: var(--neutral-color-dark, darkgrey);
       }
       input:disabled:checked + label:before {
-        background: var(--neutral-color-dark);
+        background: var(--neutral-color-dark, darkgrey);
       }
       *, *:before, *:after {
         box-sizing: border-box;

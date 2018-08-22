@@ -122,7 +122,7 @@ tr.exportTo('cp', () => {
     toggleLabel: (state, action, rootState) => {
       for (let i = 0; i < state.labels.length; ++i) {
         if (state.labels[i].name === action.name) {
-          return Polymer.Path.setImmutable(
+          return cp.setImmutable(
               state, `labels.${i}.isEnabled`, e => !e);
         }
       }
@@ -132,7 +132,7 @@ tr.exportTo('cp', () => {
     toggleComponent: (state, action, rootState) => {
       for (let i = 0; i < state.components.length; ++i) {
         if (state.components[i].name === action.name) {
-          return Polymer.Path.setImmutable(
+          return cp.setImmutable(
               state, `components.${i}.isEnabled`, e => !e);
         }
       }

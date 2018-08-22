@@ -172,7 +172,8 @@ def PinpointParamsFromPerfTryParams(params):
     'error' field.
   """
   if not utils.IsValidSheriffUser():
-    raise InvalidParamsError('User "%s" not authorized.' % utils.GetEmail())
+    user = users.get_current_user()
+    raise InvalidParamsError('User "%s" not authorized.' % user)
 
   test_path = params['test_path']
   test_path_parts = test_path.split('/')
@@ -192,7 +193,7 @@ def PinpointParamsFromPerfTryParams(params):
 
   extra_test_args = params['extra_test_args']
 
-  email = utils.GetEmail()
+  email = users.get_current_user().email()
   job_name = 'Job on [%s/%s] for [%s]' % (bot_name, suite, email)
 
   return {
@@ -225,7 +226,8 @@ def PinpointParamsFromBisectParams(params):
     'error' field.
   """
   if not utils.IsValidSheriffUser():
-    raise InvalidParamsError('User "%s" not authorized.' % utils.GetEmail())
+    user = users.get_current_user()
+    raise InvalidParamsError('User "%s" not authorized.' % user)
 
   test_path = params['test_path']
   test_path_parts = test_path.split('/')
@@ -257,7 +259,7 @@ def PinpointParamsFromBisectParams(params):
   # ideally be stored in a SparesDiagnostic but for now we can guess.
   target = _GetIsolateTarget(bot_name, suite, start_commit, end_commit)
 
-  email = utils.GetEmail()
+  email = users.get_current_user().email()
   job_name = 'Job on [%s/%s/%s] for [%s]' % (bot_name, suite, chart_name, email)
 
   # Histogram names don't include the statistic, so split these

@@ -174,7 +174,7 @@ tr.exportTo('cp', () => {
     const replacement = (rootState, action) => {
       const statePath = action.statePath || '';
       try {
-        return Polymer.Path.setImmutable(rootState, statePath, state => {
+        return cp.setImmutable(rootState, statePath, state => {
           const mark = tr.b.Timing.mark('reducer', reducer.typeName);
           try {
             return reducer(state, action, rootState);

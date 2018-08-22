@@ -4,12 +4,53 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
+  /**
+   * Like Polymer.Path.set(), but returns a modified clone of root instead of
+   * modifying root. In order to compute a new value from the existing value at
+   * path efficiently, instead of calling Path.get() and then Path.set(),
+   * `value` may be a callback that takes the existing value and returns
+   * a new value.
+   *
+   * @param {!Object|!Array} root
+   * @param {string|!Array} path
+   * @param {*|function} value
+   * @return {!Object|!Array}
+   */
+  function setImmutable(root, path, value) {
+    if (path === '') {
+      path = [];
+    } else if (typeof(path) === 'string') {
+      path = path.split('.');
+    }
+    // Based on dot-prop-immutable:
+    // https://github.com/debitoor/dot-prop-immutable/blob/master/index.js
+    root = Array.isArray(root) ? [...root] : {...root};
+    let node = root;
+    const maxDepth = path.length - 1;
+    for (let depth = 0; depth < maxDepth; ++depth) {
+      const key = Array.isArray(node) ? parseInt(path[depth]) : path[depth];
+      const obj = node[key];
+      node[key] = Array.isArray(obj) ? [...obj] : {...obj};
+      node = node[key];
+    }
+    const key = Array.isArray(node) ? parseInt(path[maxDepth]) : path[maxDepth];
+    if (typeof value === 'function') {
+      node[key] = value(node[key]);
+    } else {
+      node[key] = value;
+    }
+    return root;
+  }
+
   function deepFreeze(o) {
     Object.freeze(o);
     for (const [name, value] of Object.entries(o)) {
       if (typeof(value) !== 'object') continue;
       if (Object.isFrozen(value)) continue;
-      if (value instanceof tr.b.Unit) continue;
+      if (value.__proto__ !== Object.prototype &&
+          value.__proto__ !== Array.prototype) {
+        continue;
+      }
       deepFreeze(value);
     }
   }
@@ -101,76 +142,83 @@ tr.exportTo('cp', () => {
       parseInt(p[0]).toString().padEnd(6) + p[1]).join('\n');
   }
 
-  /* Processing results can be costly. Help callers batch process
-   * results by waiting a bit to see if more promises resolve.
-   * This is similar to Polymer.Debouncer, but as an async generator.
-   * Usage:
-   * async function fetchThings(things) {
-   *   const responses = things.map(thing => new ThingRequest(thing).response);
-   *   for await (const {results, errors} of cp.batchResponses(responses)) {
-   *     dispatch({
-   *       type: ...mergeAndDisplayThings.typeName,
-   *       results, errors,
-   *     });
-   *   }
-   *   dispatch({
-   *     type: ...doneReceivingThings.typeName,
-   *   });
-   * }
+  /*
+   * Returns a Polymer properties descriptor object.
    *
-   * |promises| can be any promise, need not be RequestBase.response.
+   * Usage:
+   * const FooState = {
+   *   abc: options => options.abc || 0,
+   *   def: {reflectToAttribute: true, value: options => options.def || [],},
+   * };
+   * FooElement.properties = buildProperties('state', FooState);
+   * FooElement.buildState = options => buildState(FooState, options);
    */
-  async function* batchResponses(promises, opt_getDelayPromise) {
-    const getDelayPromise = opt_getDelayPromise || (() =>
-      cp.timeout(500));
-    let delay;
-    let results = [];
-    let errors = [];
-    promises = promises.map(narcissus => {
-      const socrates = (async() => {
-        try {
-          results.push(await narcissus);
-        } catch (err) {
-          errors.push(err);
-        } finally {
-          promises.splice(promises.indexOf(socrates), 1);
+  function buildProperties(statePropertyName, configs) {
+    const statePathPropertyName = statePropertyName + 'Path';
+    const properties = {
+      [statePathPropertyName]: {type: String},
+      [statePropertyName]: {
+        readOnly: true,
+        statePath(state) {
+          const statePath = this[statePathPropertyName];
+          if (statePath === undefined) return {};
+          return Polymer.Path.get(state, statePath) || {};
+        },
+      },
+    };
+    for (const [name, config] of Object.entries(configs)) {
+      if (name === statePathPropertyName || name === statePropertyName) {
+        throw new Error('Invalid property name: ' + name);
+      }
+      properties[name] = {
+        readOnly: true,
+        computed: `identity_(${statePropertyName}.${name})`,
+      };
+      if (typeof(config) === 'object') {
+        for (const [paramName, paramValue] of Object.entries(config)) {
+          if (paramName === 'value') continue;
+          properties[name][paramName] = paramValue;
         }
-      })();
-      return socrates;
-    });
-
-    while (promises.length) {
-      if (delay) {
-        await Promise.race([delay, ...promises]);
-        if (delay.isResolved) {
-          yield {results, errors};
-          results = [];
-          errors = [];
-          delay = undefined;
-        }
-      } else {
-        await Promise.race(promises);
-        delay = (async() => {
-          await getDelayPromise();
-          delay.isResolved = true;
-        })();
-        delay.isResolved = false;
       }
     }
-    yield {results, errors};
+    return properties;
+  }
+
+  /*
+   * Returns a new object with the same shape as `configs` but with values taken
+   * from `options`.
+   * See buildProperties for description of `configs`.
+   */
+  function buildState(configs, options) {
+    const state = {};
+    for (const [name, config] of Object.entries(configs)) {
+      switch (typeof(config)) {
+        case 'object':
+          state[name] = config.value(options);
+          break;
+        case 'function':
+          state[name] = config(options);
+          break;
+        default:
+          throw new Error('Invalid property config: ' + config);
+      }
+    }
+    return state;
   }
 
   return {
     afterRender,
     animationFrame,
-    batchResponses,
+    buildProperties,
+    buildState,
     deepFreeze,
-    isElementChildOf,
     getActiveElement,
     idle,
+    isElementChildOf,
     measureHistograms,
     measureTable,
     measureTrace,
+    setImmutable,
     timeout,
   };
 });

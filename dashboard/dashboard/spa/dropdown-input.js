@@ -244,7 +244,7 @@ tr.exportTo('cp', () => {
       rootState = {...rootState, focusTimestamp};
       if (!action.inputStatePath) return rootState; // Blur all dropdown-inputs
 
-      return Polymer.Path.setImmutable(
+      return cp.setImmutable(
           rootState, action.inputStatePath, inputState => {
             return {...inputState, focusTimestamp, hasBeenOpened: true};
           });

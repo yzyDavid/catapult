@@ -970,7 +970,7 @@ tr.exportTo('cp', () => {
         `alertGroups.${action.alertGroupIndex}.alerts.${action.alertIndex}`;
       const alert = Polymer.Path.get(state, alertPath);
       if (!alert.isSelected) {
-        state = Polymer.Path.setImmutable(
+        state = cp.setImmutable(
             state, `${alertPath}.isSelected`, true);
       }
       if (state.selectedAlertPath === alertPath) {

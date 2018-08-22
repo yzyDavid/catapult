@@ -24,7 +24,7 @@ Action creators MAY take any number of parameters.
 
 TODO instance methods vs static methods
 
-TODO Polymer.Path.setImmutable
+TODO cp.setImmutable
 TODO ElementBase.statePathReducer
 TODO ElementBase.statePathProperties
 TODO ElementBase.actions.updateObject
