@@ -124,73 +124,82 @@ tr.exportTo('cp', () => {
     }
   }
 
-  ChartPair.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      lineDescriptors: {
-        type: Array,
-        observer: 'observeLineDescriptors_',
-      },
-      isExpanded: {type: Boolean},
-      minimapLayout: {type: Object},
-      chartLayout: {type: Object},
+  ChartPair.State = {
+    lineDescriptors: options => [],
+    isExpanded: options => options.isExpanded !== false,
+    minimapLayout: options => {
+      const minimapLayout = {
+        ...cp.ChartTimeseries.buildState({}),
+        dotCursor: '',
+        dotRadius: 0,
+        graphHeight: 40,
+      };
+      minimapLayout.xAxis.height = 15;
+      minimapLayout.yAxis.width = 50;
+      minimapLayout.yAxis.generateTicks = false;
+      return minimapLayout;
+    },
+    chartLayout: options => {
+      const chartLayout = cp.ChartTimeseries.buildState({});
+      chartLayout.xAxis.height = 15;
+      chartLayout.xAxis.showTickLines = true;
+      chartLayout.yAxis.width = 50;
+      chartLayout.yAxis.showTickLines = true;
+      return chartLayout;
+    },
+    isShowingOptions: options => false,
+    isLinked: options => options.isLinked !== false,
+    cursorRevision: options => 0,
+    minRevision: options => 0,
+    maxRevision: options => 0,
+    mode: options => options.mode || 'normalizeUnit',
+    zeroYAxis: options => options.zeroYAxis || false,
+    fixedXAxis: options => options.fixedXAxis !== false,
+  };
 
-      isShowingOptions: {type: Boolean},
-      isLinked: {type: Boolean},
-      cursorRevision: {type: Number },
-      minRevision: {type: Number},
-      maxRevision: {type: Number},
-      mode: {type: String},
-      zeroYAxis: {type: Boolean},
-      fixedXAxis: {type: Boolean},
-    }),
-    ...cp.ElementBase.statePathProperties('linkedStatePath', {
-      linkedCursorRevision: {
-        type: Number,
-        observer: 'observeLinkedCursorRevision_',
-      },
-      linkedMinRevision: {
-        type: Number,
-        observer: 'observeLinkedRevisions_',
-      },
-      linkedMaxRevision: {
-        type: Number,
-        observer: 'observeLinkedRevisions_',
-      },
-      linkedMode: {
-        type: String,
-        observer: 'observeLinkedMode_',
-      },
-      linkedZeroYAxis: {
-        type: Boolean,
-        observer: 'observeLinkedZeroYAxis_',
-      },
-      linkedFixedXAxis: {
-        type: Boolean,
-        observer: 'observeLinkedFixedXAxis_',
-      },
-    }),
+  ChartPair.buildState = options => cp.buildState(ChartPair.State, options);
+
+  ChartPair.observers = [
+    'observeLineDescriptors_(lineDescriptors)',
+    'observeLinkedCursorRevision_(linkedCursorRevision)',
+    'observeLinkedRevisions_(linkedMinRevision, linkedMaxRevision)',
+    'observeLinkedMode_(linkedMode)',
+    'observeLinkedZeroYAxis_(linkedZeroYAxis)',
+    'observeLinkedFixedXAxis_(linkedFixedXAxis)',
+  ];
+
+  ChartPair.LinkedState = {
+    linkedCursorRevision: options => 0,
+    linkedMinRevision: options => 0,
+    linkedMaxRevision: options => 0,
+    linkedMode: options => 'normalizeUnit',
+    linkedZeroYAxis: options => false,
+    linkedFixedXAxis: options => true,
+  };
+
+  ChartPair.properties = {
+    ...cp.buildProperties('state', ChartPair.State),
+    ...cp.buildProperties('linkedState', ChartPair.LinkedState),
   };
 
   ChartPair.actions = {
     updateRevisions: (statePath, minRevision, maxRevision) =>
       async(dispatch, getState) => {
-        cp.ElementBase.actions.updateObject(statePath, {
-          minRevision, maxRevision,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {minRevision, maxRevision}));
         ChartPair.actions.load(statePath)(dispatch, getState);
       },
 
     updateLinkedRevisions: (
         linkedStatePath, linkedMinRevision, linkedMaxRevision) =>
       async(dispatch, getState) => {
-        cp.ElementBase.actions.updateObject(linkedStatePath, {
+        dispatch(Redux.UPDATE(linkedStatePath, {
           linkedMinRevision, linkedMaxRevision,
-        })(dispatch, getState);
+        }));
       },
 
     toggleLinked: (statePath, linkedStatePath) => async(dispatch, getState) => {
       const linkedState = Polymer.Path.get(getState(), linkedStatePath);
-      cp.ElementBase.actions.updateObject(statePath, {
+      dispatch(Redux.UPDATE(statePath, {
         isLinked: true,
         cursorRevision: linkedState.linkedCursorRevision,
         minRevision: linkedState.linkedMinRevision,
@@ -198,42 +207,35 @@ tr.exportTo('cp', () => {
         mode: linkedState.mode,
         zeroYAxis: linkedState.linkedZeroYAxis,
         fixedXAxis: linkedState.linkedFixedXAxis,
-      })(dispatch, getState);
+      }));
       ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleZeroYAxis: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.toggleBoolean(`${statePath}.zeroYAxis`)(
-          dispatch, getState);
+      dispatch(Redux.TOGGLE(`${statePath}.zeroYAxis`));
       ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleLinkedZeroYAxis: linkedStatePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.toggleBoolean(
-          `${linkedStatePath}.linkedZeroYAxis`)(dispatch, getState);
+      dispatch(Redux.TOGGLE(`${linkedStatePath}.linkedZeroYAxis`));
     },
 
     toggleFixedXAxis: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.fixedXAxis`)(dispatch, getState);
+      dispatch(Redux.TOGGLE(`${statePath}.fixedXAxis`));
       ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     toggleLinkedFixedXAxis: linkedStatePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.toggleBoolean(
-          `${linkedStatePath}.linkedFixedXAxis`)(dispatch, getState);
+      dispatch(Redux.TOGGLE(`${linkedStatePath}.linkedFixedXAxis`));
     },
 
-    showOptions: (statePath, isShowingOptions) =>
-      async(dispatch, getState) => {
-        cp.ElementBase.actions.updateObject(statePath, {
-          isShowingOptions,
-        })(dispatch, getState);
-      },
+    showOptions: (statePath, isShowingOptions) => async(dispatch, getState) => {
+      dispatch(Redux.UPDATE(statePath, {isShowingOptions}));
+    },
 
     brushMinimap: statePath => async(dispatch, getState) => {
       dispatch({
-        type: ChartPair.reducers.brushMinimap.typeName,
+        type: ChartPair.reducers.brushMinimap.name,
         statePath,
       });
       ChartPair.actions.load(statePath)(dispatch, getState);
@@ -242,21 +244,17 @@ tr.exportTo('cp', () => {
     brushChart: (statePath, brushIndex, value) =>
       async(dispatch, getState) => {
         const path = `${statePath}.chartLayout.xAxis.brushes.${brushIndex}`;
-        cp.ElementBase.actions.updateObject(path, {
-          xPct: value + '%',
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(path, {xPct: value + '%'}));
       },
 
     load: statePath => async(dispatch, getState) => {
       const state = Polymer.Path.get(getState(), statePath);
       if (!state || !state.lineDescriptors ||
           state.lineDescriptors.length === 0) {
-        cp.ElementBase.actions.updateObject(`${statePath}.minimapLayout`, {
-          lineDescriptors: []
-        })(dispatch, getState);
-        cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
-          lineDescriptors: []
-        })(dispatch, getState);
+        dispatch(Redux.CHAIN(
+            Redux.UPDATE(`${statePath}.minimapLayout`, {lineDescriptors: []}),
+            Redux.UPDATE(`${statePath}.chartLayout`, {lineDescriptors: []}),
+        ));
         return;
       }
 
@@ -309,9 +307,7 @@ tr.exportTo('cp', () => {
       if (maxRevision === undefined ||
           maxRevision <= firstRevision) {
         maxRevision = lastRevision;
-        cp.ElementBase.actions.updateObject(statePath, {
-          maxRevision,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {maxRevision}));
       }
 
       const minimapLineDescriptors = [];
@@ -322,11 +318,11 @@ tr.exportTo('cp', () => {
         });
       }
 
-      cp.ElementBase.actions.updateObject(`${statePath}.minimapLayout`, {
+      dispatch(Redux.UPDATE(`${statePath}.minimapLayout`, {
         lineDescriptors: minimapLineDescriptors,
         brushRevisions: [minRevision, maxRevision],
         fixedXAxis: state.fixedXAxis,
-      })(dispatch, getState);
+      }));
 
       let lineDescriptors = state.lineDescriptors;
       if (lineDescriptors.length === 1) {
@@ -338,7 +334,7 @@ tr.exportTo('cp', () => {
         });
       }
 
-      cp.ElementBase.actions.updateObject(`${statePath}.chartLayout`, {
+      dispatch(Redux.UPDATE(`${statePath}.chartLayout`, {
         lineDescriptors,
         minRevision,
         maxRevision,
@@ -346,12 +342,12 @@ tr.exportTo('cp', () => {
         fixedXAxis: state.fixedXAxis,
         mode: state.mode,
         zeroYAxis: state.zeroYAxis,
-      })(dispatch, getState);
+      }));
     },
 
     chartClick: statePath => async(dispatch, getState) => {
       dispatch({
-        type: ChartPair.reducers.chartClick.typeName,
+        type: ChartPair.reducers.chartClick.name,
         statePath,
       });
     },
@@ -359,7 +355,7 @@ tr.exportTo('cp', () => {
     dotClick: (statePath, ctrlKey, lineIndex, datumIndex) =>
       async(dispatch, getState) => {
         dispatch({
-          type: ChartPair.reducers.dotClick.typeName,
+          type: ChartPair.reducers.dotClick.name,
           statePath,
           ctrlKey,
           lineIndex,
@@ -374,16 +370,12 @@ tr.exportTo('cp', () => {
     },
 
     mode: (statePath, mode) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
-        mode,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {mode}));
       ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     linkedMode: (linkedStatePath, linkedMode) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(linkedStatePath, {
-        linkedMode,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(linkedStatePath, {linkedMode}));
     }
   };
 
@@ -585,45 +577,6 @@ tr.exportTo('cp', () => {
         },
       };
     },
-  };
-
-  ChartPair.newState = options => {
-    const chartState = cp.ChartTimeseries.newState();
-    return {
-      isLinked: true,
-      isExpanded: true,
-      mode: options.mode || 'normalizeUnit',
-      zeroYAxis: options.zeroYAxis || false,
-      fixedXAxis: options.fixedXAxis !== false,
-      minimapLayout: {
-        ...chartState,
-        dotCursor: '',
-        dotRadius: 0,
-        graphHeight: 40,
-        xAxis: {
-          ...chartState.xAxis,
-          height: 15,
-        },
-        yAxis: {
-          ...chartState.yAxis,
-          width: 50,
-          generateTicks: false,
-        },
-      },
-      chartLayout: {
-        ...chartState,
-        xAxis: {
-          ...chartState.xAxis,
-          height: 15,
-          showTickLines: true,
-        },
-        yAxis: {
-          ...chartState.yAxis,
-          width: 50,
-          showTickLines: true,
-        },
-      },
-    };
   };
 
   ChartPair.findFirstRealLineDescriptor = async(

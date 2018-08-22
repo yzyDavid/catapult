@@ -103,29 +103,16 @@ tr.exportTo('cp', () => {
     }
   }
 
-  ChartBase.properties = cp.ElementBase.statePathProperties('statePath', {
-    bars: {type: Array, value: []},
-    brushSize: {type: Number, value: 10},
-    columns: {type: Array, value: []},
-    dotCursor: {type: String},
-    dotRadius: {type: Number, value: 6},
-    graphHeight: {type: Number, value: 200},
-    lines: {type: Array, value: []},
-    tooltip: {type: Object},
-    xAxis: {type: Object, value: {height: 0}},
-    yAxis: {type: Object, value: {width: 0}},
-  });
-
-  ChartBase.newState = () => {
-    return {
-      bars: [],
-      brushSize: 10,
-      columns: [],
-      dotCursor: 'pointer',
-      dotRadius: 6,
-      graphHeight: 200,
-      lines: [],
-      tooltip: {
+  ChartBase.State = {
+    bars: options => [],
+    brushSize: options => 10,
+    columns: options => [],
+    dotCursor: options => 'pointer',
+    dotRadius: options => 6,
+    graphHeight: options => 200,
+    lines: options => [],
+    tooltip: options => {
+      return {
         isVisible: false,
         left: '',
         right: '',
@@ -133,35 +120,40 @@ tr.exportTo('cp', () => {
         bottom: '',
         color: '',
         rows: [],
-      },
-      xAxis: {
+      };
+    },
+    xAxis: options => {
+      return {
         brushes: [],
         height: 0,
         range: new tr.b.math.Range(),
         showTickLines: false,
         ticks: [],
-      },
-      yAxis: {
+      };
+    },
+    yAxis: options => {
+      return {
         brushes: [],
         range: new tr.b.math.Range(),
         showTickLines: false,
         ticks: [],
         width: 0,
-      },
-    };
+      };
+    },
   };
+
+  ChartBase.properties = cp.buildProperties('state', ChartBase.State);
+  ChartBase.buildState = options => cp.buildState(ChartBase.State, options);
 
   ChartBase.actions = {
     brushX: (statePath, brushIndex, xPct) => async(dispatch, getState) => {
       const path = `${statePath}.xAxis.brushes.${brushIndex}`;
-      cp.ElementBase.actions.updateObject(path, {
-        xPct,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(path, {xPct}));
     },
 
     boldLine: (statePath, lineIndex) => async(dispatch, getState) => {
       dispatch({
-        type: ChartBase.reducers.boldLine.typeName,
+        type: ChartBase.reducers.boldLine.name,
         statePath,
         lineIndex,
       });
@@ -171,7 +163,7 @@ tr.exportTo('cp', () => {
       async(dispatch, getState) => {
         ChartBase.actions.boldLine(statePath, lineIndex)(dispatch, getState);
         dispatch({
-          type: ChartBase.reducers.dotMouseOver.typeName,
+          type: ChartBase.reducers.dotMouseOver.name,
           statePath,
           chartRect,
           lineIndex,
@@ -180,26 +172,21 @@ tr.exportTo('cp', () => {
       },
 
     tooltip: (statePath, rows) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath + '.tooltip', {
-        rows,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath + '.tooltip', {rows}));
     },
 
     unboldLines: statePath => async(dispatch, getState) => {
       dispatch({
-        type: ChartBase.reducers.unboldLines.typeName,
+        type: ChartBase.reducers.unboldLines.name,
         statePath,
       });
     },
 
     dotMouseOut: (statePath, lineIndex) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(`${statePath}.tooltip`, {
-        isVisible: false,
-      })(dispatch, getState);
-      dispatch({
-        type: ChartBase.reducers.unboldLines.typeName,
-        statePath,
-      });
+      dispatch(Redux.CHAIN(
+          Redux.UPDATE(`${statePath}.tooltip`, {isVisible: false}),
+          {type: ChartBase.reducers.unboldLines.name, statePath},
+      ));
     },
   };
 

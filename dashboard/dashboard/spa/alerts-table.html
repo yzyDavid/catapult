@@ -90,7 +90,7 @@ found in the LICENSE file.
     </template>
 
     <template is="dom-if" if="[[!_empty(alertGroups)]]">
-      <div id="scroll" style$="max-height: [[tableHeightPx]]px;">
+      <div id="scroll" style$="max-height: [[getTableHeightPx_()]]px;">
         <table placeholder$="[[areAlertGroupsPlaceholders]]">
           <thead>
             <tr>

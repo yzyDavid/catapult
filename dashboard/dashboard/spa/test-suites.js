@@ -45,15 +45,15 @@ tr.exportTo('cp', () => {
     }
 
     onStartRequest_(request) {
-      cp.ElementBase.actions.updateObject('', {
+      this.dispatch_(Redux.UPDATE('', {
         [this.cacheKey_]: request.response,
-      })(this.dispatch_, this.getState_);
+      }));
     }
 
     onFinishRequest_(result) {
-      cp.ElementBase.actions.updateObject('', {
+      this.dispatch_(Redux.UPDATE('', {
         [this.cacheKey_]: result,
-      })(this.dispatch_, this.getState_);
+      }));
     }
   }
 

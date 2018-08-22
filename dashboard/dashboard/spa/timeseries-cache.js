@@ -296,7 +296,7 @@ tr.exportTo('cp', () => {
 
     onStartRequest_(request, completion) {
       this.dispatch_({
-        type: TimeseriesCache.reducers.request.typeName,
+        type: TimeseriesCache.reducers.request.name,
         fetchDescriptor: this.fetchDescriptor_,
         cacheKey: this.cacheKey_,
         refStatePath: this.refStatePath_,
@@ -308,7 +308,7 @@ tr.exportTo('cp', () => {
 
     onFinishRequest_(result) {
       this.dispatch_({
-        type: TimeseriesCache.reducers.receive.typeName,
+        type: TimeseriesCache.reducers.receive.name,
         fetchDescriptor: this.fetchDescriptor_,
         cacheKey: this.cacheKey_,
         columns: this.columns_,
@@ -433,7 +433,10 @@ tr.exportTo('cp', () => {
     },
   };
 
-  cp.ElementBase.registerReducers(TimeseriesCache);
+  Redux.registerReducers(TimeseriesCache.reducers, [
+    Redux.renameReducer('TimeseriesCache.'),
+    ...Redux.DEFAULT_REDUCER_WRAPPERS,
+  ]);
 
   const ReadTimeseries = options => async(dispatch, getState) =>
     await new TimeseriesCache(options, dispatch, getState).read();

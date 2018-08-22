@@ -70,56 +70,45 @@ tr.exportTo('cp', () => {
     }
   }
 
-  TriageExisting.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      bugId: {type: String},
-      isOpen: {
-        type: Boolean,
-        reflectToAttribute: true,
-        observer: 'observeIsOpen_',
-      },
-      onlyIntersectingBugs: {type: Boolean},
-      selectedRange: {type: Object},
-    }),
-    recentPerformanceBugs: {
-      type: Array,
-      statePath: 'recentPerformanceBugs',
+  TriageExisting.State = {
+    bugId: options => '',
+    isOpen: {
+      value: options => options.isOpen === true,
+      reflectToAttribute: true,
+    },
+    onlyIntersectingBugs: options => true,
+    selectedRange: options => {
+      const selectedRange = new tr.b.math.Range();
+      if (!options.alerts) return selectedRange;
+      for (const alert of options.alerts) {
+        selectedRange.addValue(alert.startRevision);
+        selectedRange.addValue(alert.endRevision);
+      }
+      return selectedRange;
     },
   };
 
-  TriageExisting.DEFAULT_STATE = {
-    bugId: '',
-    isOpen: false,
-    onlyIntersectingBugs: true,
-    recentPerformanceBugs: [],
-    selectedRange: undefined,
+  TriageExisting.buildState = options =>
+    cp.buildState(TriageExisting.State, options);
+
+  TriageExisting.properties = {
+    ...cp.buildProperties('state', TriageExisting.State),
+    recentPerformanceBugs: {statePath: 'recentPerformanceBugs'},
   };
 
-  TriageExisting.openState = selectedAlerts => {
-    const selectedRange = new tr.b.math.Range();
-    for (const alert of selectedAlerts) {
-      selectedRange.addValue(alert.startRevision);
-      selectedRange.addValue(alert.endRevision);
-    }
-    return {
-      isOpen: true,
-      bugId: '',
-      selectedRange,
-    };
-  };
+  TriageExisting.observers = ['observeIsOpen_(isOpen)'];
 
   TriageExisting.actions = {
     toggleOnlyIntersectingBugs: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.onlyIntersectingBugs`));
+      dispatch(Redux.TOGGLE(`${statePath}.onlyIntersectingBugs`));
     },
 
     recentPerformanceBug: (statePath, bugId) => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.updateObject(statePath, {bugId}));
+      dispatch(Redux.UPDATE(statePath, {bugId}));
     },
 
     close: statePath => async(dispatch, getState) => {
-      dispatch(cp.ElementBase.actions.toggleBoolean(`${statePath}.isOpen`));
+      dispatch(Redux.UPDATE(statePath, {isOpen: false}));
     },
 
     submit: statePath => async(dispatch, getState) => {

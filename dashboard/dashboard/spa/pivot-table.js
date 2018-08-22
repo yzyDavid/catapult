@@ -5,20 +5,6 @@
 'use strict';
 tr.exportTo('cp', () => {
   class PivotTable extends cp.ElementBase {
-    static get properties() {
-      return cp.ElementBase.statePathProperties('statePath', {
-        collapsedCellStatistics: {type: Array},
-        columnNames: {type: Array},
-        columnStateKeys: {type: Array},
-        commonDiagnostics: {type: Array},
-        expandedCellStatistics: {type: Array},
-        referenceColumnName: {type: String},
-        rows: {type: Array},
-        sortColumn: {type: String},
-        sortDescending: {type: Boolean},
-      });
-    }
-
     visibleRows_(rows) {
       return PivotTable.visibleRows(rows, 0);
     }
@@ -49,6 +35,13 @@ tr.exportTo('cp', () => {
       // TODO
     }
   }
+
+  PivotTable.State = {
+  };
+
+  PivotTable.properties = cp.buildProperties('state', PivotTable.State);
+  PivotTable.buildState = options => cp.buildState(PivotTable.State, options);
+
   cp.ElementBase.register(PivotTable);
 
   return {

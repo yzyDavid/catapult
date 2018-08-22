@@ -5,21 +5,6 @@
 'use strict';
 tr.exportTo('cp', () => {
   class CreateElement extends cp.ElementBase {
-    static get properties() {
-      return {
-        tagName: {
-          type: String,
-          value: 'div',
-          observer: 'update_',
-        },
-        properties: {
-          type: Object,
-          value: {},
-          observer: 'update_',
-        },
-      };
-    }
-
     get content() {
       return this.content_;
     }
@@ -38,6 +23,18 @@ tr.exportTo('cp', () => {
       this.shadowRoot.appendChild(this.content_);
     }
   }
+
+  CreateElement.properties = {
+    tagName: {
+      type: String,
+      value: 'div',
+    },
+    properties: {
+      type: Object,
+      value: {},
+    },
+  };
+  CreateElement.observers = ['update_(tagName, properties)'];
 
   cp.ElementBase.register(CreateElement);
 

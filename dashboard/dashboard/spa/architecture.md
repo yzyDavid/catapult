@@ -25,7 +25,5 @@ Action creators MAY take any number of parameters.
 TODO instance methods vs static methods
 
 TODO cp.setImmutable
-TODO ElementBase.statePathReducer
-TODO ElementBase.statePathProperties
-TODO ElementBase.actions.updateObject
-TODO ElementBase.actions.toggleBoolean
+TODO statePathReducer
+TODO buildProperties

@@ -31,12 +31,8 @@
     }
   }
 
-  CpRadioGroup.properties = {
-    selected: {
-      type: String,
-      observer: 'observeSelected_',
-    },
-  };
+  CpRadioGroup.properties = {selected: {type: String}};
+  CpRadioGroup.observers = ['observeSelected_(selected)'];
 
   customElements.define(CpRadioGroup.is, CpRadioGroup);
 })();

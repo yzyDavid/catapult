@@ -150,6 +150,12 @@ tr.exportTo('cp', () => {
       }));
     }
 
+    async onTagSelect_(event) {
+      const {tableIndex, rowIndex} = event.model;
+      this.dispatch(cp.ChartParameter.actions.tagFilter(
+          `${this.statePath}.tables.${tableIndex}.rows.${rowIndex}.testCase`));
+    }
+
     async onSelectSource_(event) {
       await this.dispatch('loadReports', this.statePath);
       if (this.source.selectedOptions.includes(ReportSection.CREATE)) {
@@ -399,30 +405,37 @@ tr.exportTo('cp', () => {
     cp.IS_DEBUG ||
     (table && table.owners && userEmail && table.owners.includes(userEmail));
 
-  ReportSection.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      copiedMeasurements: {type: Boolean},
-      isLoading: {type: Boolean},
-      milestone: {type: Number},
-      minRevision: {type: Number},
-      maxRevision: {type: Number},
-      minRevisionInput: {type: Number},
-      maxRevisionInput: {type: Number},
-      sectionId: {type: String},
-      source: {type: Object},
-      tables: {type: Array},
-      tooltip: {type: Array},
+  ReportSection.State = {
+    copiedMeasurements: options => false,
+    isLoading: options => false,
+    milestone: options => parseInt(options.milestone) || CURRENT_MILESTONE,
+    minRevision: options => options.minRevision,
+    maxRevision: options => options.maxRevision,
+    minRevisionInput: options => options.minRevision,
+    maxRevisionInput: options => options.maxRevision,
+    sectionId: options => options.sectionId || tr.b.GUID.allocateSimple(),
+    source: options => cp.DropdownInput.buildState({
+      label: 'Reports (loading)',
+      options: [
+        ReportSection.DEFAULT_NAME,
+        ReportSection.CREATE,
+      ],
+      selectedOptions: options.sources ? options.sources : [
+        ReportSection.DEFAULT_NAME,
+      ],
     }),
-    userEmail: {
-      type: String,
-      statePath: 'userEmail',
-    },
-    userEmail: {
-      type: Object,
-      statePath: 'userEmail',
-      observer: 'observeUserEmail_',
-    },
+    tables: options => [PLACEHOLDER_TABLE],
+    tooltip: options => {return {};},
   };
+
+  ReportSection.buildState = options => cp.buildState(
+      ReportSection.State, options);
+
+  ReportSection.properties = {
+    ...cp.buildProperties('state', ReportSection.State),
+    userEmail: {statePath: 'userEmail'},
+  };
+  ReportSection.observers = ['observeUserEmail_(userEmail)'];
 
   const DASHES = '-'.repeat(5);
   const PLACEHOLDER_TABLE = {
@@ -484,7 +497,7 @@ tr.exportTo('cp', () => {
 
     selectMilestone: (statePath, milestone) => async(dispatch, getState) => {
       dispatch({
-        type: ReportSection.reducers.selectMilestone.typeName,
+        type: ReportSection.reducers.selectMilestone.name,
         statePath,
         milestone,
       });
@@ -493,10 +506,16 @@ tr.exportTo('cp', () => {
 
     restoreState: (statePath, options) => async(dispatch, getState) => {
       dispatch({
-        type: ReportSection.reducers.restoreState.typeName,
+        type: ReportSection.reducers.restoreState.name,
         statePath,
         options,
       });
+      const state = Polymer.Path.get(getState(), statePath);
+      if (state.minRevision === undefined ||
+          state.maxRevision === undefined) {
+        ReportSection.actions.selectMilestone(
+            statePath, state.milestone)(dispatch, getState);
+      }
       ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
@@ -509,8 +528,7 @@ tr.exportTo('cp', () => {
         await ReportSection.actions.renderEditForm(
             statePath, tableIndex)(dispatch, getState);
       }
-      cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.tables.${tableIndex}.isEditing`)(dispatch, getState);
+      dispatch(Redux.TOGGLE(`${statePath}.tables.${tableIndex}.isEditing`));
     },
 
     loadSources: statePath => async(dispatch, getState) => {
@@ -520,7 +538,7 @@ tr.exportTo('cp', () => {
       const reportNames = await teamFilter.reportNames(
           reportTemplateIds.map(t => t.name));
       dispatch({
-        type: ReportSection.reducers.receiveSourceOptions.typeName,
+        type: ReportSection.reducers.receiveSourceOptions.name,
         statePath,
         reportNames,
       });
@@ -536,7 +554,7 @@ tr.exportTo('cp', () => {
             await cp.ReadTestSuites()(dispatch, getState));
       }
       dispatch({
-        type: ReportSection.reducers.requestReports.typeName,
+        type: ReportSection.reducers.requestReports.name,
         statePath,
         testSuites,
       });
@@ -573,7 +591,7 @@ tr.exportTo('cp', () => {
               await cp.ReadTestSuites()(dispatch, getState));
         }
         dispatch({
-          type: ReportSection.reducers.receiveReports.typeName,
+          type: ReportSection.reducers.receiveReports.name,
           statePath,
           reports: results,
           testSuites,
@@ -600,13 +618,11 @@ tr.exportTo('cp', () => {
               dispatch, getState);
         }));
         const path = `${statePath}.tables.${tableIndex}`;
-        cp.ElementBase.actions.updateObject(path, {
-          canEdit: true
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(path, {canEdit: true}));
       })();
-      cp.ElementBase.actions.updateObject(`${statePath}.tables.${tableIndex}`, {
+      dispatch(Redux.UPDATE(`${statePath}.tables.${tableIndex}`, {
         canEdit: promise,
-      })(dispatch, getState);
+      }));
       await promise;
     },
 
@@ -647,27 +663,24 @@ tr.exportTo('cp', () => {
     templateName: (statePath, tableIndex, name) =>
       async(dispatch, getState) => {
         const path = `${statePath}.tables.${tableIndex}`;
-        cp.ElementBase.actions.updateObject(path, {
-          name,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(path, {name}));
       },
 
     templateOwners: (statePath, tableIndex, owners) =>
       async(dispatch, getState) => {
         const path = `${statePath}.tables.${tableIndex}`;
-        cp.ElementBase.actions.updateObject(path, {owners})(dispatch, getState);
+        dispatch(Redux.UPDATE(path, {owners}));
       },
 
     templateUrl: (statePath, tableIndex, url) =>
       async(dispatch, getState) => {
-        const path = `${statePath}.tables.${tableIndex}`;
-        cp.ElementBase.actions.updateObject(path, {url})(dispatch, getState);
+        dispatch(Redux.UPDATE(`${statePath}.tables.${tableIndex}`, {url}));
       },
 
     templateRowLabel: (statePath, tableIndex, rowIndex, label) =>
       async(dispatch, getState) => {
         const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex}`;
-        cp.ElementBase.actions.updateObject(path, {label})(dispatch, getState);
+        dispatch(Redux.UPDATE(path, {label}));
       },
 
     templateTestSuite: (statePath, tableIndex, rowIndex) =>
@@ -679,7 +692,7 @@ tr.exportTo('cp', () => {
     templateRemoveRow: (statePath, tableIndex, rowIndex) =>
       async(dispatch, getState) => {
         dispatch({
-          type: ReportSection.reducers.templateRemoveRow.typeName,
+          type: ReportSection.reducers.templateRemoveRow.name,
           statePath,
           tableIndex,
           rowIndex,
@@ -689,7 +702,7 @@ tr.exportTo('cp', () => {
     templateAddRow: (statePath, tableIndex, rowIndex) =>
       async(dispatch, getState) => {
         dispatch({
-          type: ReportSection.reducers.templateAddRow.typeName,
+          type: ReportSection.reducers.templateAddRow.name,
           statePath: `${statePath}.tables.${tableIndex}`,
           rowIndex,
           testSuites: await cp.ReadTestSuites()(dispatch, getState),
@@ -718,93 +731,73 @@ tr.exportTo('cp', () => {
           };
         }),
       });
-      cp.ElementBase.actions.updateObject(statePath, {
-        isLoading: true,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {isLoading: true}));
       const reportTemplateIds = await request.response;
-      cp.ElementBase.actions.updateObject('', {
-        reportTemplateIds,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE('', {reportTemplateIds}));
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
           reportTemplateIds.map(t => t.name));
       dispatch({
-        type: ReportSection.reducers.receiveSourceOptions.typeName,
+        type: ReportSection.reducers.receiveSourceOptions.name,
         statePath,
         reportNames,
       });
       rootState = getState();
       state = Polymer.Path.get(rootState, statePath);
-      cp.ElementBase.actions.updateObject(statePath, {
+      dispatch(Redux.UPDATE(statePath, {
         isLoading: false,
         source: {
           ...state.source,
           selectedOptions: [table.name],
         },
-      })(dispatch, getState);
+      }));
       ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     setMinRevision: (statePath, minRevisionInput) =>
       async(dispatch, getState) => {
-        cp.ElementBase.actions.updateObject(statePath, {
-          minRevisionInput,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {minRevisionInput}));
         if (!minRevisionInput.match(/^\d{6}$/)) return;
-        cp.ElementBase.actions.updateObject(statePath, {
-          minRevision: minRevisionInput,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {minRevision: minRevisionInput}));
         ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     setMaxRevision: (statePath, maxRevisionInput) =>
       async(dispatch, getState) => {
-        cp.ElementBase.actions.updateObject(statePath, {
-          maxRevisionInput,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {maxRevisionInput}));
         if (!maxRevisionInput.match(/^\d{6}$/)) return;
-        cp.ElementBase.actions.updateObject(statePath, {
-          maxRevision: maxRevisionInput,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath, {maxRevision: maxRevisionInput}));
         ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     toastCopied: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
-        copiedMeasurements: true,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {copiedMeasurements: true}));
       await cp.timeout(5000);
       // TODO return if a different table was copied during the timeout.
-      cp.ElementBase.actions.updateObject(statePath, {
-        copiedMeasurements: false,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {copiedMeasurements: false}));
     },
 
     showTooltip: (statePath, tooltip) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
-        tooltip,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {tooltip}));
     },
 
     hideTooltip: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
-        tooltip: {},
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {tooltip: {}}));
     },
   };
 
   ReportSection.reducers = {
-    selectMilestone: (state, action, rootState) => {
-      const maxRevision = (action.milestone === CURRENT_MILESTONE) ?
-        'latest' : CHROMIUM_MILESTONES[action.milestone + 1];
-      const minRevision = CHROMIUM_MILESTONES[action.milestone];
+    selectMilestone: (state, {milestone}, rootState) => {
+      const maxRevision = (milestone === CURRENT_MILESTONE) ?
+        'latest' : CHROMIUM_MILESTONES[milestone + 1];
+      const minRevision = CHROMIUM_MILESTONES[milestone];
       return {
         ...state,
         minRevision,
         maxRevision,
         minRevisionInput: minRevision,
         maxRevisionInput: maxRevision,
-        milestone: action.milestone,
+        milestone,
       };
     },
 
@@ -817,7 +810,7 @@ tr.exportTo('cp', () => {
       return {
         ...state,
         source,
-        milestone: parseInt(action.options.milestone),
+        milestone: parseInt(action.options.milestone || CURRENT_MILESTONE),
         minRevision: action.options.minRevision,
         maxRevision: action.options.maxRevision,
         minRevisionInput: action.options.minRevision,
@@ -1073,31 +1066,6 @@ tr.exportTo('cp', () => {
       }
     }
     return options;
-  };
-
-  ReportSection.newState = options => {
-    const sources = options.sources ? options.sources : [
-      ReportSection.DEFAULT_NAME,
-    ];
-    return {
-      isLoading: false,
-      source: {
-        label: 'Reports (loading)',
-        options: [
-          ReportSection.DEFAULT_NAME,
-          ReportSection.CREATE,
-        ],
-        query: '',
-        selectedOptions: sources,
-      },
-      milestone: parseInt(options.milestone) || CURRENT_MILESTONE,
-      minRevision: options.minRevision,
-      maxRevision: options.maxRevision,
-      minRevisionInput: options.minRevision,
-      maxRevisionInput: options.maxRevision,
-      tables: [PLACEHOLDER_TABLE],
-      tooltip: {},
-    };
   };
 
   ReportSection.getSessionState = state => {

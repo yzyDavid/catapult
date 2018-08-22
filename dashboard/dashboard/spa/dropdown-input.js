@@ -99,40 +99,36 @@ tr.exportTo('cp', () => {
     return `[${selectedOptions.length} selected]`;
   };
 
-  DropdownInput.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      alwaysEnabled: {type: Boolean},
-      hasBeenOpened: {type: Boolean},
-      columns: {type: Array},
-      focusTimestamp: {type: Number},
-      label: {type: String},
-      options: {type: Array},
-      query: {type: String},
-      recommended: {type: Object},
-      required: {type: Boolean},
-      requireSingle: {type: Boolean},
-      errorMessage: {type: String},
-      selectedOptions: {type: Array},
-    }),
-    largeDom: {
-      type: Boolean,
-      statePath: 'largeDom',
-    },
-    rootFocusTimestamp: {
-      type: Number,
-      statePath: 'focusTimestamp',
-    },
-    isFocused: {
-      type: Boolean,
-      computed: '_eq(focusTimestamp, rootFocusTimestamp)',
-      observer: 'observeIsFocused_',
-    },
+  DropdownInput.State = {
+    ...cp.OptionGroup.RootState,
+    ...cp.OptionGroup.State,
+    alwaysEnabled: options => options.alwaysEnabled !== true,
+    columns: options => options.columns || [],
+    errorMessage: options => options.errorMessage || '',
+    focusTimestamp: options => undefined,
+    hasBeenOpened: options => false,
+    label: options => options.label || '',
+    recommended: options => options.recommended || {},
+    requireSingle: options => options.requireSingle || false,
+    required: options => options.required || false,
   };
+
+  DropdownInput.buildState = options => cp.buildState(
+      DropdownInput.State, options);
+
+  DropdownInput.properties = {
+    ...cp.buildProperties('state', DropdownInput.State),
+    largeDom: {statePath: 'largeDom'},
+    rootFocusTimestamp: {statePath: 'focusTimestamp'},
+    isFocused: {computed: '_eq(focusTimestamp, rootFocusTimestamp)'},
+  };
+
+  DropdownInput.observers = ['observeIsFocused_(isFocused)'];
 
   DropdownInput.actions = {
     focus: inputStatePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.focus.typeName,
+        type: DropdownInput.reducers.focus.name,
         // NOT "statePath"! ElementBase.statePathReducer would mess that up.
         inputStatePath,
       });
@@ -140,43 +136,41 @@ tr.exportTo('cp', () => {
 
     blurAll: () => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.blur.typeName,
+        type: DropdownInput.reducers.blur.name,
         statePath: '',
       });
     },
 
     blur: statePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.blur.typeName,
+        type: DropdownInput.reducers.blur.name,
         statePath,
       });
     },
 
     clear: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
+      dispatch(Redux.UPDATE(statePath, {
         query: '',
         selectedOptions: [],
-      })(dispatch, getState);
+      }));
       cp.DropdownInput.actions.focus(statePath)(dispatch, getState);
     },
 
     onKeyup: (statePath, query) => async(dispatch, getState) => {
-      cp.ElementBase.actions.updateObject(statePath, {
-        query,
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {query}));
     },
 
     onColumnSelect: statePath =>
       async(dispatch, getState) => {
         dispatch({
-          type: DropdownInput.reducers.onColumnSelect.typeName,
+          type: DropdownInput.reducers.onColumnSelect.name,
           statePath,
         });
       },
 
     populateColumns: statePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.populateColumns.typeName,
+        type: DropdownInput.reducers.populateColumns.name,
         statePath,
       });
     },

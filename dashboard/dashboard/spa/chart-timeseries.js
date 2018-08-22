@@ -110,10 +110,12 @@ tr.exportTo('cp', () => {
       return !isLoading && this._empty(lines);
     }
 
-    observeLineDescriptors_() {
-      // Changing any of lineDescriptors/minRevision/maxRevision causes Polymer
-      // to call this method. Changing all 3 at once causes Polymer to call it 3
-      // times within the same task, so use debounce to only call load() once.
+    observeLineDescriptors_(
+        lineDescriptors, mode, fixedXAxis, zeroYAxis,
+        maxRevision, minRevision) {
+      // Changing any of these properties causes Polymer to call this method.
+      // Changing all at once causes Polymer to call it many times within the
+      // same task, so use debounce to only call load() once.
       this.debounce('load', () => {
         this.dispatch('load', this.statePath);
       }, Polymer.Async.microTask);
@@ -139,59 +141,35 @@ tr.exportTo('cp', () => {
     }
   }
 
-  ChartTimeseries.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      isLoading: {type: Boolean},
-      zeroYAxis: {
-        type: Boolean,
-        observer: 'observeLineDescriptors_',
-      },
-      fixedXAxis: {
-        type: Boolean,
-        observer: 'observeLineDescriptors_',
-      },
-      mode: {
-        type: String,
-        observer: 'observeLineDescriptors_',
-      },
-      maxRevision: {
-        type: Number,
-        observer: 'observeLineDescriptors_',
-      },
-      minRevision: {
-        type: Number,
-        observer: 'observeLineDescriptors_',
-      },
-      lines: {
-        type: Array,
-        observer: 'observeLines_',
-      },
-      lineDescriptors: {
-        type: Array,
-        observer: 'observeLineDescriptors_',
-      },
-    }),
+  ChartTimeseries.State = {
+    ...cp.ChartBase.State,
+    lines: options => cp.ChartBase.State.lines(options),
+    lineDescriptors: options => [],
+    minRevision: options => undefined,
+    maxRevision: options => undefined,
+    brushRevisions: options => [],
+    isLoading: options => false,
+    xAxis: options => {
+      return {...cp.ChartBase.State.xAxis(options), generateTicks: true};
+    },
+    yAxis: options => {
+      return {...cp.ChartBase.State.yAxis(options), generateTicks: true};
+    },
+    zeroYAxis: options => false,
+    fixedXAxis: options => false,
+    mode: options => 'normalizeUnit',
   };
 
-  ChartTimeseries.newState = () => {
-    const state = cp.ChartBase.newState();
-    return {
-      ...state,
-      lineDescriptors: [],
-      minRevision: undefined,
-      maxRevision: undefined,
-      brushRevisions: [],
-      isLoading: false,
-      xAxis: {
-        ...state.xAxis,
-        generateTicks: true,
-      },
-      yAxis: {
-        ...state.yAxis,
-        generateTicks: true,
-      },
-    };
-  };
+  ChartTimeseries.properties = cp.buildProperties(
+      'state', ChartTimeseries.State);
+  ChartTimeseries.buildState = options => cp.buildState(
+      ChartTimeseries.State, options);
+
+  ChartTimeseries.observers = [
+    'observeLines_(lines)',
+    'observeLineDescriptors_(lineDescriptors, mode, fixedXAxis, zeroYAxis, ' +
+        'maxRevision, minRevision)',
+  ];
 
   function arraySetEqual(a, b) {
     if (a.length !== b.length) return false;
@@ -228,10 +206,7 @@ tr.exportTo('cp', () => {
       let state = Polymer.Path.get(getState(), statePath);
       if (!state) return;
 
-      cp.ElementBase.actions.updateObject(statePath, {
-        isLoading: true,
-        lines: [],
-      })(dispatch, getState);
+      dispatch(Redux.UPDATE(statePath, {isLoading: true, lines: []}));
 
       // Load each lineDescriptor in parallel.
       await Promise.all(state.lineDescriptors.map(lineDescriptor =>
@@ -239,8 +214,7 @@ tr.exportTo('cp', () => {
             statePath, lineDescriptor))));
       state = Polymer.Path.get(getState(), statePath);
       if (!state) return;
-      dispatch(cp.ElementBase.actions.updateObject(
-          statePath, {isLoading: false}));
+      dispatch(Redux.UPDATE(statePath, {isLoading: false}));
     },
 
     fetchLineDescriptor: (statePath, lineDescriptor) =>
@@ -295,7 +269,7 @@ tr.exportTo('cp', () => {
         }
 
         dispatch({
-          type: ChartTimeseries.reducers.layout.typeName,
+          type: ChartTimeseries.reducers.layout.name,
           statePath,
           lineDescriptor,
           timeserieses,
@@ -325,14 +299,12 @@ tr.exportTo('cp', () => {
         const rects = await Promise.all([...ticks].map(tick =>
           cp.measureText(tick)));
         const width = tr.b.math.Statistics.max(rects, rect => rect.width);
-        cp.ElementBase.actions.updateObject(statePath + '.yAxis', {
-          width,
-        })(dispatch, getState);
+        dispatch(Redux.UPDATE(statePath + '.yAxis', {width}));
       },
 
     dotMouseOver_: (statePath, line, datum) => async(dispatch, getState) => {
       dispatch({
-        type: ChartTimeseries.reducers.mouseYTicks.typeName,
+        type: ChartTimeseries.reducers.mouseYTicks.name,
         statePath,
         line,
       });
@@ -377,7 +349,7 @@ tr.exportTo('cp', () => {
 
     dotMouseOut_: statePath => async(dispatch, getState) => {
       dispatch({
-        type: ChartTimeseries.reducers.mouseYTicks.typeName,
+        type: ChartTimeseries.reducers.mouseYTicks.name,
         statePath,
       });
     },

@@ -14,15 +14,25 @@ tr.exportTo('cp', () => {
       await this.dispatch('toggle', this.statePath);
     }
 
-    icon_(isExpanded) {
-      return ExpandButton.icon(isExpanded, this.horizontal, this.after);
+    getIcon_(isExpanded) {
+      return ExpandButton.getIcon(isExpanded, this.horizontal, this.after);
     }
   }
 
+  ExpandButton.getIcon = (isExpanded, horizontal, after) => {
+    if (after) isExpanded = !isExpanded;
+    if (horizontal) {
+      return (isExpanded ? 'cp:left' : 'cp:right');
+    }
+    return (isExpanded ? 'cp:less' : 'cp:more');
+  };
+
+  const ExpandState = {
+    isExpanded: options => options.isExpanded || false,
+  };
+
   ExpandButton.properties = {
-    ...cp.ElementBase.statePathProperties('statePath', {
-      isExpanded: {type: Boolean},
-    }),
+    ...cp.buildProperties('state', ExpandState),
     horizontal: {
       type: Boolean,
       value: false,
@@ -33,19 +43,12 @@ tr.exportTo('cp', () => {
     },
   };
 
+  ExpandButton.buildState = options => cp.buildState(ExpandState, options);
+
   ExpandButton.actions = {
     toggle: statePath => async(dispatch, getState) => {
-      cp.ElementBase.actions.toggleBoolean(
-          `${statePath}.isExpanded`)(dispatch, getState);
+      dispatch({type: 'TOGGLE', statePath: statePath + '.isExpanded'});
     },
-  };
-
-  ExpandButton.icon = (isExpanded, horizontal, after) => {
-    if (after) isExpanded = !isExpanded;
-    if (horizontal) {
-      return (isExpanded ? 'cp:left' : 'cp:right');
-    }
-    return (isExpanded ? 'cp:less' : 'cp:more');
   };
 
   cp.ElementBase.register(ExpandButton);

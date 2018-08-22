@@ -5,14 +5,6 @@
 'use strict';
 tr.exportTo('cp', () => {
   class PivotSection extends cp.ElementBase {
-    static get properties() {
-      return cp.ElementBase.statePathProperties('statePath', {
-        testSuites: {type: Object},
-        revisions: {type: Object},
-        histograms: {type: Object},
-      });
-    }
-
     closeSection_() {
       this.dispatchEvent(new CustomEvent('close-section', {
         bubbles: true,
@@ -22,21 +14,19 @@ tr.exportTo('cp', () => {
     }
   }
 
+  PivotSection.State = {
+    sectionId: options => options.sectionId || tr.b.GUID.allocateSimple(),
+  };
+
+  PivotSection.buildState = options => cp.buildState(
+      PivotSection.State, options);
+
+  PivotSection.properties = cp.buildProperties('state', PivotSection.State);
+
   PivotSection.actions = {
   };
 
   PivotSection.reducers = {
-  };
-
-  PivotSection.newState = options => {
-    return {
-      testSuites: {
-      },
-      revisions: {
-      },
-      histograms: {
-      },
-    };
   };
 
   PivotSection.getSessionState = state => {

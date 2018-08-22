@@ -161,6 +161,8 @@
     return actions.reduce(rootReducer, rootState);
   });
 
+  Redux.CHAIN = (...actions) => {return {type: 'CHAIN', actions};};
+
   /*
    * Update an object in the state tree denoted by `action.statePath`.
    *
@@ -171,6 +173,26 @@
     return {...state, ...delta};
   }));
 
+  Redux.UPDATE = (statePath, delta) => {
+    return {type: 'UPDATE', statePath, delta};
+  };
+
+  /*
+   * Ensure an object exists in the state tree. If it already exists, it is not
+   * modified. If it does not yet exist, it is initialized to `defaultState`.
+   *
+   * Usage:
+   * dispatch({type: 'ENSURE', statePath: 'x.0.y', defaultState: []});
+   */
+  Redux.registerReducer(Redux.statePathReducer(
+      function ENSURE(state, {defaultState = {}}) {
+        return state || defaultState;
+      }));
+
+  Redux.ENSURE = (statePath, defaultState) => {
+    return {type: 'ENSURE', statePath, defaultState};
+  };
+
   /*
    * Toggle booleans in the state tree denoted by `action.statePath`.
    *
@@ -180,4 +202,6 @@
   Redux.registerReducer(Redux.statePathReducer(function TOGGLE(state) {
     return !state;
   }));
+
+  Redux.TOGGLE = statePath => {return {type: 'TOGGLE', statePath};};
 })();

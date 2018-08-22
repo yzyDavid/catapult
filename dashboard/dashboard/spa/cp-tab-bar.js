@@ -6,6 +6,7 @@
 (() => {
   class CpTabBar extends Polymer.Element {
     static get is() { return 'cp-tab-bar'; }
+
     async ready() {
       super.ready();
       await cp.afterRender();
@@ -19,12 +20,8 @@
     }
   }
 
-  CpTabBar.properties = {
-    selected: {
-      type: String,
-      observer: 'observeSelected_',
-    },
-  };
+  CpTabBar.properties = {selected: {type: String}};
+  CpTabBar.observers = ['observeSelected_(selected)'];
 
   customElements.define(CpTabBar.is, CpTabBar);
 })();

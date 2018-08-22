@@ -177,6 +177,20 @@ found in the LICENSE file.
         @apply --elevation-2;
         padding: 8px;
       }
+
+      .dropdown_extra {
+        align-items: center;
+        border-right: 1px solid black;
+        display: flex;
+        flex-direction: column;
+        padding-right: 8px;
+      }
+
+      .tag_head {
+        padding: 4px;
+        color: var(--neutral-color-dark);
+        font-weight: bold;
+      }
     </style>
 
     <div id="controls">
@@ -315,7 +329,19 @@ found in the LICENSE file.
                       <td>
                         <dropdown-input
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase">
-                          <!-- TODO tags -->
+                          <!-- TODO share with chart-parameter -->
+                          <template is="dom-if" if="[[!_empty(row.testCase.tags.options)]]">
+                            <div class="dropdown_extra" slot="dropdown_extra">
+                              <span class="tag_head">
+                                Tags
+                              </span>
+                              <option-group
+                                  state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase.tags"
+                                  root-state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase.tags"
+                                  on-option-select="onTagSelect_">
+                              </option-group>
+                            </div>
+                          </template>
                         </dropdown-input>
                       </td>
                       <td class="template_row_button">
