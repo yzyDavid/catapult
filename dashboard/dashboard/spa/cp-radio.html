@@ -5,8 +5,6 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/dashboard/spa/element-base.html">
-
 <dom-module id="cp-radio">
   <template>
     <style>
@@ -14,7 +12,7 @@ found in the LICENSE file.
         display: none;
       }
       input:checked + label:before {
-        border-color: var(--primary-color-dark);
+        border-color: var(--primary-color-dark, blue);
       }
       input:checked + label:after {
         transform: scale(1);
@@ -34,7 +32,7 @@ found in the LICENSE file.
         position: absolute;
         content: '';
         border-radius: 50%;
-        transition: all var(--transition-short) ease;
+        transition: all var(--transition-short, 0.2s) ease;
         transition-property: transform, border-color;
       }
       label:before {
@@ -51,7 +49,15 @@ found in the LICENSE file.
         width: 10px;
         height: 10px;
         transform: scale(0);
-        background: var(--primary-color-dark);
+        background: var(--primary-color-dark, blue);
+      }
+      input:disabled + label:before,
+      input:disabled + label:after {
+        border-color: var(--neutral-color-dark, darkgrey);
+      }
+      input:disabled:checked + label:before,
+      input:disabled:checked + label:after {
+        background: var(--neutral-color-dark, darkgrey);
       }
     </style>
 
@@ -59,7 +65,7 @@ found in the LICENSE file.
         type="radio"
         id="native"
         checked="{{checked}}"
-        disabled="[[disabled]]"
+        disabled$="[[disabled]]"
         on-change="onChange_">
     <label for="native"><slot></slot></label>
   </template>

@@ -25,6 +25,12 @@ tr.exportTo('cp', () => {
     // Based on dot-prop-immutable:
     // https://github.com/debitoor/dot-prop-immutable/blob/master/index.js
     root = Array.isArray(root) ? [...root] : {...root};
+    if (path.length === 0) {
+      if (typeof value === 'function') {
+        return value(root);
+      }
+      return value;
+    }
     let node = root;
     const maxDepth = path.length - 1;
     for (let depth = 0; depth < maxDepth; ++depth) {
@@ -206,9 +212,69 @@ tr.exportTo('cp', () => {
     return state;
   }
 
+  /* Processing results can be costly. Help callers batch process
+   * results by waiting a bit to see if more promises resolve.
+   * This is similar to Polymer.Debouncer, but as an async generator.
+   * Usage:
+   * async function fetchThings(things) {
+   *   const responses = things.map(thing => new ThingRequest(thing).response);
+   *   for await (const {results, errors} of cp.batchResponses(responses)) {
+   *     dispatch({
+   *       type: ...mergeAndDisplayThings.typeName,
+   *       results, errors,
+   *     });
+   *   }
+   *   dispatch({
+   *     type: ...doneReceivingThings.typeName,
+   *   });
+   * }
+   *
+   * |promises| can be any promise, need not be RequestBase.response.
+   */
+  async function* batchResponses(promises, opt_getDelayPromise) {
+    const getDelayPromise = opt_getDelayPromise || (() =>
+      cp.timeout(500));
+    let delay;
+    let results = [];
+    let errors = [];
+    promises = promises.map(narcissus => {
+      const socrates = (async() => {
+        try {
+          results.push(await narcissus);
+        } catch (err) {
+          errors.push(err);
+        } finally {
+          promises.splice(promises.indexOf(socrates), 1);
+        }
+      })();
+      return socrates;
+    });
+
+    while (promises.length) {
+      if (delay) {
+        await Promise.race([delay, ...promises]);
+        if (delay.isResolved) {
+          yield {results, errors};
+          results = [];
+          errors = [];
+          delay = undefined;
+        }
+      } else {
+        await Promise.race(promises);
+        delay = (async() => {
+          await getDelayPromise();
+          delay.isResolved = true;
+        })();
+        delay.isResolved = false;
+      }
+    }
+    yield {results, errors};
+  }
+
   return {
     afterRender,
     animationFrame,
+    batchResponses,
     buildProperties,
     buildState,
     deepFreeze,
