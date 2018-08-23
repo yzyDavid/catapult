@@ -9,10 +9,7 @@
 
     async ready() {
       super.ready();
-      this.boundOnItemChange_ = this.onItemChange_.bind(this);
-      for (const item of this.querySelectorAll('cp-radio')) {
-        item.addEventListener('change', this.boundOnItemChange_);
-      }
+      this.addEventListener('change', this.onItemChange_.bind(this));
     }
 
     async onItemChange_(event) {
