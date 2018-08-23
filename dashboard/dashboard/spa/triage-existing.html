@@ -95,7 +95,12 @@ found in the LICENSE file.
       <cp-switch
           checked="[[onlyIntersectingBugs]]"
           on-change="onToggleOnlyIntersectingBugs_">
-        Intersecting Bugs Only
+        <template is="dom-if" if="[[onlyIntersectingBugs]]">
+          Intersecting Bugs Only
+        </template>
+        <template is="dom-if" if="[[!onlyIntersectingBugs]]">
+          All Bugs
+        </template>
       </cp-switch>
     </div>
 

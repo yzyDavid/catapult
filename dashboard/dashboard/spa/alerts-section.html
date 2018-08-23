@@ -189,7 +189,12 @@ found in the LICENSE file.
           disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingImprovements]]"
           on-change="onToggleImprovements_">
-        Improvements
+        <template is="dom-if" if="[[showingImprovements]]">
+          Regressions and Improvements
+        </template>
+        <template is="dom-if" if="[[!showingImprovements]]">
+          Regressions Only
+        </template>
       </cp-switch>
 
       <cp-switch
@@ -197,7 +202,12 @@ found in the LICENSE file.
           disabled="[[!_empty(bug.selectedOptions)]]"
           checked$="[[showingTriaged]]"
           on-change="onToggleTriaged_">
-        Triaged
+        <template is="dom-if" if="[[showingTriaged]]">
+          New and Triaged
+        </template>
+        <template is="dom-if" if="[[!showingTriaged]]">
+          New Only
+        </template>
       </cp-switch>
 
       <span id="summary">

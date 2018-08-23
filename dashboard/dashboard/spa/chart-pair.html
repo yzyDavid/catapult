@@ -111,17 +111,32 @@ found in the LICENSE file.
               <cp-switch
                   checked="[[isLinked]]"
                   on-change="onToggleLinked_">
-                Link to other charts
+                <template is="dom-if" if="[[isLinked]]">
+                  Linked to other charts
+                </template>
+                <template is="dom-if" if="[[!isLinked]]">
+                  Unlinked from other charts
+                </template>
               </cp-switch>
               <cp-switch
                   checked="[[zeroYAxis]]"
                   on-change="onToggleZeroYAxis_">
-                Zero Y-Axis
+                <template is="dom-if" if="[[zeroYAxis]]">
+                  Zero Y-Axis
+                </template>
+                <template is="dom-if" if="[[!zeroYAxis]]">
+                  Floating Y-Axis
+                </template>
               </cp-switch>
               <cp-switch
                   checked="[[fixedXAxis]]"
                   on-change="onToggleFixedXAxis_">
-                Fixed X-Axis
+                <template is="dom-if" if="[[fixedXAxis]]">
+                  Fixed X-Axis
+                </template>
+                <template is="dom-if" if="[[!fixedXAxis]]">
+                  True X-Axis
+                </template>
               </cp-switch>
             </div>
             <div class="column">
