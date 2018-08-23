@@ -5,20 +5,20 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/dashboard/spa/element-base.html">
-
 <dom-module id="cp-tab">
   <template>
     <style>
       :host {
-        display: flex;
-        border-bottom: 2px solid var(--primary-color-light);
+        border-bottom: 2px solid var(--primary-color-light, lightblue);
         cursor: pointer;
+        display: flex;
+        justify-content: center;
+        min-width: 100px;
         padding: 4px 8px;
       }
       :host([checked]) {
         font-weight: bold;
-        border-bottom: 2px solid var(--primary-color-dark);
+        border-bottom: 2px solid var(--primary-color-dark, blue);
       }
     </style>
 
