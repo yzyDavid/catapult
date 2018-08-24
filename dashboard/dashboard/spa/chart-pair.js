@@ -125,7 +125,10 @@ tr.exportTo('cp', () => {
   }
 
   ChartPair.State = {
-    lineDescriptors: options => [],
+    lineDescriptors: {
+      value: options => [],
+      observer: 'observeLineDescriptors_',
+    },
     isExpanded: options => options.isExpanded !== false,
     minimapLayout: options => {
       const minimapLayout = {
@@ -160,7 +163,6 @@ tr.exportTo('cp', () => {
   ChartPair.buildState = options => cp.buildState(ChartPair.State, options);
 
   ChartPair.observers = [
-    'observeLineDescriptors_(lineDescriptors)',
     'observeLinkedCursorRevision_(linkedCursorRevision)',
     'observeLinkedRevisions_(linkedMinRevision, linkedMaxRevision)',
     'observeLinkedMode_(linkedMode)',

@@ -47,7 +47,7 @@ tr.exportTo('cp', () => {
 
   ExpandButton.actions = {
     toggle: statePath => async(dispatch, getState) => {
-      dispatch({type: 'TOGGLE', statePath: statePath + '.isExpanded'});
+      dispatch(Redux.TOGGLE(statePath + '.isExpanded'));
     },
   };
 

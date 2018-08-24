@@ -16,7 +16,7 @@
       this.selected = event.target.name;
     }
 
-    async observeSelected_(newValue, oldValue) {
+    async observeSelected_() {
       for (const item of this.querySelectorAll('cp-radio')) {
         item.checked = (item.name === this.selected);
       }

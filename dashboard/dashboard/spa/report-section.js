@@ -347,8 +347,7 @@ tr.exportTo('cp', () => {
           event.model.tableIndex);
     }
 
-    observeUserEmail_(newUserEmail, oldUserEmail) {
-      if (oldUserEmail === undefined) return;
+    observeUserEmail_(userEmail) {
       this.dispatch('authChange', this.statePath);
     }
 

@@ -125,14 +125,8 @@ tr.exportTo('cp', () => {
     }
 
     ensureCacheState_() {
-      const statePath = this.cacheStatePath_;
-      if (statePath === undefined) return;
-      if (Polymer.Path.get(this.rootState_, statePath)) return;
-      this.dispatch_({
-        type: 'ENSURE',
-        statePath,
-        defaultState: this.defaultCacheState_,
-      });
+      this.dispatch_(Redux.ENSURE(
+          this.cacheStatePath_, this.defaultCacheState_));
       this.rootState_ = this.getState_();
     }
 

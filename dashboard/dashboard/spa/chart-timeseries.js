@@ -110,9 +110,7 @@ tr.exportTo('cp', () => {
       return !isLoading && this._empty(lines);
     }
 
-    observeLineDescriptors_(
-        lineDescriptors, mode, fixedXAxis, zeroYAxis,
-        maxRevision, minRevision) {
+    observeLineDescriptors_() {
       // Changing any of these properties causes Polymer to call this method.
       // Changing all at once causes Polymer to call it many times within the
       // same task, so use debounce to only call load() once.
@@ -143,7 +141,10 @@ tr.exportTo('cp', () => {
 
   ChartTimeseries.State = {
     ...cp.ChartBase.State,
-    lines: options => cp.ChartBase.State.lines(options),
+    lines: {
+      value: options => cp.ChartBase.State.lines(options),
+      observer: 'observeLines_',
+    },
     lineDescriptors: options => [],
     minRevision: options => undefined,
     maxRevision: options => undefined,
@@ -166,7 +167,6 @@ tr.exportTo('cp', () => {
       ChartTimeseries.State, options);
 
   ChartTimeseries.observers = [
-    'observeLines_(lines)',
     'observeLineDescriptors_(lineDescriptors, mode, fixedXAxis, zeroYAxis, ' +
         'maxRevision, minRevision)',
   ];
