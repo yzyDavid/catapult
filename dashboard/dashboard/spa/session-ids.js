@@ -71,7 +71,7 @@ tr.exportTo('cp', () => {
     }
 
     onFinishRequest_(actual) {
-      if (cp.IS_DEBUG) return;
+      if (window.IS_DEBUG) return;
       if (actual === this.cacheKey_) return;
       // eslint-disable-next-line no-console
       console.error('WRONG sessionId!', {expected: this.cacheKey_, actual});

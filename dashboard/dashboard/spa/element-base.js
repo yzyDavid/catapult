@@ -4,24 +4,10 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  tr.b.Timing.ANALYTICS_FILTERS.push(mark =>
-    ['firstPaint', 'fetch', 'load'].includes(mark.groupName) ||
-    (mark.durationMs > 100));
-
-  // When true, state is recursively frozen so that improper property setting
-  // causes an error to be thrown. Freezing significantly impacts performance,
-  // so set to false in order to measure performance on localhost.
-  const IS_DEBUG = location.hostname === 'localhost';
-
-  // When in production, tell Redux Dev Tools to disable automatic recording.
-  const PRODUCTION_ORIGIN = 'v2spa-dot-chromeperf.appspot.com';
-  const PRODUCTION_URL = `https://${PRODUCTION_ORIGIN}`;
-  const IS_PRODUCTION = location.hostname === PRODUCTION_ORIGIN;
-
   const ReduxMixin = PolymerRedux(Redux.createSimpleStore({
     devtools: {
       // Do not record changes automatically when in a production environment.
-      shouldRecordChanges: !IS_PRODUCTION,
+      shouldRecordChanges: !window.IS_PRODUCTION,
 
       // Increase the maximum number of actions stored in the history tree. The
       // oldest actions are removed once maxAge is reached. It's critical for
@@ -108,10 +94,5 @@ tr.exportTo('cp', () => {
     cp.timeEventListeners(subclass);
   };
 
-  return {
-    ElementBase,
-    IS_DEBUG,
-    IS_PRODUCTION,
-    PRODUCTION_URL,
-  };
+  return {ElementBase};
 });

@@ -101,7 +101,7 @@ tr.exportTo('cp', () => {
       return {
         name: this.name_,
         owners: ['benjhayden@chromium.org', 'benjhayden@google.com'],
-        url: cp.PRODUCTION_URL,
+        url: window.PRODUCTION_URL,
         report: {rows, statistics: ['avg', 'std']},
       };
     }
@@ -402,7 +402,7 @@ tr.exportTo('cp', () => {
   }
 
   ReportSection.canEdit = (table, userEmail) =>
-    cp.IS_DEBUG ||
+    window.IS_DEBUG ||
     (table && table.owners && userEmail && table.owners.includes(userEmail));
 
   ReportSection.State = {
@@ -820,7 +820,7 @@ tr.exportTo('cp', () => {
 
     receiveSourceOptions: (state, {reportNames}, rootState) => {
       const options = cp.OptionGroup.groupValues(reportNames);
-      if (cp.IS_DEBUG || rootState.userEmail) {
+      if (window.IS_DEBUG || rootState.userEmail) {
         options.push(ReportSection.CREATE);
       }
       const label = `Reports (${reportNames.length})`;

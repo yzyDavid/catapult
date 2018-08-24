@@ -161,7 +161,7 @@ tr.exportTo('cp', () => {
     }
 
     get isProduction() {
-      return cp.IS_PRODUCTION;
+      return window.IS_PRODUCTION;
     }
 
     getChartTitle_(ids) {
@@ -270,7 +270,7 @@ tr.exportTo('cp', () => {
           readied: true,
         }));
 
-        if (cp.IS_DEBUG) {
+        if (window.IS_DEBUG) {
           cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState);
         }
       },

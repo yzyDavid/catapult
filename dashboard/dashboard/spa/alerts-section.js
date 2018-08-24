@@ -709,7 +709,7 @@ tr.exportTo('cp', () => {
 
     openNewBugDialog: statePath => async(dispatch, getState) => {
       let userEmail = getState().userEmail;
-      if (cp.IS_DEBUG) {
+      if (window.IS_DEBUG) {
         userEmail = 'you@chromium.org';
       }
       if (!userEmail) return;
@@ -722,7 +722,7 @@ tr.exportTo('cp', () => {
 
     openExistingBugDialog: statePath => async(dispatch, getState) => {
       let userEmail = getState().userEmail;
-      if (cp.IS_DEBUG) {
+      if (window.IS_DEBUG) {
         userEmail = 'you@chromium.org';
       }
       if (!userEmail) return;
