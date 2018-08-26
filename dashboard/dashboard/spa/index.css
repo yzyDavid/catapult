@@ -1,0 +1,42 @@
+/* Copyright 2018 The Chromium Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+:root {
+  --layer-menu: 100;
+  --layer-hidden: -100;
+  --icon-size: 24px;
+
+  /* https://material.io/guidelines/motion/material-motion.html#material-motion-how-does-material-move */
+  --transition-long: 0.8s;
+  --transition-short: 0.4s;
+
+  --primary-color-dark: #3f51b5;  /* paper-indigo-500 */
+  --primary-color-medium: #c5cae9;  /* paper-indigo-100 */
+  --primary-color-light: #e8eaf6;  /* paper-indigo-50 */
+  --neutral-color-dark: #9e9e9e;  /* paper-grey-500 */
+  --neutral-color-light: #eeeeee;  /* paper-grey-200 */
+  --error-color: #f44336;  /* paper-red-500 */
+  --improvement-color: #4caf50;  /* paper-green-500 */
+  --background-color: white;
+  --foreground-color: black;
+
+  /* paper-material-styles */
+  --elevation-1: {
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
+                0 1px 5px 0 rgba(0, 0, 0, 0.12),
+                0 3px 1px -2px rgba(0, 0, 0, 0.2);
+  };
+  --elevation-2: {
+    box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+                0 1px 10px 0 rgba(0, 0, 0, 0.12),
+                0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  };
+}
+
+body {
+  margin: 0;
+  font-family: helvetica,arial,sans-serif;
+  font-size: 13px;
+}

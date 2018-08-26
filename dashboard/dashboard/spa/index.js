@@ -14,13 +14,10 @@ window.PRODUCTION_ORIGIN = 'v2spa-dot-chromeperf.appspot.com';
 window.PRODUCTION_URL = `https://${PRODUCTION_ORIGIN}`;
 window.IS_PRODUCTION = location.hostname === PRODUCTION_ORIGIN;
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
   tr.b.Timing.ANALYTICS_FILTERS.push(mark =>
     ['firstPaint', 'fetch', 'load'].includes(mark.groupName) ||
     (mark.durationMs > 100));
-});
-
-window.addEventListener('load', () => {
   const loadTimes = Object.entries(performance.timing.toJSON()).filter(p =>
     p[1] > 0);
   loadTimes.sort((a, b) => a[1] - b[1]);
