@@ -154,9 +154,8 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
     anomaly_dicts = alerts.AnomalyDicts(
         [a for a in alert_list if a.key.kind() == 'Anomaly'])
     for ad in anomaly_dicts:
-      test_path = '/'.join([ad['master'], ad['bot'], ad['testsuite']])
-      test_path += '/' + ad['test']
-      desc = descriptor.Descriptor.FromTestPathSync(test_path)
+      desc = descriptor.Descriptor.FromTestPathSync(
+          '/'.join([ad['master'], ad['bot'], ad['testsuite'], ad['test']]))
       ad['descriptor'] = {
           'testSuite': desc.test_suite,
           'measurement': desc.measurement,
@@ -164,6 +163,15 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
           'testCase': desc.test_case,
           'statistic': desc.statistic,
       }
+      del ad['master']
+      del ad['bot']
+      del ad['testsuite']
+      del ad['type']
+      del ad['display_end']
+      del ad['display_start']
+      del ad['date']
+      del ad['percent_changed']
+      del ad['ref_test']
 
     response['anomalies'] = anomaly_dicts
     return response

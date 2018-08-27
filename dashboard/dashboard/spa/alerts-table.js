@@ -29,6 +29,12 @@ tr.exportTo('cp', () => {
       return `${count}/${alertGroup.alerts.length}`;
     }
 
+    allTriaged_(alertGroups, showingTriaged) {
+      if (showingTriaged) return alertGroups.length === 0;
+      return alertGroups.filter(group =>
+        group.alerts.length > group.triaged.count).length === 0;
+    }
+
     alertRevisionString_(alert) {
       if (alert.startRevision === alert.endRevision) return alert.startRevision;
       return alert.startRevision + '-' + alert.endRevision;
@@ -43,13 +49,51 @@ tr.exportTo('cp', () => {
       return cp.AlertsSection.breakWords(str);
     }
 
-    shouldDisplayAlert_(alertGroup, alertIndex) {
-      return alertGroup.isExpanded || (alertIndex === 0);
+    isExpandedGroup_(groupIsExpanded, triagedIsExpanded) {
+      return groupIsExpanded || triagedIsExpanded;
     }
 
-    shouldDisplayExpandGroupButton_(alertGroup, alertIndex) {
-      if (alertIndex !== 0) return false;
-      return alertGroup.alerts.length > 1;
+    shouldDisplayAlert_(
+        areAlertGroupsPlaceholders, showingTriaged, alertGroup, alertIndex,
+        triagedExpanded) {
+      if (areAlertGroupsPlaceholders) return true;
+      if (showingTriaged) return alertGroup.isExpanded || (alertIndex === 0);
+
+      if (!alertGroup.alerts[alertIndex]) return false;
+      const isTriaged = alertGroup.alerts[alertIndex].bugId;
+      const firstUntriagedIndex = alertGroup.alerts.findIndex(a => !a.bugId);
+      if (alertGroup.isExpanded) {
+        return !isTriaged || triagedExpanded || (
+          alertIndex === firstUntriagedIndex);
+      }
+      if (isTriaged) return triagedExpanded;
+      return alertIndex === firstUntriagedIndex;
+    }
+
+    shouldDisplayExpandGroupButton_(
+        alertGroup, alertIndex, showingTriaged, sortColumn, sortDescending) {
+      if (showingTriaged) {
+        return (alertIndex === 0) && alertGroup.alerts.length > 1;
+      }
+      return (alertIndex === alertGroup.alerts.findIndex(a => !a.bugId)) && (
+        alertGroup.alerts.length > (1 + alertGroup.triaged.count));
+    }
+
+    getExpandGroupButtonLabel_(alertGroup, showingTriaged) {
+      if (showingTriaged) return alertGroup.alerts.length;
+      return alertGroup.alerts.length - alertGroup.triaged.count;
+    }
+
+    shouldDisplayExpandTriagedButton_(
+        showingTriaged, alertGroup, alertIndex, sortColumn, sortDescending) {
+      if (showingTriaged || (alertGroup.triaged.count === 0)) return false;
+      return alertIndex === alertGroup.alerts.findIndex(a => !a.bugId);
+    }
+
+    shouldDisplaySelectedCount_(
+        showingTriaged, alertGroup, alertIndex, sortColumn, sortDescending) {
+      if (showingTriaged) return alertIndex === 0;
+      return alertIndex === alertGroup.alerts.findIndex(a => !a.bugId);
     }
 
     isAlertIgnored_(bugId) {
@@ -103,6 +147,10 @@ tr.exportTo('cp', () => {
   for (let i = 0; i < 5; ++i) {
     AlertsTable.PLACEHOLDER_ALERT_GROUPS.push({
       isSelected: false,
+      triaged: {
+        count: 0,
+        isExpanded: false,
+      },
       alerts: [
         {
           bugId: DASHES,
@@ -129,6 +177,8 @@ tr.exportTo('cp', () => {
     showBugColumn: options => true,
     showMasterColumn: options => true,
     showTestCaseColumn: options => true,
+    showTriagedColumn: options => true,
+    showingTriaged: options => options.showingTriaged || false,
     sortColumn: options => options.sortColumn || 'revisions',
     sortDescending: options => options.sortDescending || false,
   };
@@ -215,8 +265,16 @@ tr.exportTo('cp', () => {
           flatList[i].isSelected = isSelected;
         }
       } else {
-        if (!alertGroup.isExpanded && (action.alertIndex === 0)) {
-          // Toggle all alerts in this group
+        let toggleAll = false;
+        if (!alertGroup.isExpanded) {
+          if (state.showingTriaged) {
+            toggleAll = action.alertIndex === 0;
+          } else {
+            toggleAll = action.alertIndex === alertGroup.alerts.findIndex(
+                a => !a.bugId);
+          }
+        }
+        if (toggleAll) {
           alerts = alerts.map(alert => {
             return {
               ...alert,

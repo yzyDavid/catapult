@@ -212,7 +212,7 @@ found in the LICENSE file.
 
       <span id="summary">
         <template is="dom-if" if="[[!areAlertGroupsPlaceholders]]">
-          [[summary_(alertGroups)]]
+          [[summary_(showingTriaged, alertGroups)]]
         </template>
       </span>
 
@@ -342,7 +342,7 @@ found in the LICENSE file.
         on-select-alert="onSelectAlert_">
     </alerts-table>
 
-    <iron-collapse opened="[[!_empty(alertGroups)]]">
+    <iron-collapse opened="[[!allTriaged_(alertGroups, showingTriaged)]]">
       <chart-pair
           id="preview"
           state-path="[[statePath]].preview"
