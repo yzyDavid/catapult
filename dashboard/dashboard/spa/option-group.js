@@ -83,6 +83,7 @@ tr.exportTo('cp', () => {
 
   OptionGroup.State = {
     options: options => options.options || [],
+    optionValues: options => new Set(),
   };
 
   OptionGroup.RootState = {
