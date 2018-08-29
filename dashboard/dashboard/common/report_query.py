@@ -57,6 +57,8 @@ class ReportQuery(object):
     self._report = dict(template)
     self._revisions = revisions
     self._max_revs = {}
+    self._fetch_statistics = list({'avg', 'count'}.union(
+        self._report['statistics']))
 
     self._report['rows'] = []
     for row in template['rows']:
@@ -170,7 +172,7 @@ class ReportQuery(object):
   def _GetRow(self, tri, table_row, desc):
     # First try to find the unsuffixed test.
     test_paths = yield desc.ToTestPathsAsync()
-    logging.info('_GetRow %r', test_paths)
+    #logging.info('_GetRow %r', test_paths)
     unsuffixed_tests = yield [utils.TestMetadataKey(test_path).get_async()
                               for test_path in test_paths]
     unsuffixed_tests = [t for t in unsuffixed_tests if t]
@@ -218,9 +220,9 @@ class ReportQuery(object):
   def _GetSuffixedCell(self, tri, table_row, desc, rev):
     datum = {'descriptor': desc}
     statistics = yield [self._GetStatistic(datum, desc, rev, stat)
-                        for stat in descriptor.STATISTICS]
+                        for stat in self._fetch_statistics]
     statistics = {
-        descriptor.STATISTICS[i]: statistics[i]
+        self._fetch_statistics[i]: statistics[i]
         for i in xrange(len(statistics))
         if statistics[i] is not None}
     if 'avg' not in statistics:
@@ -238,7 +240,7 @@ class ReportQuery(object):
     desc = desc.Clone()
     desc.statistic = stat
     test_paths = yield desc.ToTestPathsAsync()
-    logging.info('_GetStatistic %r', test_paths)
+    #logging.info('_GetStatistic %r', test_paths)
     suffixed_tests = yield [utils.TestMetadataKey(test_path).get_async()
                             for test_path in test_paths]
     suffixed_tests = [t for t in suffixed_tests if t]

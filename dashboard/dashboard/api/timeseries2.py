@@ -114,11 +114,14 @@ class TimeseriesQuery(object):
       self._ResolveTimestamps()
       futures.append(self._FetchDiagnostics())
     yield futures
+    with timing.CpuTimeLogger('SortData'):
+      data = sorted(self._data.iteritems())
+    with timing.CpuTimeLogger('FormatCSV'):
+      data = [[datum.get(col) for col in self._columns] for _, datum in data]
     raise ndb.Return({
         'units': self._units,
         'improvement_direction': self._improvement_direction,
-        'data': [[datum.get(col) for col in self._columns]
-                 for _, datum in sorted(self._data.iteritems())],
+        'data': data,
     })
 
   def _ResolveTimestamps(self):
