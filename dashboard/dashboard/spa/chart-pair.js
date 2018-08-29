@@ -122,6 +122,10 @@ tr.exportTo('cp', () => {
         this.dispatch('linkedMode', this.linkedStatePath, event.detail.value);
       }
     }
+
+    observeChartLoading_(newLoading, oldLoading) {
+      if (oldLoading && !newLoading) this.dispatch('updateStale', this.statePath);
+    }
   }
 
   ChartPair.State = {
@@ -182,6 +186,10 @@ tr.exportTo('cp', () => {
   ChartPair.properties = {
     ...cp.buildProperties('state', ChartPair.State),
     ...cp.buildProperties('linkedState', ChartPair.LinkedState),
+    isChartLoading: {
+      computed: 'identity_(chartLayout.isLoading)',
+      observer: 'observeChartLoading_',
+    },
   };
 
   ChartPair.actions = {
@@ -190,6 +198,10 @@ tr.exportTo('cp', () => {
         dispatch(Redux.UPDATE(statePath, {minRevision, maxRevision}));
         ChartPair.actions.load(statePath)(dispatch, getState);
       },
+
+    updateStale: statePath => async(dispatch, getState) => {
+      dispatch({type: ChartPair.reducers.updateStale.name, statePath});
+    },
 
     updateLinkedRevisions: (
         linkedStatePath, linkedMinRevision, linkedMaxRevision) =>
@@ -579,7 +591,35 @@ tr.exportTo('cp', () => {
         },
       };
     },
+
+    updateStale: (state, action, rootState) => {
+      // Add an icon to the last datum of a line if it's stale.
+      if ((state.minimapLayout.lines.length === 0) ||
+          (state.minimapLayout.brushRevisions[1] <
+           state.minimapLayout.lines[0].data[
+               state.minimapLayout.lines[0].data.length - 1].x)) {
+        return state;
+      }
+
+      const staleTimestamp = new Date() - MILLIS_PER_DAY;
+      let anyStale = false;
+      const lines = state.chartLayout.lines.map(line => {
+        const minDate = cp.ChartTimeseries.getTimestamp(
+            line.data[line.data.length - 1].hist);
+        if (minDate >= staleTimestamp) return line;
+        anyStale = true;
+        line = cp.setImmutable(line, `data.${line.data.length - 1}`, datum => {
+          return {...datum, icon: 'cp:clock', iconColor: 'red'};
+        });
+        return line;
+      });
+      if (!anyStale) return state;
+      return {...state, chartLayout: {...state.chartLayout, lines}};
+    },
   };
+
+  const MILLIS_PER_DAY = tr.b.convertUnit(
+      1, tr.b.UnitScale.TIME.DAY, tr.b.UnitScale.TIME.MILLI_SEC);
 
   ChartPair.findFirstRealLineDescriptor = async(
     lineDescriptors, dispatch, refStatePath) => {
