@@ -309,6 +309,9 @@ tr.exportTo('cp', () => {
         line,
       });
       const rows = [];
+      if (datum.icon === 'cp:clock') {
+        rows.push({colspan: 2, color: 'red', name: 'No data uploaded in at least 1 day'});
+      }
       rows.push({name: 'value', value: line.unit.format(datum.y)});
       const commitPos = datum.hist.diagnostics.get(
           tr.v.d.RESERVED_NAMES.CHROMIUM_COMMIT_POSITIONS);

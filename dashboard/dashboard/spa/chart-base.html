@@ -85,10 +85,15 @@ found in the LICENSE file.
         background-color: var(--background-color);
         border-style: solid;
         border-width: 2px;
+        display: flex;
         padding: 8px;
         position: absolute;
         white-space: pre;
         z-index: var(--layer-menu);
+      }
+
+      #tooltip[hidden] {
+        display: none;
       }
 
       #tooltip td {
@@ -295,9 +300,11 @@ found in the LICENSE file.
              style$="left: [[tooltip.left]]; right: [[tooltip.right]]; top: [[tooltip.top]]; bottom: [[tooltip.bottom]]; border-color: [[tooltip.color]];">
           <table>
             <template is="dom-repeat" items="[[tooltip.rows]]" as="row" index-as="rowIndex">
-              <tr>
-                <td>[[row.name]]</td>
-                <td>[[row.value]]</td>
+              <tr style$="color: [[row.color]]">
+                <td colspan$="[[row.colspan]]">[[row.name]]</td>
+                <template is="dom-if" if="[[!_eq(row.colspan, 2)]]">
+                  <td>[[row.value]]</td>
+                </template>
               </tr>
             </template>
           </table>

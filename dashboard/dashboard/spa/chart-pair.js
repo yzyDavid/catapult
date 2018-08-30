@@ -601,7 +601,7 @@ tr.exportTo('cp', () => {
         return state;
       }
 
-      const staleTimestamp = new Date() - MILLIS_PER_DAY;
+      const staleTimestamp = new Date() - 1/*MILLIS_PER_DAY*/;
       let anyStale = false;
       const lines = state.chartLayout.lines.map(line => {
         const minDate = cp.ChartTimeseries.getTimestamp(
