@@ -310,7 +310,13 @@ tr.exportTo('cp', () => {
       });
       const rows = [];
       if (datum.icon === 'cp:clock') {
-        rows.push({colspan: 2, color: 'red', name: 'No data uploaded in at least 1 day'});
+        const days = Math.floor(tr.b.convertUnit(
+            new Date() - cp.ChartTimeseries.getTimestamp(datum.hist),
+            tr.b.UnitScale.TIME.MILLI_SEC, tr.b.UnitScale.TIME.DAY));
+        rows.push({
+          colspan: 2, color: 'red',
+          name: `No data uploaded in ${days} day${days === 1 ? '' : 's'}`,
+        });
       }
       rows.push({name: 'value', value: line.unit.format(datum.y)});
       const commitPos = datum.hist.diagnostics.get(
