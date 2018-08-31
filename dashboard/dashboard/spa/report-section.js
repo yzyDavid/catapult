@@ -13,6 +13,7 @@ tr.exportTo('cp', () => {
     67: 550428,
     68: 561733,
     69: 576753,
+    70: 587811,
   };
   const CURRENT_MILESTONE = tr.b.math.Statistics.max(
       Object.keys(CHROMIUM_MILESTONES));
