@@ -32,6 +32,8 @@ handlers:
   static_files: index.vulcanized.html
   upload: index.vulcanized.html
   secure: always
+  http_headers:
+    Content-Security-Policy: "script-src 'unsafe-inline' https://www.google-analytics.com https://apis.google.com"
 
 - url: /.+
   script: dashboard.dispatcher.APP

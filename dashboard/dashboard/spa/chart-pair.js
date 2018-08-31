@@ -601,15 +601,23 @@ tr.exportTo('cp', () => {
         return state;
       }
 
-      const staleTimestamp = new Date() - 1/*MILLIS_PER_DAY*/;
+      const now = new Date();
+      const staleMs = window.IS_DEBUG ? 100 : MILLIS_PER_DAY;
+      const staleTimestamp = now - staleMs;
       let anyStale = false;
       const lines = state.chartLayout.lines.map(line => {
         const minDate = cp.ChartTimeseries.getTimestamp(
             line.data[line.data.length - 1].hist);
         if (minDate >= staleTimestamp) return line;
+        let iconColor = 'hsl(49, 95%, 60%)';
+        if (minDate < (now - (28 * staleMs))) {
+          iconColor = 'hsl(4, 90%, 60%)';
+        } else if (minDate < (now - (28 * staleMs))) {
+          iconColor = 'hsl(37, 95%, 55%)';
+        }
         anyStale = true;
         line = cp.setImmutable(line, `data.${line.data.length - 1}`, datum => {
-          return {...datum, icon: 'cp:clock', iconColor: 'red'};
+          return {...datum, icon: 'cp:clock', iconColor};
         });
         return line;
       });
