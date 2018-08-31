@@ -9,8 +9,8 @@
   --icon-size: 24px;
 
   /* https://material.io/guidelines/motion/material-motion.html#material-motion-how-does-material-move */
-  --transition-long: 0.8s;
-  --transition-short: 0.4s;
+  --transition-long: 0.5s;
+  --transition-short: 0.3s;
 
   --primary-color-dark: hsl(231, 48%, 48%);
   --primary-color-medium: hsl(231, 45%, 84%);

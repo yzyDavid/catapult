@@ -10,37 +10,38 @@ found in the LICENSE file.
     <style>
       :host {
         align-items: center;
-        background-color: var(--primary-color-light);
+        background-color: var(--primary-color-light, lightblue);
         background-position: center;
         border-radius: 24px;
-        border: 0px none rgb(63, 81, 181);
+        border: 0px none hsl(231, 50%, 50%);
         box-shadow: var(--elevation-1);
-        color: var(--primary-color-dark);
+        color: var(--primary-color-dark, blue);
         cursor: pointer;
         display: flex;
-        height: var(--icon-size);
+        height: var(--icon-size, 1em);
         justify-content: center;
         margin: 4px 8px;
+        outline: none;
         padding: 4px 8px;
         text-transform: uppercase;
-        transition: background var(--transition-long);
+        transition: background var(--transition-long, 0.4s);
         user-select: none;
       }
       * {
         flex-grow: 1
       }
       :host([disabled]) {
-        background-color: var(--neutral-color-light);
+        background-color: var(--neutral-color-light, lightgrey);
         box-shadow: none;
-        color: var(--neutral-color-dark);
+        color: var(--neutral-color-dark, grey);
         cursor: auto;
         pointer-events: none;
       }
       :host(:hover) {
-        background: var(--primary-color-light) radial-gradient(circle, transparent 1%, var(--primary-color-light) 1%) center/15000%;
+        background: var(--primary-color-light, lightgrey) radial-gradient(circle, transparent 1%, var(--primary-color-light, lightblue) 1%) center/15000%;
       }
       :host(:active) {
-        background-color: var(--primary-color-medium);
+        background-color: var(--primary-color-medium, blue);
         background-size: 100%;
         transition: background 0s;
       }

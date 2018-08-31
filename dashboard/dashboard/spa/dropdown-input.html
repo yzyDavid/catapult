@@ -15,7 +15,7 @@ found in the LICENSE file.
   <template>
     <style>
       .error {
-        color: var(--error-color);
+        color: var(--error-color, red);
         visibility: hidden;
       }
       .error[show] {
@@ -23,20 +23,21 @@ found in the LICENSE file.
       }
 
       #input_clear {
+        color: var(--primary-color-dark, blue);
         cursor: pointer;
         flex-shrink: 0;
-        height: var(--icon-size);
-        width: var(--icon-size);
+        height: var(--icon-size, 1em);
+        width: var(--icon-size, 1em);
       }
 
       #dropdown {
-        background-color: var(--background-color);
+        background-color: var(--background-color, white);
         box-shadow: var(--elevation-2);
         max-height: 600px;
         overflow: auto;
         padding-right: 8px;
         position: absolute;
-        z-index: var(--layer-menu);
+        z-index: var(--layer-menu, 100);
       }
 
       #dropdown iron-collapse {
@@ -45,7 +46,7 @@ found in the LICENSE file.
       }
 
       #recommended, #columns {
-        border-bottom: 1px solid var(--primary-color-dark);
+        border-bottom: 1px solid var(--primary-color-dark, blue);
         display: flex;
         padding-bottom: 4px;
       }
@@ -65,14 +66,15 @@ found in the LICENSE file.
         autofocus="[[isFocused]]"
         error$="[[!isValid_(selectedOptions)]]"
         disabled="[[isDisabled_(alwaysEnabled, options)]]"
-        placeholder="[[label]]"
+        label="[[label]]"
         value="[[getInputValue_(isFocused, query, selectedOptions)]]"
         on-blur="onBlur_"
         on-focus="onFocus_"
         on-keyup="onKeyup_">
       <iron-icon
           id="input_clear"
-          icon="cp:close"
+          hidden$="[[_empty(selectedOptions)]]"
+          icon="cp:cancel"
           title="clear"
           alt="clear"
           on-click="onClear_">

@@ -58,14 +58,14 @@ found in the LICENSE file.
       }
 
       .bug_notification {
-        background-color: var(--background-color);
+        background-color: var(--background-color, white);
         box-shadow: var(--elevation-2);
         overflow: hidden;
         padding: 8px;
         position: absolute;
         right: 0;
         white-space: nowrap;
-        z-index: var(--layer-menu);
+        z-index: var(--layer-menu, 100);
       }
 
       #recent_bugs_table {
@@ -77,20 +77,20 @@ found in the LICENSE file.
         align-self: flex-start;
         cursor: pointer;
         flex-shrink: 0;
-        height: var(--icon-size);
-        width: var(--icon-size);
+        height: var(--icon-size, 1em);
+        width: var(--icon-size, 1em);
       }
 
       #triage_controls {
         align-items: center;
         display: flex;
         padding-left: 24px;
-        transition: background-color var(--transition-short), color var(--transition-short);
+        transition: background-color var(--transition-short, 0.2s), color var(--transition-short, 0.2s);
       }
 
       #triage_controls[anySelected] {
-        background-color: var(--primary-color-light);
-        color: var(--primary-color-dark);
+        background-color: var(--primary-color-light, lightblue);
+        color: var(--primary-color-dark, blue);
       }
 
       #triage_controls .button {
@@ -102,7 +102,7 @@ found in the LICENSE file.
       }
 
       #triage_controls .button[disabled] {
-        color: var(--neutral-color-dark);
+        color: var(--neutral-color-dark, grey);
         font-weight: normal;
       }
 
@@ -111,7 +111,7 @@ found in the LICENSE file.
       }
 
       #edit, #documentation {
-        color: var(--primary-color-dark);
+        color: var(--primary-color-dark, blue);
         padding: 8px;
       }
     </style>
@@ -158,14 +158,14 @@ found in the LICENSE file.
       <cp-input
           id="min_revision"
           value="[[minRevision]]"
-          placeholder="min revision"
+          label="Min Revision"
           on-keyup="onMinRevisionKeyup_">
       </cp-input>
 
       <cp-input
           id="max_revision"
           value="[[maxRevision]]"
-          placeholder="max revision"
+          label="Max Revision"
           on-keyup="onMaxRevisionKeyup_">
       </cp-input>
 

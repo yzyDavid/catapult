@@ -43,12 +43,12 @@ found in the LICENSE file.
       }
 
       #options {
-        color: var(--primary-color-dark);
+        color: var(--primary-color-dark, blue);
         cursor: pointer;
-        height: var(--icon-size);
+        height: var(--icon-size, 1em);
         outline: none;
         padding: 0;
-        width: var(--icon-size);
+        width: var(--icon-size, 1em);
       }
 
       #options_container {
@@ -57,14 +57,14 @@ found in the LICENSE file.
       }
 
       #options_menu {
-        background-color: var(--background-color);
+        background-color: var(--background-color, white);
         box-shadow: var(--elevation-2);
         max-height: 600px;
         overflow: hidden;
         outline: none;
         padding-right: 8px;
         position: absolute;
-        z-index: var(--layer-menu);
+        z-index: var(--layer-menu, 100);
       }
 
       #options_menu_inner {

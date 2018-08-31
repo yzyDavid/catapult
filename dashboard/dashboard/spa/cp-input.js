@@ -12,10 +12,23 @@
       if (this.autofocus) {
         this.focus();
       }
+      this.addEventListener('click', this.onClick_.bind(this));
+    }
+
+    async onClick_(event) {
+      this.focus();
     }
 
     get nativeInput() {
       return this.$.input;
+    }
+
+    async onFocus_(event) {
+      this.focused = true;
+    }
+
+    async onBlur_(event) {
+      this.focused = false;
     }
 
     async focus() {
@@ -41,11 +54,15 @@
 
   CpInput.properties = {
     autofocus: {type: Boolean},
+    focused: {
+      type: Boolean,
+      reflectToAttribute: true,
+    },
     disabled: {
       type: Boolean,
       reflectToAttribute: true,
     },
-    placeholder: {type: String},
+    label: {type: String},
     value: {type: String},
   };
 

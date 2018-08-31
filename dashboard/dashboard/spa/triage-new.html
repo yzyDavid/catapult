@@ -28,24 +28,37 @@ found in the LICENSE file.
       :host([is-open]) {
         display: flex;
       }
-      cp-input {
-        margin-bottom: 8px;
-      }
-      cp-checkbox {
-        margin-top: 4px;
+      *:not(:nth-child(2)) {
+        margin-top: 8px;
       }
     </style>
 
     <cp-input
-        placeholder="Summary"
+        label="Summary"
+        tabindex="0"
         value="[[summary]]"
         on-change="onSummary_">
+    </cp-input>
+
+    <cp-input
+        label="Owner"
+        tabindex="0"
+        value="[[owner]]"
+        on-change="onOwner_">
+    </cp-input>
+
+    <cp-input
+        label="CC"
+        tabindex="0"
+        value="[[cc]]"
+        on-change="onCC_">
     </cp-input>
 
     <cp-textarea
         autofocus
         id="description"
-        placeholder="Description"
+        label="Description"
+        tabindex="0"
         value="[[description]]"
         on-keyup="onDescription_">
     </cp-textarea>
@@ -67,18 +80,6 @@ found in the LICENSE file.
         [[component.name]]
       </cp-checkbox>
     </template>
-
-    <cp-input
-        placeholder="Owner"
-        value="[[owner]]"
-        on-change="onOwner_">
-    </cp-input>
-
-    <cp-input
-        placeholder="CC"
-        value="[[cc]]"
-        on-change="onCC_">
-    </cp-input>
 
     <raised-button on-click="onSubmit_" tabindex="0">
       Submit

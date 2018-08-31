@@ -160,7 +160,7 @@ tr.exportTo('cp', () => {
     selectedLineDescriptorHash: options => options.selectedLineDescriptorHash,
     isLoading: options => false,
     testSuite: options => cp.ChartParameter.buildState({
-      label: 'Test suites (loading)',
+      label: 'Test Suites (loading)',
       canAggregate: true,
       isAggregated: (options.parameters || {}).testSuitesAggregated || false,
       selectedOptions: (options.parameters || {}).testSuites || [],
@@ -177,7 +177,7 @@ tr.exportTo('cp', () => {
       selectedOptions: (options.parameters || {}).measurements || [],
     }),
     testCase: options => cp.ChartParameter.buildState({
-      label: 'Test cases',
+      label: 'Test Cases',
       canAggregate: true,
       isAggregated: (options.parameters || {}).testCasesAggregated !== false,
       selectedOptions: (options.parameters || {}).testCases || [],
@@ -591,7 +591,7 @@ tr.exportTo('cp', () => {
       const testSuite = {
         ...state.testSuite,
         options: groupedOptions,
-        label: `Test suites (${action.testSuites.length})`,
+        label: `Test Suites (${action.testSuites.length})`,
       };
       return {...state, testSuite};
     },

@@ -9,10 +9,24 @@ found in the LICENSE file.
   <template>
     <style>
       :host {
-        border-bottom: 1px solid var(--primary-color-dark);
+        background-color: var(--primary-color-light, lightblue);
+        border-bottom: 2px solid var(--primary-color-light, lightblue);
+        cursor: text;
         display: flex;
+        flex-direction: column;
+        outline: none;
+        padding: 6px 6px 2px 6px;
+        transition: border-bottom-color var(--transition-short, 0.2s);
+      }
+      #label {
+        color: var(--primary-color-dark, blue);
+        font-size: smaller;
+      }
+      :host([focused]) {
+        border-bottom-color: var(--primary-color-dark, blue);
       }
       textarea {
+        background-color: inherit;
         border: 0;
         flex-grow: 1;
         font-family: inherit;
@@ -22,10 +36,14 @@ found in the LICENSE file.
       }
     </style>
 
+    <div id="label">
+      [[label]]
+    </div>
     <textarea
         id="input"
         value="[[value]]"
-        placeholder="[[placeholder]]"
+        on-blur="onBlur_"
+        on-focus="onFocus_"
         on-keyup="onKeyup_">
     </textarea>
   </template>

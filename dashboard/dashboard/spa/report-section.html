@@ -49,8 +49,8 @@ found in the LICENSE file.
         align-self: flex-start;
         cursor: pointer;
         flex-shrink: 0;
-        height: var(--icon-size);
-        width: var(--icon-size);
+        height: var(--icon-size, 1em);
+        width: var(--icon-size, 1em);
       }
 
       #tables {
@@ -103,8 +103,8 @@ found in the LICENSE file.
         flex-shrink: 0;
         margin: 0 0 0 8px;
         padding: 0;
-        width: var(--icon-size);
-        height: var(--icon-size);
+        width: var(--icon-size, 1em);
+        height: var(--icon-size, 1em);
       }
 
       .report_name span {
@@ -147,8 +147,8 @@ found in the LICENSE file.
 
       .template_row_button iron-icon {
         cursor: pointer;
-        height: var(--icon-size);
-        width: var(--icon-size);
+        height: var(--icon-size, 1em);
+        width: var(--icon-size, 1em);
       }
 
       #scratch {
@@ -225,14 +225,14 @@ found in the LICENSE file.
       <cp-input
           id="min_revision"
           value="[[minRevisionInput]]"
-          placeholder="min revision"
+          label="Min Revision"
           on-keyup="onMinRevisionKeyup_">
       </cp-input>
 
       <cp-input
           id="max_revision"
           value="[[maxRevisionInput]]"
-          placeholder="max revision"
+          label="Max Revision"
           on-keyup="onMaxRevisionKeyup_">
       </cp-input>
 
@@ -263,7 +263,7 @@ found in the LICENSE file.
                   <cp-input
                       class="report_name_input"
                       error$="[[_empty(table.name)]]"
-                      placeholder="Report Name"
+                      label="Report Name"
                       value="[[table.name]]"
                       on-keyup="onTemplateNameKeyUp_">
                   </cp-input>
@@ -275,7 +275,7 @@ found in the LICENSE file.
                 <div>
                   <cp-input
                       error$="[[_empty(table.owners)]]"
-                      placeholder="Owners"
+                      label="Owners"
                       value="[[table.owners]]"
                       on-keyup="onTemplateOwnersKeyUp_">
                   </cp-input>
@@ -289,7 +289,7 @@ found in the LICENSE file.
                 </dropdown-input>
 
                 <cp-input
-                    placeholder="Documentation"
+                    label="Documentation"
                     value="[[table.url]]"
                     on-keyup="onTemplateUrlKeyUp_">
                 </cp-input>
@@ -301,7 +301,7 @@ found in the LICENSE file.
                     <tr>
                       <td>
                         <cp-input
-                            placeholder="Label"
+                            label="Label"
                             error$="[[_empty(row.label)]]"
                             value="[[row.label]]"
                             on-keyup="onTemplateRowLabelKeyUp_">

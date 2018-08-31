@@ -1464,9 +1464,9 @@ tr.exportTo('cp', () => {
 
   AlertsSection.isEmpty = state => (
     state &&
-    state.sheriff.selectedOptions.length === 0 &&
-    state.bug.selectedOptions.length === 0 &&
-    state.report.selectedOptions.length === 0);
+    (!state.sheriff || (state.sheriff.selectedOptions.length === 0)) &&
+    (!state.bug || (state.bug.selectedOptions.length === 0)) &&
+    (!state.report || (state.report.selectedOptions.length === 0)));
 
   AlertsSection.matchesOptions = (state, options) => {
     if (!tr.b.setsEqual(new Set(options.reports),
