@@ -1169,7 +1169,8 @@ tr.exportTo('cp', () => {
       });
 
       alertGroups = AlertsSection.sortGroups(
-          alertGroups, state.sortColumn, state.sortDescending);
+          alertGroups, state.sortColumn, state.sortDescending,
+          state.showingTriaged);
 
       // Don't automatically select the first group. Users often want to sort
       // the table by some column before previewing any alerts.
@@ -1302,12 +1303,20 @@ tr.exportTo('cp', () => {
     }
   };
 
-  AlertsSection.sortGroups = (alertGroups, sortColumn, sortDescending) => {
+  AlertsSection.sortGroups = (
+      alertGroups, sortColumn, sortDescending, showingTriaged) => {
     const factor = sortDescending ? -1 : 1;
     if (sortColumn === 'count') {
       alertGroups = [...alertGroups];
-      alertGroups.sort((groupA, groupB) =>
-        factor * (groupA.alerts.length - groupB.alerts.length));
+      // See AlertsTable.getExpandGroupButtonLabel_.
+      if (showingTriaged) {
+        alertGroups.sort((groupA, groupB) => factor * (
+            groupA.alerts.length - groupB.alerts.length));
+      } else {
+        alertGroups.sort((groupA, groupB) => factor * (
+            (groupA.alerts.length - groupA.triaged.count) -
+            (groupB.alerts.length - groupB.triaged.count)));
+      }
     } else if (sortColumn === 'triaged') {
       alertGroups = [...alertGroups];
       alertGroups.sort((groupA, groupB) =>
