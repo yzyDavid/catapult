@@ -50,18 +50,21 @@ tr.exportTo('cp', () => {
           state.tags.selectedOptions.length) {
         testCases.clear();
         for (const tag of state.tags.selectedOptions) {
-          for (const testCase of state.tags.map.get(tag)) {
+          const tagCases = state.tags.map.get(tag);
+          if (!tagCases) continue;
+          for (const testCase of tagCases) {
             testCases.add(testCase);
           }
         }
       }
-      const options = [
-        {
+      const options = [];
+      if (testCases.size) {
+        options.push({
           label: `All test cases`,
           isExpanded: true,
           options: cp.OptionGroup.groupValues(testCases),
-        },
-      ];
+        });
+      }
       return {...state, options};
     },
   };

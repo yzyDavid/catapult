@@ -26,7 +26,8 @@ tr.exportTo('cp', () => {
       return !alwaysEnabled && options && (options.length === 0);
     }
 
-    isValid_(selectedOptions) {
+    isValid_(selectedOptions, alwaysEnabled, options) {
+      if (this.isDisabled_(alwaysEnabled, options)) return true;
       if (!this.required) return true;
       if (!this.requireSingle && !this._empty(selectedOptions)) return true;
       if (this.requireSingle && (selectedOptions.length === 1)) return true;
@@ -102,7 +103,7 @@ tr.exportTo('cp', () => {
   DropdownInput.State = {
     ...cp.OptionGroup.RootState,
     ...cp.OptionGroup.State,
-    alwaysEnabled: options => options.alwaysEnabled !== true,
+    alwaysEnabled: options => options.alwaysEnabled !== false,
     columns: options => options.columns || [],
     errorMessage: options => options.errorMessage || '',
     focusTimestamp: options => undefined,

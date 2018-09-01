@@ -1005,13 +1005,13 @@ tr.exportTo('cp', () => {
       label: '',
       testSuite: {
         ...testSuite,
-        errorMessage: 'required',
+        errorMessage: 'Required',
         query: '',
         required: true,
         selectedOptions: testSuite.selectedOptions || [],
       },
       measurement: {
-        errorMessage: 'require exactly one',
+        errorMessage: 'Require exactly one',
         label: 'Measurement',
         options: [],
         query: '',
@@ -1020,7 +1020,7 @@ tr.exportTo('cp', () => {
         selectedOptions: [],
       },
       bot: {
-        errorMessage: 'required',
+        errorMessage: 'Required',
         label: 'Bots',
         options: [],
         query: '',
@@ -1191,7 +1191,7 @@ tr.exportTo('cp', () => {
       label: row.label,
       actualDescriptors: row.data[minRevision].descriptors,
       testSuite: {
-        errorMessage: 'required',
+        errorMessage: 'Required',
         label: `Test suites (${testSuites.length})`,
         options: testSuites,
         query: '',
@@ -1199,7 +1199,7 @@ tr.exportTo('cp', () => {
         selectedOptions: row.testSuites,
       },
       measurement: {
-        errorMessage: 'require exactly one',
+        errorMessage: 'Require exactly one',
         label: 'Measurement',
         options: [],
         query: '',
@@ -1208,7 +1208,7 @@ tr.exportTo('cp', () => {
         selectedOptions: [row.measurement],
       },
       bot: {
-        errorMessage: 'required',
+        errorMessage: 'Required',
         label: 'Bots',
         options: [],
         query: '',

@@ -161,23 +161,32 @@ tr.exportTo('cp', () => {
     isLoading: options => false,
     testSuite: options => cp.ChartParameter.buildState({
       label: 'Test Suites (loading)',
+      required: true,
+      errorMessage: 'Required',
       canAggregate: true,
       isAggregated: (options.parameters || {}).testSuitesAggregated || false,
       selectedOptions: (options.parameters || {}).testSuites || [],
     }),
     bot: options => cp.ChartParameter.buildState({
       label: 'Bots',
+      required: true,
+      errorMessage: 'Required',
+      alwaysEnabled: false,
       canAggregate: true,
       isAggregated: (options.parameters || {}).botsAggregated !== false,
       selectedOptions: (options.parameters || {}).bots || [],
     }),
     measurement: options => cp.ChartParameter.buildState({
       label: 'Measurements',
+      required: true,
+      errorMessage: 'Required',
+      alwaysEnabled: false,
       canAggregate: false,
       selectedOptions: (options.parameters || {}).measurements || [],
     }),
     testCase: options => cp.ChartParameter.buildState({
       label: 'Test Cases',
+      alwaysEnabled: false,
       canAggregate: true,
       isAggregated: (options.parameters || {}).testCasesAggregated !== false,
       selectedOptions: (options.parameters || {}).testCases || [],
@@ -187,6 +196,8 @@ tr.exportTo('cp', () => {
     }),
     statistic: options => cp.ChartParameter.buildState({
       label: 'Statistics',
+      required: true,
+      errorMessage: 'Required',
       canAggregate: false,
       selectedOptions: (options.parameters || {}).statistics || ['avg'],
       options: [

@@ -64,7 +64,7 @@ found in the LICENSE file.
     <cp-input
         id="input"
         autofocus="[[isFocused]]"
-        error$="[[!isValid_(selectedOptions)]]"
+        error$="[[!isValid_(selectedOptions, alwaysEnabled, options)]]"
         disabled="[[isDisabled_(alwaysEnabled, options)]]"
         label="[[label]]"
         value="[[getInputValue_(isFocused, query, selectedOptions)]]"
@@ -121,7 +121,7 @@ found in the LICENSE file.
       </template>
     </div>
 
-    <span class="error" show$="[[!isValid_(selectedOptions)]]">
+    <span class="error" show$="[[!isValid_(selectedOptions, alwaysEnabled, options)]]">
       [[errorMessage]]
     </span>
   </template>
