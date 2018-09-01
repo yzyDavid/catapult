@@ -35,6 +35,11 @@ tr.exportTo('cp', () => {
    *       unit: tr.b.Unit,
    *       data: [(FastHistogram|Histogram)],
    *       ranges: {
+   *         xy: [tr.b.math.Range],
+   *         annotations: [tr.b.math.Range],
+   *         histogram: [tr.b.math.Range],
+   *       },
+   *       requests: {
    *         xy: [
    *           {minRev, maxRev, minTimestampMs, maxTimestampMs, request},
    *         ],
@@ -82,8 +87,9 @@ tr.exportTo('cp', () => {
 
   const LEVEL_OF_DETAIL = {
     // Minimaps only need the (x, y) coordinates to draw the line.
-    // FastHistograms contain only r_commit_pos and the needed statistic.
-    // Fetches /api/timeseries2?columns=revision,$statistic
+    // FastHistograms contain only revision and the needed statistic.
+    // Fetches /api/timeseries2/testpath&columns
+    // See `getColumnsByLevelOfDetail` for the columns requested.
     XY: 'xy',
 
     // chart-pair.chartLayout can draw its lines using XY FastHistograms
@@ -91,7 +97,8 @@ tr.exportTo('cp', () => {
     // for a given revision range for tooltips and icons.
     // If an extant request overlaps a new request, then the new request can
     // fetch the difference and await the extant request.
-    // Fetches timeseries2?min_rev&max_rev&columns=revision,alert,diagnostics
+    // Fetches /api/timeseries2/testpath&min_rev&max_rev&columns
+    // See `getColumnsByLevelOfDetail` for the columns requested.
     ANNOTATIONS: 'annotations',
 
     // pivot-table in chart-section and pivot-section need the full real
@@ -101,9 +108,22 @@ tr.exportTo('cp', () => {
     // Real Histograms contain full RunningStatistics, all diagnostics, all
     // samples. Request single Histograms at a time, even if the user brushes a
     // large range.
-    // Fetches /api/histogram?columns=revision,histogram
+    // Fetches /api/histogram/testpath?rev
     HISTOGRAM: 'histogram',
   };
+
+  function getColumnsByLevelOfDetail(levelOfDetail, statistic) {
+    switch (levelOfDetail) {
+      case LEVEL_OF_DETAIL.XY:
+        return ['revision', 'timestamp', statistic];
+      case LEVEL_OF_DETAIL.ANNOTATIONS:
+        return ['revision', 'alert', 'diagnostics', 'revisions'];
+      case LEVEL_OF_DETAIL.HISTOGRAMS:
+        return ['revision', 'histogram'];
+      default:
+        throw new Error(`${level} is not a valid Level Of Detail`);
+    }
+  }
 
   // Supports XY and ANNOTATIONS levels of detail.
   // [Re]implements only the Histogram functionality needed for those levels.
@@ -133,10 +153,7 @@ tr.exportTo('cp', () => {
 
   FastHistogram.fromRow = (dict, fetchDescriptor, conversionFactor) => {
     const hist = new FastHistogram();
-    let commitPos = dict.r_commit_pos;
-    if (commitPos === null || commitPos === undefined) {
-      commitPos = dict.revision;
-    }
+    const commitPos = dict.revision;
     if (commitPos !== null && commitPos !== undefined) {
       hist.diagnostics.set(
           tr.v.d.RESERVED_NAMES.CHROMIUM_COMMIT_POSITIONS,
@@ -162,6 +179,23 @@ tr.exportTo('cp', () => {
   };
 
   class TimeseriesRequest extends cp.RequestBase {
+    /*
+     * type options = {
+     *   testSuite: string,
+     *   measurement: string,
+     *   bot: string,
+     *   testCase?: string,
+     *   statistic: string,
+     *   buildType?: any,
+     *
+     *   columns: [string],
+     *   levelOfDetail: cp.LEVEL_OF_DETAIL
+     *
+     *   // Commit revision range
+     *   minRevision?: number,
+     *   maxRevision?: number,
+     * }
+     */
     constructor(options) {
       super(options);
       this.measurement_ = options.measurement;
@@ -169,13 +203,25 @@ tr.exportTo('cp', () => {
       this.queryParams_.set('test_suite', options.testSuite);
       this.queryParams_.set('measurement', options.measurement);
       this.queryParams_.set('bot', options.bot);
+
       if (options.testCase) {
         this.queryParams_.set('test_case', options.testCase);
       }
+
+      if (options.statistic) {
+        this.queryParams_.set('statistic', options.statistic);
+      }
+
+      // Question(Sam): What is buildType?
       if (options.buildType) {
         this.queryParams_.set('build_type', options.buildType);
       }
-      this.queryParams_.set('columns', options.columns.join(','));
+
+      const columns = getColumnsByLevelOfDetail(
+          options.levelOfDetail, options.statistic);
+      this.queryParams_.set('columns', columns);
+      this.queryParams_.set('level_of_detail', options.levelOfDetail);
+
       if (options.minRevision) {
         this.queryParams_.set('min_revision', options.minRevision);
       }
@@ -222,17 +268,27 @@ tr.exportTo('cp', () => {
     }
   }
 
+  // TODO(sbalana): Create a base class for iterative retrieval of cached data
+  // through use of asynchronous iterators. This functionality is being
+  // monkeypatched by `TimeseriesCache#reader()`.
   class TimeseriesCache extends cp.CacheBase {
     constructor(options, dispatch, getState) {
       super(options, dispatch, getState);
+
+      if (!options.lineDescriptor) throw new Error('lineDescriptor required');
+      if (!options.fetchDescriptor) throw new Error('fetchDescriptor required');
+      if (!options.refStatePath) throw new Error('refStatePath required');
+
+      this.lineDescriptor_ = this.options_.lineDescriptor;
       this.fetchDescriptor_ = this.options_.fetchDescriptor;
       this.refStatePath_ = this.options_.refStatePath;
-      // TODO change columns_ depending on level of detail.
-      this.columns_ = [
-        'revision',
-        'timestamp',
-        this.fetchDescriptor_.statistic,
-      ];
+
+      this.minRevision_ = this.options_.minRevision;
+      this.maxRevision_ = this.options_.maxRevision;
+
+      this.levelOfDetail_ = this.fetchDescriptor_.levelOfDetail;
+      this.columns_ = getColumnsByLevelOfDetail(
+          this.levelOfDetail_, this.fetchDescriptor_.statistic);
     }
 
     get cacheStatePath_() {
@@ -240,47 +296,57 @@ tr.exportTo('cp', () => {
     }
 
     computeCacheKey_() {
-      return [
-        this.fetchDescriptor_.testSuite,
-        this.fetchDescriptor_.measurement,
-        this.fetchDescriptor_.bot,
-        this.fetchDescriptor_.testCase,
-        this.fetchDescriptor_.buildType,
-      ].join('/').replace(/\./g, '_');
+      const {
+        testSuite = '',
+        measurement = '',
+        bot = '',
+        testCase = '',
+        buildType = '',
+      } = this.fetchDescriptor_;
+      const key = `${testSuite}/${measurement}/${bot}/${testCase}/${buildType}`;
+      return key.replace(/\./g, '_');
     }
 
     get isInCache_() {
       const entry = this.rootState_.timeseries[this.cacheKey_];
-      if (entry === undefined) return false;
-      // TODO levelOfDetail, revision/timestamp ranges
+
+      if (!entry) {
+        // The requested timeseries data has not been retrieved yet.
+        return false;
+      }
+
+      const ranges = entry.ranges[this.fetchDescriptor_.levelOfDetail];
+
+      if (!Array.isArray(ranges)) {
+        return false;
+      }
+
+      const requestedRange = tr.b.math.Range.fromExplicitRange(
+          this.minRevision_, this.maxRevision_);
+
+      const rangeIndex = ranges.findIndex(range =>
+        range.containsRangeInclusive(requestedRange)
+      );
+
+      if (rangeIndex === -1) {
+        // The requested range of data cannot be found in a contiguous chunk.
+        return false;
+      }
+
       return true;
     }
 
     async readFromCache_() {
       let entry = this.rootState_.timeseries[this.cacheKey_];
-      // TODO levelOfDetail, revision/timestamp ranges
-      await Promise.all(entry.ranges[LEVEL_OF_DETAIL.XY].map(rangeRequest =>
-        rangeRequest.completion));
+      await Promise.all(entry.requests[this.levelOfDetail_].map(
+          rangeRequest => rangeRequest.completion
+      ));
       this.rootState_ = this.getState_();
       entry = this.rootState_.timeseries[this.cacheKey_];
-      return {unit: entry.unit, data: entry.data};
-    }
-
-    async fetch_() {
-      // CacheBase.fetch_ returns the request.response directly, but
-      // TimeseriesCache needs to transform it slightly, so override fetch_ to
-      // read the data from the cache after storing it.
-      // TimeseriesRequest.postProcess_ can't handle this transformation because
-      // it may involve mixing in data from previous requests with different
-      // levels of detail.
-      const request = this.createRequest_();
-      const completion = (async() => {
-        const response = await request.response;
-        this.onFinishRequest_(response);
-        return this.readFromCache_();
-      })();
-      this.onStartRequest_(request, completion);
-      return await completion;
+      return {
+        unit: entry.unit,
+        data: entry.data
+      };
     }
 
     createRequest_() {
@@ -289,8 +355,12 @@ tr.exportTo('cp', () => {
         measurement: this.fetchDescriptor_.measurement,
         bot: this.fetchDescriptor_.bot,
         testCase: this.fetchDescriptor_.testCase,
+        statistic: this.fetchDescriptor_.statistic,
         buildType: this.fetchDescriptor_.buildType,
-        columns: this.columns_,
+        levelOfDetail: this.fetchDescriptor_.levelOfDetail,
+
+        minRevision: this.minRevision_,
+        maxRevision: this.maxRevision_,
       });
     }
 
@@ -306,16 +376,81 @@ tr.exportTo('cp', () => {
       this.rootState_ = this.getState_();
     }
 
-    onFinishRequest_(result) {
+    onFinishRequest_(networkResponse) {
       this.dispatch_({
         type: TimeseriesCache.reducers.receive.name,
         fetchDescriptor: this.fetchDescriptor_,
         cacheKey: this.cacheKey_,
         columns: this.columns_,
-        timeseries: result.data,
-        units: result.units,
+        timeseries: networkResponse.data,
+        units: networkResponse.units,
+        minRevision: this.findMinRevision_(networkResponse),
+        maxRevision: this.findMaxRevision_(networkResponse),
       });
       this.rootState_ = this.getState_();
+    }
+
+    findMinRevision_(networkResponse) {
+      if (this.minRevision_) {
+        return this.minRevision_;
+      }
+
+      const timeseries = networkResponse.data || [];
+      if (timeseries.length && timeseries[0]) {
+        return timeseries[0].revision;
+      }
+    }
+
+    findMaxRevision_(networkResponse) {
+      if (this.maxRevision_) {
+        return this.maxRevision_;
+      }
+
+      const timeseries = networkResponse.data || [];
+      if (timeseries.length && timeseries[timeseries.length - 1]) {
+        return timeseries[timeseries.length - 1].revision;
+      }
+    }
+
+    async* reader() {
+      this.ensureCacheState_();
+      this.cacheKey_ = this.computeCacheKey_();
+
+      // If we already have all the data in Redux, we don't need to make an
+      // outgoing request; instead, yield the data we have.
+      if (this.isInCache_) {
+        yield await this.readFromCache_();
+        return;
+      }
+
+      const request = this.createRequest_();
+      const fullUrl = location.origin + request.url_;
+      const listener = new cp.ServiceWorkerListener(fullUrl);
+
+      this.onStartRequest_(request);
+      const response = await request.response;
+
+      // Cached results will first yield with an empty object then send the
+      // actual result through a BroadcastChannel to avoid useless JSON parsing.
+      // ServiceWorkerListener is listening for messages received on the
+      // BroadcastChannel.
+      if (response) {
+        this.onFinishRequest_(response);
+        const timeseries = await this.readFromCache_();
+        yield {
+          timeseries,
+          lineDescriptor: this.lineDescriptor_,
+        };
+      }
+
+      for await (const update of listener) {
+        this.onFinishRequest_(update);
+        const timeseries = await this.readFromCache_();
+        yield {
+          timeseries,
+          lineDescriptor: this.lineDescriptor_,
+        };
+      }
     }
   }
 
@@ -328,9 +463,18 @@ tr.exportTo('cp', () => {
   }
 
   TimeseriesCache.reducers = {
+    /*
+     * type action = {
+     *   request: any,
+     *   cacheKey: string,
+     *   refStatePath: string,
+     *   fetchDescriptor: any,
+     *   completion: Promise<any>,
+     * }
+     */
     request: (rootState, action) => {
       // Store action.request in
-      // rootState.timeseries[cacheKey].ranges[levelOfDetail]
+      // rootState.timeseries[cacheKey].requests[levelOfDetail]
 
       let timeseries;
       if (rootState.timeseries) {
@@ -338,23 +482,25 @@ tr.exportTo('cp', () => {
       }
 
       const references = [action.refStatePath];
-      let ranges;
+      let requests;
       if (timeseries) {
         references.push(...timeseries.references);
-        ranges = {...timeseries.ranges};
-        ranges[action.fetchDescriptor.levelOfDetail] = [
-          ...ranges[action.fetchDescriptor.levelOfDetail]];
+        requests = {...timeseries.requests};
+        requests[action.fetchDescriptor.levelOfDetail] = [
+          ...requests[action.fetchDescriptor.levelOfDetail],
+        ];
       } else {
-        ranges = {
+        requests = {
           [LEVEL_OF_DETAIL.XY]: [],
           [LEVEL_OF_DETAIL.ANNOTATIONS]: [],
           [LEVEL_OF_DETAIL.HISTOGRAM]: [],
         };
       }
 
-      ranges[action.fetchDescriptor.levelOfDetail].push({
+      requests[action.fetchDescriptor.levelOfDetail].push({
         request: action.request,
         completion: action.completion,
+
         // Some of these might be undefined. shouldFetch will need to handle
         // that. reducers.receive will populate all of them.
         minRev: action.fetchDescriptor.minRev,
@@ -363,6 +509,11 @@ tr.exportTo('cp', () => {
         maxTimestampMs: action.fetchDescriptor.maxTimestampMs,
       });
 
+      const ranges = {};
+      for (const lod of Object.values(LEVEL_OF_DETAIL)) {
+        ranges[lod] = [];
+      }
+
       return {
         ...rootState,
         timeseries: {
@@ -370,14 +521,26 @@ tr.exportTo('cp', () => {
           [action.cacheKey]: {
             ...timeseries,
             references,
-            ranges,
+            requests,
             data: [],
+            ranges,
             unit: tr.b.Unit.byName.unitlessNumber,
           },
         },
       };
     },
 
+    /*
+     * type action = {
+     *   fetchDescriptor: any,
+     *   cacheKey: string,
+     *   columns: [string],
+     *   timeseries: [any],
+     *   units: string,
+     *   minRevision?: number,
+     *   maxRevision?: number,
+     * };
+     */
     receive: (rootState, action) => {
       let unit = tr.b.Unit.byJSONName[action.units];
       let conversionFactor = 1;
@@ -391,21 +554,33 @@ tr.exportTo('cp', () => {
         }
       }
 
-      const data = (action.timeseries || []).map(
-          row => FastHistogram.fromRow(
-              csvRow(action.columns, row),
-              action.fetchDescriptor,
-              conversionFactor));
+      const data = (action.timeseries || []).map(row =>
+        FastHistogram.fromRow(
+            csvRow(action.columns, row),
+            action.fetchDescriptor,
+            conversionFactor
+        )
+      );
 
       const entry = rootState.timeseries[action.cacheKey];
-      const levelOfDetail = action.fetchDescriptor.levelOfDetail;
-      const rangeRequests = entry.ranges[levelOfDetail].map(rangeRequest => {
-        if (rangeRequest.minRev !== action.fetchDescriptor.minRev ||
-            rangeRequest.maxRev !== action.fetchDescriptor.maxRev ||
-            rangeRequest.minTimestampMs !==
-            action.fetchDescriptor.minTimestampMs ||
-            rangeRequest.maxTimestampMs !==
-            action.fetchDescriptor.maxTimestampMs) {
+      const {
+        levelOfDetail,
+        minRev,
+        maxRev,
+        minTimestampMs,
+        maxTimestampMs,
+      } = action.fetchDescriptor;
+
+      // Update ranges
+      const rangeReceived = tr.b.math.Range.fromExplicitRange(
+          action.minRevision, action.maxRevision);
+
+      // Update requests
+      const rangeRequests = entry.requests[levelOfDetail].map(rangeRequest => {
+        if (rangeRequest.minRev !== minRev ||
+            rangeRequest.maxRev !== maxRev ||
+            rangeRequest.minTimestampMs !== minTimestampMs ||
+            rangeRequest.maxTimestampMs !== maxTimestampMs) {
           return rangeRequest;
         }
         return {
@@ -421,9 +596,15 @@ tr.exportTo('cp', () => {
           ...rootState.timeseries,
           [action.cacheKey]: {
             ...entry,
+            requests: {
+              ...entry.requests,
+              [levelOfDetail]: rangeRequests,
+            },
             ranges: {
               ...entry.ranges,
-              [levelOfDetail]: rangeRequests,
+              [levelOfDetail]: rangeReceived.mergeIntoArray(
+                  entry.ranges[levelOfDetail]
+              ),
             },
             unit,
             data,
@@ -438,12 +619,13 @@ tr.exportTo('cp', () => {
     ...Redux.DEFAULT_REDUCER_WRAPPERS,
   ]);
 
-  const ReadTimeseries = options => async(dispatch, getState) =>
-    await new TimeseriesCache(options, dispatch, getState).read();
+  const TimeseriesReader = ({dispatch, getState, ...options}) =>
+    new TimeseriesCache(options, dispatch, getState).reader();
 
   return {
     FastHistogram,
     LEVEL_OF_DETAIL,
-    ReadTimeseries,
+    TimeseriesReader,
+    TimeseriesRequest,
   };
 });

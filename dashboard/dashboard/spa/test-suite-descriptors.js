@@ -146,8 +146,8 @@ tr.exportTo('cp', () => {
         testCases: new Set(),
         testCaseTags: new Map(),
       };
-      const batches = cp.batchResponses(promises, options.getDelayPromise);
-      for await (const {results} of batches) {
+      const iterator = new cp.BatchIterator(promises);
+      for await (const {results, errors} of iterator) {
         for (const descriptor of results) {
           if (!descriptor) continue;
           mergeDescriptor(mergedDescriptor, descriptor);

@@ -576,8 +576,10 @@ tr.exportTo('cp', () => {
         }
       }
 
-      const batches = cp.batchResponses(promises);
-      for await (const {results} of batches) {
+      // Avoid triggering render too rapidly by batching responses.
+      const batchIterator = new cp.BatchIterator(promises);
+
+      for await (const {results, errors} of batchIterator) {
         rootState = getState();
         state = Polymer.Path.get(rootState, statePath);
         if (!tr.b.setsEqual(requestedReports, new Set(

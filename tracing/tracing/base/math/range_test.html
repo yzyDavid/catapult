@@ -587,5 +587,206 @@ tr.b.unittest.testSuite(function() {
     const result = Range.findDifference(rangeA, rangeB);
     assert.deepEqual(result, []);
   });
+
+  test('mergeIntoArray_emptyRange', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:
+     * result: |=====|    |==========|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = new Range();
+    const result = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_emptyArray', function() {
+    /*
+     *  array:
+     *  range:         |====|
+     * result:         |====|
+     */
+    const arr = [];
+    const range = Range.fromExplicitRange(4, 6);
+    const result = [
+      Range.fromExplicitRange(4, 6),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_emptyInArray', function() {
+    /*
+     *  array:
+     *  range:         |====|
+     * result:         |====|
+     */
+    const arr = [
+      new Range(),
+      new Range(),
+    ];
+    const range = Range.fromExplicitRange(4, 6);
+    const result = [
+      Range.fromExplicitRange(4, 6),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_emptyRangeAndArray', function() {
+    /*
+     *  array:
+     *  range:
+     * result:
+     */
+    const arr = [];
+    const range = new Range();
+    const result = [];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_emptyRangeAndInArray', function() {
+    /*
+     *  array:
+     *  range:
+     * result:
+     */
+    const arr = [
+      new Range(),
+      new Range(),
+    ];
+    const range = new Range();
+    const result = [];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_mergeLeft', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:      |===|
+     * result: |========| |==========|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(2, 4);
+    const result = [
+      Range.fromExplicitRange(1, 4),
+      Range.fromExplicitRange(5, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_mergeMiddle', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:       |====|
+     * result: |=====================|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(3, 5);
+    const result = [
+      Range.fromExplicitRange(1, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_mergeTogether', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:      |======|
+     * result: |=====================|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(2, 6);
+    const result = [
+      Range.fromExplicitRange(1, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_mergeRight', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:         |====|
+     * result: |=====| |=============|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(4, 6);
+    const result = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(4, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_same', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range: |=====|
+     * result: |=====|    |==========|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(1, 3);
+    const result = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_within', function() {
+    /*
+     *  array: |=====|    |==========|
+     *  range:              |======|
+     * result: |=====|    |==========|
+     */
+    const arr = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(6, 8);
+    const result = [
+      Range.fromExplicitRange(1, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
+
+  test('mergeIntoArray_expand', function() {
+    /*
+     *  array:  |====|    |==========|
+     *  range: |========|
+     * result: |========| |==========|
+     */
+    const arr = [
+      Range.fromExplicitRange(2, 3),
+      Range.fromExplicitRange(5, 9),
+    ];
+    const range = Range.fromExplicitRange(1, 4);
+    const result = [
+      Range.fromExplicitRange(1, 4),
+      Range.fromExplicitRange(5, 9),
+    ];
+    assert.deepEqual(range.mergeIntoArray(arr), result);
+  });
 });
+
 </script>

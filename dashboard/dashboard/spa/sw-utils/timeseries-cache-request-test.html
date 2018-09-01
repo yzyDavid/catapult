@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<!--
+Copyright 2018 The Chromium Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
+
+<link rel="import" href="/dashboard/spa/simple-redux.html">
+<link rel="import" href="/dashboard/spa/timeseries-cache.html">
+<link rel="import" href="/tracing/core/test_utils.html">
+
+<script type="module" src="/dashboard/spa/sw-utils/cache-request-base.js"></script>
+<script type="module" src="/dashboard/spa/sw-utils/timeseries-cache-request.js"></script>
+<script type="module">
+'use strict';
+import cacheRequest from './cache-request-base.js';
+import TimeseriesCacheRequest from './timeseries-cache-request.js';
+
+global.testUtils = cacheRequest;
+global.TimeseriesCacheRequest = TimeseriesCacheRequest;
+</script>
+
+<script>
+'use strict';
+
+function getColumnsByLevelOfDetail(levelOfDetail, statistic) {
+  switch (levelOfDetail) {
+    case 'xy':
+      return ['revision', 'timestamp', statistic];
+    case 'annotation':
+      return ['revision', 'alert', 'diagnostics', 'revisions'];
+    case 'histogram':
+      return ['revision', 'histogram'];
+    default:
+      throw new Error(`${levelOfDetail} is not a valid Level Of Detail`);
+  }
+}
+
+tr.b.unittest.testSuite(() => {
+  /**
+   * mockRequest returns a `Request`[1] object mimicking a typical request to
+   * the "/api/timeseries2" endpoint. The request is later used by `fetch`.
+   * [1]: https://developer.mozilla.org/en-US/docs/Web/API/Request
+   *
+   *   type parameters = {
+   *     testSuite: string,
+   *     measurement: string,
+   *     bot: string,
+   *     statistic: string,
+   *     levelOfDetail: LEVEL_OF_DETAIL,
+   *     testCase?: string,
+   *     buildType?: string,
+   *     minRevision?: number,
+   *     maxRevision?: number,
+   *   }
+   */
+  function mockRequest(parameters) {
+    const url = new cp.TimeseriesRequest(parameters).url_;
+    return new Request(url);
+  }
+
+  /**
+   * mockApiResponse differs from cp.RequestBase#localhostResponse_ by
+   * being simpler, predictable, and tunable.
+   *
+   *   type parameters = {
+   *     levelOfDetail: string,
+   *     minRevision?: number,
+   *     maxRevision?: number,
+   *   }
+   */
+  function mockApiResponse(parameters) {
+    const {levelOfDetail, minRevision = 1, maxRevision = 3} = parameters;
+    const columns = getColumnsByLevelOfDetail(levelOfDetail);
+    const data = [];
+
+    for (let i = minRevision; i <= maxRevision; ++i) {
+      const dataPoint = [];
+      for (const _ of columns) {
+        dataPoint.push(i);
+      }
+      data.push(dataPoint);
+    }
+    return {
+      improvement_direction: 1,
+      units: 'sizeInBytes_smallerIsBetter',
+      data,
+    };
+  }
+
+  function mockFetch(response, {
+    delay = 50,
+    status = 200,
+  } = {}) {
+    const actualFetch = global.fetch;
+    global.fetch = () => new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const blob = new Blob([JSON.stringify(response, null, 2)], {
+          type: 'application/json',
+        });
+        const res = new Response(blob, {status});
+        resolve(res);
+        global.fetch = actualFetch;
+      }, delay);
+    });
+  }
+
+  test('mockFetch', async() => {
+    const req = mockRequest({
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'statistic',
+      levelOfDetail: 'xy',
+    });
+    mockFetch({
+      improvement_direction: 1,
+      data: [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+      units: 'sizeInBytes_smallerIsBetter',
+    });
+    const res = await fetch(req);
+    const json = await res.json();
+    assert.deepEqual(json, {
+      improvement_direction: 1,
+      data: [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+      units: 'sizeInBytes_smallerIsBetter',
+    });
+  });
+
+  test('mockResponse', async() => {
+    const response = mockApiResponse({
+      levelOfDetail: 'xy',
+      minRevision: 1,
+      maxRevision: 3
+    });
+    assert.deepEqual(response, {
+      improvement_direction: 1,
+      data: [
+        [1, 1, 1],
+        [2, 2, 2],
+        [3, 3, 3],
+      ],
+      units: 'sizeInBytes_smallerIsBetter',
+    });
+  });
+
+  test('yields_only_network', async() => {
+    const parameters = {
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'avg',
+      levelOfDetail: 'xy',
+    };
+
+    const databaseName = TimeseriesCacheRequest.databaseName(parameters);
+    testUtils.disableAutomaticWritingForTest();
+    await testUtils.flushWriterForTest();
+    await testUtils.deleteDatabaseForTest(databaseName);
+
+    const response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    const request = mockRequest(parameters);
+    const race = new TimeseriesCacheRequest(request);
+    const results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+  });
+
+  test('handles_same_ranges', async() => {
+    const parameters = {
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'avg',
+      levelOfDetail: 'xy',
+    };
+
+    const databaseName = TimeseriesCacheRequest.databaseName(parameters);
+    testUtils.disableAutomaticWritingForTest();
+    await testUtils.flushWriterForTest();
+    await testUtils.deleteDatabaseForTest(databaseName);
+
+    const request = mockRequest(parameters);
+    const response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    let race = new TimeseriesCacheRequest(request);
+    let results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    await testUtils.flushWriterForTest();
+    mockFetch(response);
+
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 2);
+    assert.include(results, {name: 'IndexedDB', result: response});
+    assert.include(results, {name: 'Network', result: response});
+  });
+
+  test('handles_separate_ranges', async() => {
+    const parameters = {
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'avg',
+      levelOfDetail: 'xy',
+      minRevision: 1,
+      maxRevision: 3,
+    };
+
+    const databaseName = TimeseriesCacheRequest.databaseName(parameters);
+    testUtils.disableAutomaticWritingForTest();
+    await testUtils.flushWriterForTest();
+    await testUtils.deleteDatabaseForTest(databaseName);
+
+    let request = mockRequest(parameters);
+    let response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    let race = new TimeseriesCacheRequest(request);
+    let results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    await testUtils.flushWriterForTest();
+    parameters.minRevision = 4;
+    parameters.maxRevision = 7;
+    request = mockRequest(parameters);
+    response = mockApiResponse(parameters);
+
+    mockFetch(response);
+
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    // Only results from the network should be returned since the previous range
+    // was [1, 3] and the current range is [4, 7].
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+  });
+
+  test('handles_overlapping_ranges', async() => {
+    const parameters = {
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'avg',
+      levelOfDetail: 'xy',
+      minRevision: 1,
+      maxRevision: 3,
+    };
+
+    const databaseName = TimeseriesCacheRequest.databaseName(parameters);
+    testUtils.disableAutomaticWritingForTest();
+    await testUtils.flushWriterForTest();
+    await testUtils.deleteDatabaseForTest(databaseName);
+
+    let request = mockRequest(parameters);
+    let response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    let race = new TimeseriesCacheRequest(request);
+    let results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    parameters.minRevision = 2;
+    parameters.maxRevision = 4;
+    request = mockRequest(parameters);
+    response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    await testUtils.flushWriterForTest();
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    // Results from the cache and network should be returned since the previous
+    // range [1, 3] intersects with the current range [2, 4].
+    parameters.minRevision = 2;
+    parameters.maxRevision = 3;
+    const cacheResponse = mockApiResponse(parameters);
+
+    assert.lengthOf(results, 2);
+    assert.include(results, {name: 'IndexedDB', result: cacheResponse});
+    assert.include(results, {name: 'Network', result: response});
+  });
+
+  test('handles_multiple_separate_ranges', async() => {
+    // Start a request with the first data point
+    const parameters = {
+      testSuite: 'testSuite',
+      measurement: 'measurement',
+      bot: 'bot',
+      statistic: 'avg',
+      levelOfDetail: 'xy',
+      minRevision: 1,
+      maxRevision: 1,
+    };
+
+    const databaseName = TimeseriesCacheRequest.databaseName(parameters);
+    testUtils.disableAutomaticWritingForTest();
+    await testUtils.flushWriterForTest();
+    await testUtils.deleteDatabaseForTest(databaseName);
+
+    let request = mockRequest(parameters);
+    let response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    let race = new TimeseriesCacheRequest(request);
+    let results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    parameters.minRevision = 3;
+    parameters.maxRevision = 3;
+    request = mockRequest(parameters);
+    response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    await testUtils.flushWriterForTest();
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    parameters.minRevision = 2;
+    parameters.maxRevision = 2;
+    request = mockRequest(parameters);
+    response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    await testUtils.flushWriterForTest();
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 1);
+    assert.deepEqual(results[0], {name: 'Network', result: response});
+
+    parameters.minRevision = 1;
+    parameters.maxRevision = 3;
+    request = mockRequest(parameters);
+    response = mockApiResponse(parameters);
+    mockFetch(response);
+
+    await testUtils.flushWriterForTest();
+    race = new TimeseriesCacheRequest(request);
+    results = [];
+    for await (const contestant of race) {
+      results.push(contestant);
+    }
+
+    assert.lengthOf(results, 2);
+    assert.include(results, {name: 'IndexedDB', result: response});
+    assert.include(results, {name: 'Network', result: response});
+  });
+});
+
+</script>

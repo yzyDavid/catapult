@@ -35,6 +35,16 @@ handlers:
   http_headers:
     Content-Security-Policy: "script-src 'unsafe-inline' https://www.google-analytics.com https://apis.google.com"
 
+- url: /service-worker.js
+  static_files: webpack/service-worker.js
+  upload: webpack/service-worker.js
+  secure: always
+
+- url: /service-worker.js.map
+  static_files: webpack/service-worker.js.map
+  upload: webpack/service-worker.js.map
+  secure: always
+
 - url: /.+
   script: dashboard.dispatcher.APP
   secure: always

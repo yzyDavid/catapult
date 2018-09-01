@@ -218,6 +218,74 @@ tr.exportTo('tr.b.math', function() {
       const last = tr.b.findFirstTrueIndexInSortedArray(sortedArray,
           obj => this.max_ !== undefined && this.max_ < getValue(obj));
       return sortedArray.slice(first, last);
+    },
+
+    /**
+    * Merges the current Range into an array of disconnected Ranges which has
+    * been sorted by min.
+    *
+    *  array: |=====|    |==========|
+    *   self:         |===|
+    * result: |=====| |=============|
+    *
+    *
+    *  array: |=====|       |=======|
+    *   self:         |===|
+    * result: |=====| |===| |=======|
+    *
+    *
+    *  array: |=====|       |=======|
+    *   self:   |==|
+    * result: |=====|       |=======|
+    *
+    *
+    *  array: |=====|       |=======|
+    *   self: |========|
+    * result: |========|    |=======|
+    *
+    * @param {Array.<tr.b.math.Range>} sortedArray
+    * @returns {Array.<tr.b.math.Range>} An array of ranges that is the result
+    * of the merge.
+    */
+    mergeIntoArray(sortedArray) {
+      if (this.isEmpty) {
+        // Self is an empty range. Return an array of non-empty ranges.
+        return sortedArray.filter(range => !range.isEmpty);
+      }
+
+      let hasInsertedSelf = false;
+      const result = [];
+      const selfClone = this.clone();
+
+      for (const range of sortedArray) {
+        // Filter out empty ranges.
+        if (range.isEmpty) continue;
+
+        if (range.containsRangeInclusive(selfClone)) {
+          // This range already contains selfClone; do not insert selfClone.
+          hasInsertedSelf = true;
+          result.push(range.clone());
+        } else if (selfClone.containsRangeInclusive(range)) {
+          // selfClone already contains this range; ignore it.
+        } else if (range.intersectsRangeInclusive(selfClone)) {
+          // selfClone shares some with this range; merge it into selfClone.
+          selfClone.addRange(range);
+        } else {
+          if (!hasInsertedSelf && range.min > selfClone.max) {
+            // This range is past selfClone; let's insert before we forget.
+            result.push(selfClone);
+            hasInsertedSelf = true;
+          }
+
+          result.push(range.clone());
+        }
+      }
+
+      if (!hasInsertedSelf) {
+        result.push(selfClone);
+      }
+
+      return result;
     }
   };
 

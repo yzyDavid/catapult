@@ -10,9 +10,50 @@
 window.IS_DEBUG = location.hostname === 'localhost';
 
 // When in production, tell Redux Dev Tools to disable automatic recording.
-window.PRODUCTION_ORIGIN = 'v2spa-dot-chromeperf.appspot.com';
+const PRODUCTION_ORIGIN = 'v2spa-dot-chromeperf.appspot.com';
 window.PRODUCTION_URL = `https://${PRODUCTION_ORIGIN}`;
 window.IS_PRODUCTION = location.hostname === PRODUCTION_ORIGIN;
+
+// Google Analytics
+const trackingId = IS_PRODUCTION ? 'UA-98760012-3' : 'UA-98760012-4';
+
+window.ga = window.ga || function() {
+  ga.q = ga.q || [];
+  ga.q.push(arguments);
+};
+ga.l = new Date();
+ga('create', trackingId, 'auto');
+ga('send', 'pageview');
+(function() {
+  // Write this script tag at runtime instead of in HTML in order to prevent
+  // vulcanizer from inlining a remote script.
+  const script = document.createElement('script');
+  script.src = 'https://www.google-analytics.com/analytics.js';
+  script.type = 'text/javascript';
+  script.async = true;
+  document.head.appendChild(script);
+})();
+
+// Register the Service Worker when in production. Service Workers are not
+// helpful in development mode because all backend responses are being mocked.
+if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+  const swChannel = new BroadcastChannel('service-worker');
+
+  (async() => {
+    const [clientId] = await Promise.all([
+      new Promise(resolve => ga(tracker => resolve(tracker.get('clientId')))),
+      navigator.serviceWorker.register('service-worker.js'),
+    ]);
+
+    swChannel.postMessage({
+      type: 'GOOGLE_ANALYTICS',
+      payload: {
+        trackingId,
+        clientId,
+      },
+    });
+  })();
+}
 
 window.addEventListener('load', () => {
   tr.b.Timing.ANALYTICS_FILTERS.push(mark =>
@@ -26,19 +67,3 @@ window.addEventListener('load', () => {
     tr.b.Timing.mark('load', name, start).end(timeStamp);
   }
 });
-
-window.ga = window.ga || function() {
-  ga.q = ga.q || [];
-  ga.q.push(arguments);
-};
-ga.l = new Date();
-ga('create', 'UA-98760012-3', 'auto');
-(function() {
-  // Write this script tag at runtime instead of in HTML in order to bypass the
-  // vulcanizer.
-  const script = document.createElement('script');
-  script.src = 'https://www.google-analytics.com/analytics.js';
-  script.type = 'text/javascript';
-  script.async = true;
-  document.head.appendChild(script);
-})();

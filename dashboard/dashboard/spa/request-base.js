@@ -93,7 +93,8 @@ tr.exportTo('cp', () => {
     }
 
     computeCacheKey_() {
-      throw new Error('subclasses must override either computeCacheKey_');
+      // Subclasses must override this to return a unique string per request.
+      throw new Error('subclasses must override computeCacheKey_');
     }
 
     get isInCache_() {
@@ -101,6 +102,8 @@ tr.exportTo('cp', () => {
     }
 
     createRequest_() {
+      // Subclasses must override this to return an instatiation of a class
+      // extending from cp.RequestBase for creating an outgoing HTTP request.
       throw new Error('subclasses must override createRequest_()');
     }
 
@@ -144,7 +147,11 @@ tr.exportTo('cp', () => {
         // await.
         this.cacheKey_ = await this.cacheKey_;
       }
-      if (this.isInCache_) return await this.readFromCache_();
+
+      if (this.isInCache_) {
+        return await this.readFromCache_();
+      }
+
       return await this.fetch_();
     }
   }

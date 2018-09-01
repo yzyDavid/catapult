@@ -8,7 +8,6 @@ npm install
 sed -i 's/ecmaVersion: 6/ecmaVersion: 9/g' node_modules/hydrolysis/lib/ast-utils/js-parse.js
 popd
 pushd dashboard
-ln -sf ../third_party/idb/idb.js
 ln -sf ../third_party/polymer2
 ln -sf ../third_party/polymer2/bower_components
 ln -sf ../third_party/redux

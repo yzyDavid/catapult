@@ -24,6 +24,10 @@ MINIFY = os.path.abspath(os.path.join(
   os.path.dirname(__file__), '..', '..',
   'common/node_runner/node_runner/minify'))
 
+WEBPACK = os.path.abspath(os.path.join(
+  os.path.dirname(__file__), '..', '..',
+  'common/node_runner/node_runner/node_modules/.bin/webpack-command'))
+
 
 def _TimestampScript():
   # V2SPA displays its version as this timestamp in this format to make it easy
@@ -57,6 +61,26 @@ def VulcanizeHistogramsViewer(temp_dir):
   return viewer_dir_path
 
 
+def Webpack(temp_dir, spa_path):
+  output_path = os.path.join(temp_dir, 'webpack')
+  modules_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
+      '..', 'common', 'node_runner', 'node_runner', 'node_modules'))
+  third_party_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+      '..', '..', 'third_party'))
+
+  config_filename = os.path.join(spa_path, 'webpack.config.js')
+
+  os.environ['WEBPACK_OUTPUT_PATH'] = output_path
+  os.environ['WEBPACK_NODE_MODULES'] = modules_path
+  os.environ['WEBPACK_THIRD_PARTY'] = third_party_path
+
+  exit_code = subprocess.call([WEBPACK, '--config', config_filename])
+  if exit_code != 0:
+    raise RuntimeError('Webpack failed with exit code', exit_code)
+
+  return output_path
+
+
 def Main():
   dashboard_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
   _AddToPathIfNeeded(dashboard_path)
@@ -64,12 +88,14 @@ def Main():
   _AddToPathIfNeeded(catapult_path)
   tracing_path = os.path.join(catapult_path, 'tracing')
   _AddToPathIfNeeded(tracing_path)
+  spa_path = os.path.join(dashboard_path, 'dashboard', 'spa')
   import dashboard
 
   temp_dir = tempfile.mkdtemp()
   deployment_paths = dashboard.PathsForDeployment()
   deployment_paths.append(VulcanizeHistogramsViewer(temp_dir))
   deployment_paths.append(VulcanizeIndex(temp_dir, dashboard_path))
+  deployment_paths.append(Webpack(temp_dir, spa_path))
 
   from catapult_build import appengine_deploy
   version = None
