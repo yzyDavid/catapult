@@ -13,15 +13,13 @@ import zlib
 
 from google.appengine.api import taskqueue
 
-from dashboard import add_point
-from dashboard import add_point_queue
 from dashboard.api import api_request_handler
 from dashboard.common import datastore_hooks
 from dashboard.common import histogram_helpers
 from dashboard.common import request_handler
-from dashboard.common import stored_object
 from dashboard.common import timing
 from dashboard.common import utils
+from dashboard.models import graph_data
 from dashboard.models import histogram
 from tracing.value import histogram_set
 from tracing.value.diagnostics import diagnostic
@@ -150,9 +148,6 @@ def ProcessHistogramSet(histogram_dicts):
     raise api_request_handler.BadRequestError(
         'HistogramSet JSON much be a list of dicts')
 
-  bot_whitelist_future = stored_object.GetAsync(
-      add_point_queue.BOT_WHITELIST_KEY)
-
   histograms = histogram_set.HistogramSet()
 
   with timing.WallTimeLogger('hs.ImportDicts'):
@@ -200,8 +195,7 @@ def ProcessHistogramSet(histogram_dicts):
 
     revision = ComputeRevision(histograms)
 
-    bot_whitelist = bot_whitelist_future.get_result()
-    internal_only = add_point_queue.BotInternalOnly(bot, bot_whitelist)
+    internal_only = graph_data.Bot.GetInternalOnlySync(master, bot)
 
   revision_record = histogram.HistogramRevisionRecord.GetOrCreate(
       suite_key, revision)
@@ -281,7 +275,7 @@ def _BatchHistogramsIntoTasks(
 
     # TODO(eakuefner): Don't compute full diagnostics, because we need anyway to
     # call GetOrCreate here and in the queue.
-    test_path = ComputeTestPath(suite_path, hist)
+    test_path = '%s/%s' % (suite_path, histogram_helpers.ComputeTestPath(hist))
 
     if test_path in duplicate_check:
       raise api_request_handler.BadRequestError(
@@ -365,37 +359,6 @@ def FindHistogramLevelSparseDiagnostics(hist):
     if name in HISTOGRAM_LEVEL_SPARSE_DIAGNOSTIC_NAMES:
       diagnostics[name] = diag
   return diagnostics
-
-
-def ComputeTestPath(suite_path, hist):
-  path = '%s/%s' % (suite_path, hist.name)
-
-  # If a Histogram represents a summary across multiple stories, then its
-  # 'stories' diagnostic will contain the names of all of the stories.
-  # If a Histogram is not a summary, then its 'stories' diagnostic will contain
-  # the singular name of its story.
-  is_summary = list(
-      hist.diagnostics.get(reserved_infos.SUMMARY_KEYS.name, []))
-
-  tir_label = histogram_helpers.GetTIRLabelFromHistogram(hist)
-  if tir_label and (
-      not is_summary or reserved_infos.STORY_TAGS.name in is_summary):
-    path += '/' + tir_label
-
-  is_ref = hist.diagnostics.get(reserved_infos.IS_REFERENCE_BUILD.name)
-  if is_ref and len(is_ref) == 1:
-    is_ref = is_ref.GetOnlyElement()
-
-  story_name = hist.diagnostics.get(reserved_infos.STORIES.name)
-  if story_name and len(story_name) == 1 and not is_summary:
-    escaped_story_name = add_point.EscapeName(story_name.GetOnlyElement())
-    path += '/' + escaped_story_name
-    if is_ref:
-      path += '_ref'
-  elif is_ref:
-    path += '/ref'
-
-  return path
 
 
 def _GetDiagnosticValue(name, hist, optional=False):

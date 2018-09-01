@@ -10,12 +10,12 @@ import webapp2
 import webtest
 import zlib
 
-from dashboard import add_point_queue
+from google.appengine.ext import ndb
+
 from dashboard import add_histograms
 from dashboard import add_histograms_queue
 from dashboard.api import api_auth
 from dashboard.api import api_request_handler
-from dashboard.common import stored_object
 from dashboard.common import testing_common
 from dashboard.common import utils
 from dashboard.models import graph_data
@@ -190,7 +190,7 @@ class AddHistogramsEndToEndTest(AddHistogramsBaseTest):
     # We want to verify that the method was called with all rows that have
     # been added, but the ordering will be different because we produce
     # the rows by iterating over a dict.
-    mock_graph_revisions.assert_called_once()
+    mock_graph_revisions.assert_called_once_with(mock.ANY)
     self.assertEqual(len(mock_graph_revisions.mock_calls[0][1][0]), len(rows))
 
   @mock.patch.object(
@@ -224,7 +224,7 @@ class AddHistogramsEndToEndTest(AddHistogramsBaseTest):
     # We want to verify that the method was called with all rows that have
     # been added, but the ordering will be different because we produce
     # the rows by iterating over a dict.
-    mock_graph_revisions.assert_called_once()
+    mock_graph_revisions.assert_called_once_with(mock.ANY)
     self.assertEqual(len(mock_graph_revisions.mock_calls[0][1][0]), len(rows))
 
   @mock.patch.object(
@@ -484,9 +484,8 @@ class AddHistogramsEndToEndTest(AddHistogramsBaseTest):
       add_histograms_queue.find_anomalies, 'ProcessTestsAsync',
       mock.MagicMock())
   def testPost_DiagnosticsInternalOnly_False(self):
-    stored_object.Set(
-        add_point_queue.BOT_WHITELIST_KEY, ['bot'])
-
+    graph_data.Bot(key=ndb.Key('Master', 'master', 'Bot', 'bot'),
+                   internal_only=False).put()
     self._TestDiagnosticsInternalOnly()
 
     diagnostics = histogram.SparseDiagnostic.query().fetch()
@@ -500,9 +499,6 @@ class AddHistogramsEndToEndTest(AddHistogramsBaseTest):
       add_histograms_queue.find_anomalies, 'ProcessTestsAsync',
       mock.MagicMock())
   def testPost_DiagnosticsInternalOnly_True(self):
-    stored_object.Set(
-        add_point_queue.BOT_WHITELIST_KEY, ['not_in_list'])
-
     self._TestDiagnosticsInternalOnly()
 
     diagnostics = histogram.SparseDiagnostic.query().fetch()
@@ -1350,111 +1346,6 @@ class AddHistogramsTest(AddHistogramsBaseTest):
     with self.assertRaises(ValueError):
       add_histograms.FindSuiteLevelSparseDiagnostics(
           histograms, utils.TestKey('M/B/Foo'), 12345, False)
-
-  def testComputeTestPathWithStory(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.MASTERS.name,
-        generic_set.GenericSet(['master']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BOTS.name,
-        generic_set.GenericSet(['bot']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BENCHMARKS.name,
-        generic_set.GenericSet(['benchmark']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.STORIES.name,
-        generic_set.GenericSet(['http://story']))
-    hist = histograms.GetFirstHistogram()
-    test_path = add_histograms.ComputeTestPath(
-        'master/bot/benchmark', hist)
-    self.assertEqual('master/bot/benchmark/hist/http___story', test_path)
-
-  def testComputeTestPathWithTIRLabel(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.MASTERS.name,
-        generic_set.GenericSet(['master']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BOTS.name,
-        generic_set.GenericSet(['bot']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BENCHMARKS.name,
-        generic_set.GenericSet(['benchmark']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.STORIES.name,
-        generic_set.GenericSet(['http://story']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.STORY_TAGS.name,
-        generic_set.GenericSet(
-            ['group:media', 'ignored_tag', 'case:browse']))
-    hist = histograms.GetFirstHistogram()
-    test_path = add_histograms.ComputeTestPath(
-        'master/bot/benchmark', hist)
-    self.assertEqual(
-        'master/bot/benchmark/hist/browse_media/http___story', test_path)
-
-  def testComputeTestPathWithoutStory(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.MASTERS.name,
-        generic_set.GenericSet(['master']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BOTS.name,
-        generic_set.GenericSet(['bot']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BENCHMARKS.name,
-        generic_set.GenericSet(['benchmark']))
-    hist = histograms.GetFirstHistogram()
-    test_path = add_histograms.ComputeTestPath(
-        'master/bot/benchmark', hist)
-    self.assertEqual('master/bot/benchmark/hist', test_path)
-
-  def testComputeTestPathWithIsRefWithoutStory(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.MASTERS.name,
-        generic_set.GenericSet(['master']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BOTS.name,
-        generic_set.GenericSet(['bot']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BENCHMARKS.name,
-        generic_set.GenericSet(['benchmark']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.IS_REFERENCE_BUILD.name,
-        generic_set.GenericSet([True]))
-    hist = histograms.GetFirstHistogram()
-    test_path = add_histograms.ComputeTestPath(
-        'master/bot/benchmark', hist)
-    self.assertEqual('master/bot/benchmark/hist/ref', test_path)
-
-  def testComputeTestPathWithIsRefAndStory(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.MASTERS.name,
-        generic_set.GenericSet(['master']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BOTS.name,
-        generic_set.GenericSet(['bot']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.BENCHMARKS.name,
-        generic_set.GenericSet(['benchmark']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.STORIES.name,
-        generic_set.GenericSet(['http://story']))
-    histograms.AddSharedDiagnostic(
-        reserved_infos.IS_REFERENCE_BUILD.name,
-        generic_set.GenericSet([True]))
-    hist = histograms.GetFirstHistogram()
-    test_path = add_histograms.ComputeTestPath(
-        'master/bot/benchmark', hist)
-    self.assertEqual('master/bot/benchmark/hist/http___story_ref', test_path)
 
   def testComputeRevision(self):
     hist = histogram_module.Histogram('hist', 'count')
