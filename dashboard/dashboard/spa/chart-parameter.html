@@ -11,10 +11,14 @@ found in the LICENSE file.
 <dom-module id="chart-parameter">
   <template>
     <style>
-      cp-checkbox {
-        margin-top: 8px;
+      :host {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: column;
       }
-
+      cp-checkbox {
+        margin-left: 12px;
+      }
       #dropdown_extra {
         align-items: center;
         border-right: 1px solid black;
@@ -22,7 +26,6 @@ found in the LICENSE file.
         flex-direction: column;
         padding-right: 8px;
       }
-
       #tag_head {
         padding: 4px;
         color: var(--neutral-color-dark);
@@ -47,7 +50,7 @@ found in the LICENSE file.
 
     <cp-checkbox
         id="aggregate"
-        disabled$="[[!isMultiple_(selectedOptions]]"
+        disabled$="[[!isMultiple_(selectedOptions)]]"
         checked="[[isAggregated]]"
         hidden$="[[!canAggregate]]"
         on-change="onAggregateChange_">
