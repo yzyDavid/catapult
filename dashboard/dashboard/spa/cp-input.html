@@ -11,13 +11,12 @@ found in the LICENSE file.
       :host {
         align-items: center;
         background-color: var(--primary-color-light, lightblue);
-        border-bottom: 2px solid var(--primary-color-light, lightblue);
+        border-bottom: 1px solid var(--primary-color-dark, blue);
         cursor: text;
         display: flex;
         justify-content: space-between;
         outline: none;
-        padding: 6px 6px 2px 6px;
-        transition: border-bottom-color var(--transition-short, 0.2s);
+        padding: 6px 6px 3px 6px;
       }
       #main {
         display: flex;
@@ -25,19 +24,25 @@ found in the LICENSE file.
         flex-grow: 1;
       }
       #label {
-        color: var(--primary-color-dark, blue);
+        color: var(--neutral-color-dark, grey);
         font-size: smaller;
+        transition: color var(--transition-short, 0.2s);
       }
       div {
         background-color: inherit;
         display: flex;
       }
       :host([disabled]) {
+        border-bottom-color: var(--neutral-color-dark, grey);
         background-color: var(--neutral-color-light, lightgrey);
         cursor: unset;
       }
       :host([focused]) {
-        border-bottom-color: var(--primary-color-dark, blue);
+        border-bottom-width: 2px;
+        padding-bottom: 2px;
+      }
+      :host([focused]) #label {
+        color: var(--primary-color-dark, blue);
       }
       :host([error]) {
         border-bottom-color: var(--error-color, red);

@@ -10,20 +10,24 @@ found in the LICENSE file.
     <style>
       :host {
         background-color: var(--primary-color-light, lightblue);
-        border-bottom: 2px solid var(--primary-color-light, lightblue);
+        border-bottom: 1px solid var(--primary-color-dark, blue);
         cursor: text;
         display: flex;
         flex-direction: column;
         outline: none;
-        padding: 6px 6px 2px 6px;
-        transition: border-bottom-color var(--transition-short, 0.2s);
+        padding: 6px 6px 3px 6px;
       }
       #label {
         color: var(--primary-color-dark, blue);
         font-size: smaller;
+        transition: color var(--transition-short, 0.2s);
       }
       :host([focused]) {
-        border-bottom-color: var(--primary-color-dark, blue);
+        border-bottom-width: 2px;
+        padding-bottom: 2px;
+      }
+      :host([focused]) #label {
+        color: var(--primary-color-dark, blue);
       }
       textarea {
         background-color: inherit;
