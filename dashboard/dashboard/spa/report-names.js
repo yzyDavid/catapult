@@ -18,6 +18,16 @@ tr.exportTo('cp', () => {
         {name: cp.ReportSection.DEFAULT_NAME, id: 0, modified: 0},
       ];
     }
+
+    // `modified` comes back as ISO8601, but we need a Date object.
+    postProcess_(json) {
+      return json.map(report => {
+        return {
+          ...report,
+          modified: new Date(report.modified),
+        };
+      });
+    }
   }
 
   class ReportNamesCache extends cp.CacheBase {

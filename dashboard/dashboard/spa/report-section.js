@@ -20,94 +20,6 @@ tr.exportTo('cp', () => {
   const MIN_MILESTONE = tr.b.math.Statistics.min(
       Object.keys(CHROMIUM_MILESTONES));
 
-  class ReportRequest extends cp.RequestBase {
-    constructor(options) {
-      super(options);
-      this.id_ = options.id;
-      this.name_ = options.name;
-      this.modified_ = options.modified;
-      this.revisions_ = options.revisions;
-      this.queryParams_ = new URLSearchParams();
-      this.queryParams_.set('id', this.id_);
-      this.queryParams_.set('modified', this.modified_);
-      this.queryParams_.set('revisions', this.revisions_);
-    }
-
-    get url_() {
-      return `/api/report/generate?${this.queryParams_}`;
-    }
-
-    async localhostResponse_() {
-      const rows = [];
-      const dummyRow = measurement => {
-        const row = {
-          testSuites: ['system_health.common_mobile'],
-          bots: ['master:bot0', 'master:bot1', 'master:bot2'],
-          testCases: [],
-          data: {},
-          measurement,
-        };
-        for (const revision of this.revisions_) {
-          row.data[revision] = {
-            descriptors: [
-              {
-                testSuite: 'system_health.common_mobile',
-                measurement,
-                bot: 'master:bot0',
-                testCase: 'search:portal:google',
-              },
-              {
-                testSuite: 'system_health.common_mobile',
-                measurement,
-                bot: 'master:bot1',
-                testCase: 'search:portal:google',
-              },
-            ],
-            statistics: [
-              10, 0, 0, Math.random() * 1000, 0, 0, Math.random() * 1000],
-            revision,
-          };
-        }
-        return row;
-      };
-
-      for (const group of ['Pixel', 'Android Go']) {
-        rows.push({
-          ...dummyRow('memory:a_size'),
-          label: group + ':Memory',
-          units: 'sizeInBytes_smallerIsBetter',
-        });
-        rows.push({
-          ...dummyRow('loading'),
-          label: group + ':Loading',
-          units: 'ms_smallerIsBetter',
-        });
-        rows.push({
-          ...dummyRow('startup'),
-          label: group + ':Startup',
-          units: 'ms_smallerIsBetter',
-        });
-        rows.push({
-          ...dummyRow('cpu:a'),
-          label: group + ':CPU',
-          units: 'ms_smallerIsBetter',
-        });
-        rows.push({
-          ...dummyRow('power'),
-          label: group + ':Power',
-          units: 'W_smallerIsBetter',
-        });
-      }
-
-      return {
-        name: this.name_,
-        owners: ['benjhayden@chromium.org', 'benjhayden@google.com'],
-        url: window.PRODUCTION_URL,
-        report: {rows, statistics: ['avg', 'std']},
-      };
-    }
-  }
-
   class ReportTemplateRequest extends cp.RequestBase {
     constructor(options) {
       super(options);
@@ -565,13 +477,16 @@ tr.exportTo('cp', () => {
       const revisions = [state.minRevision, state.maxRevision];
       const reportTemplateIds = await cp.ReadReportNames()(dispatch, getState);
       const promises = [];
+
       for (const name of names) {
         for (const templateId of reportTemplateIds) {
           if (templateId.name === name) {
-            promises.push(new ReportRequest({
+            promises.push(cp.ReadReport({
               ...templateId,
               revisions,
-            }).response);
+              dispatch,
+              getState,
+            }));
           }
         }
       }
@@ -601,6 +516,8 @@ tr.exportTo('cp', () => {
         // ReportSection.actions.renderEditForms(statePath)(dispatch, getState);
         // ReportSection.actions.prefetchCharts(statePath)(dispatch, getState);
       }
+
+      dispatch(Redux.UPDATE(statePath, {isLoading: false}));
     },
 
     renderEditForm: (statePath, tableIndex) => async(dispatch, getState) => {
@@ -930,7 +847,6 @@ tr.exportTo('cp', () => {
       }
       return {
         ...state,
-        isLoading: false,
         tables,
       };
     },
@@ -1151,6 +1067,13 @@ tr.exportTo('cp', () => {
     const scalars = [];
     for (const revision of [minRevision, maxRevision]) {
       for (const statistic of statistics) {
+        // IndexedDB can return impartial results if there is no data cached for
+        // the requested revision.
+        if (!row.data[revision]) {
+          scalars.push({}); // insert empty column
+          continue;
+        }
+
         const unit = (statistic === 'count') ? tr.b.Unit.byName.count :
           rowUnit;
         let unitPrefix;
@@ -1167,6 +1090,14 @@ tr.exportTo('cp', () => {
       }
     }
     for (const statistic of statistics) {
+      // IndexedDB can return impartial results if there is no data cached for
+      // the requested min or max revision.
+      if (!row.data[minRevision] || !row.data[maxRevision]) {
+        scalars.push({}); // insert empty relative delta
+        scalars.push({}); // insert empty absolute delta
+        continue;
+      }
+
       const unit = ((statistic === 'count') ? tr.b.Unit.byName.count :
         rowUnit).correspondingDeltaUnit;
       const deltaValue = (
