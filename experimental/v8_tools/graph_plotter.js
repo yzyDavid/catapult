@@ -17,13 +17,13 @@ class GraphPlotter {
     /** @private {number} */
     this.canvasHeight_ = 720;
     /** @private {number} */
-    this.canvasWidth_ = 1280;
+    this.canvasWidth_ = 1880;
     /* Provides spacing around the chart for labels and the axes. */
     const margins = {
       top: 50,
-      right: 200,
-      left: 80,
-      bottom: 50,
+      right: 700,
+      left: 180,
+      bottom: 100,
     };
     const width = this.canvasWidth_ - margins.left - margins.right;
     const height = this.canvasHeight_ - margins.top - margins.bottom;
@@ -69,12 +69,9 @@ class GraphPlotter {
   }
 
   createLegend_() {
-    const padding = 5;
     return this.chart_.append('g')
         .attr('class', 'legend')
-        .attr('transform',
-            `translate(${this.chartDimensions_.width + padding},
-                ${this.chartDimensions_.margins.top})`);
+        .attr('transform', `translate(${this.chartDimensions_.width}, 0)`);
   }
 
   labelTitle_() {
@@ -82,16 +79,18 @@ class GraphPlotter {
         .attr('x', this.chartDimensions_.width / 2)
         .attr('y', 0 - this.chartDimensions_.margins.top / 2)
         .attr('text-anchor', 'middle')
+        .attr('font-weight', 'bold')
         .text(this.graph_.title());
   }
 
   labelAxis_() {
-    const chartBottom =
-      this.chartDimensions_.height + this.chartDimensions_.margins.bottom;
+    const padding = 50;
+    const chartBottom = this.chartDimensions_.height + padding;
     this.chart_.append('text')
         .attr('transform', `translate(${this.chartDimensions_.width / 2}, 
             ${chartBottom})`)
         .attr('text-anchor', 'middle')
+        .attr('font-weight', 'bold')
         .text(this.graph_.xAxis());
 
     this.chart_.append('text')
@@ -99,6 +98,7 @@ class GraphPlotter {
         .attr('y', 0 - (this.chartDimensions_.margins.left / 2))
         .attr('x', 0 - (this.chartDimensions_.height / 2))
         .attr('text-anchor', 'middle')
+        .attr('font-weight', 'bold')
         .text(this.graph_.yAxis());
   }
 
