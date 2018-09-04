@@ -6,6 +6,7 @@
 
 import analytics from './sw-utils/google-analytics.js';
 import TimeseriesCacheRequest from './sw-utils/timeseries-cache-request.js';
+import ReportCacheRequest from './sw-utils/report-cache-request.js';
 
 // Create a communication channel between clients and the service worker to
 // allow for post-installation configuration. This is curretly used for
@@ -41,6 +42,7 @@ self.addEventListener('activate', event => {
 // server.
 self.addEventListener('fetch', event => {
   handleFetch(event, '/api/timeseries2', TimeseriesCacheRequest);
+  handleFetch(event, '/api/report/generate', ReportCacheRequest);
 });
 
 function handleFetch(event, url, CacheRequest) {
