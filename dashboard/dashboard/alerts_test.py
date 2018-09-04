@@ -132,7 +132,7 @@ class AlertsTest(testing_common.TestCase):
     self.assertEqual(expected_end_rev, 9990)
 
   @unittest.skipIf(sys.platform.startswith('win'), 'bad mock datastore')
-  @unittest.skipIf(sys.platform.startswith('mac'), 'bad mock datastore')
+  @unittest.skipIf(sys.platform.startswith('darwin'), 'bad mock datastore')
   def testPost_TriagedParameterSet_TriagedListed(self):
     self._AddAlertsToDataStore()
     response = self.testapp.post('/alerts', {'triaged': 'true'})
