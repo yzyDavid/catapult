@@ -33,7 +33,7 @@ handlers:
   upload: index.vulcanized.html
   secure: always
   http_headers:
-    Content-Security-Policy: "script-src 'unsafe-inline' https://www.google-analytics.com https://apis.google.com"
+    Content-Security-Policy: "script-src 'unsafe-inline' https://www.google-analytics.com https://apis.google.com; worker-src 'self'"
 
 - url: /service-worker.js
   static_files: webpack/service-worker.js
