@@ -444,11 +444,12 @@ tr.exportTo('cp', () => {
     },
 
     loadSources: statePath => async(dispatch, getState) => {
-      const reportTemplateIds = await cp.ReadReportNames()(dispatch, getState);
+      const reportTemplateInfos = await cp.ReadReportNames()(dispatch,
+          getState);
       const rootState = getState();
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
-          reportTemplateIds.map(t => t.name));
+          reportTemplateInfos.map(t => t.name));
       dispatch({
         type: ReportSection.reducers.receiveSourceOptions.name,
         statePath,
@@ -475,14 +476,15 @@ tr.exportTo('cp', () => {
         name !== ReportSection.CREATE);
       const requestedReports = new Set(state.source.selectedOptions);
       const revisions = [state.minRevision, state.maxRevision];
-      const reportTemplateIds = await cp.ReadReportNames()(dispatch, getState);
+      const reportTemplateInfos = await cp.ReadReportNames()(dispatch,
+          getState);
       const promises = [];
 
       for (const name of names) {
-        for (const templateId of reportTemplateIds) {
-          if (templateId.name === name) {
+        for (const templateInfo of reportTemplateInfos) {
+          if (templateInfo.name === name) {
             promises.push(cp.ReadReport({
-              ...templateId,
+              ...templateInfo,
               revisions,
               dispatch,
               getState,
@@ -651,11 +653,11 @@ tr.exportTo('cp', () => {
         }),
       });
       dispatch(Redux.UPDATE(statePath, {isLoading: true}));
-      const reportTemplateIds = await request.response;
-      dispatch(Redux.UPDATE('', {reportTemplateIds}));
+      const reportTemplateInfos = await request.response;
+      dispatch(Redux.UPDATE('', {reportTemplateInfos}));
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
-          reportTemplateIds.map(t => t.name));
+          reportTemplateInfos.map(t => t.name));
       dispatch({
         type: ReportSection.reducers.receiveSourceOptions.name,
         statePath,

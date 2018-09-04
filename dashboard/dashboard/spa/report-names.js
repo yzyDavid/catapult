@@ -34,7 +34,7 @@ tr.exportTo('cp', () => {
     computeCacheKey_() {
       let internal = '';
       if (this.rootState_.userEmail) internal = 'Internal';
-      return `reportTemplateIds${internal}`;
+      return `reportTemplateInfos${internal}`;
     }
 
     get isInCache_() {
