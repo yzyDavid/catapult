@@ -84,34 +84,12 @@ class SparseDiagnostic(JsonModel):
     return (diagnostic_module.Diagnostic.FromDict(self.data) !=
             diagnostic_module.Diagnostic.FromDict(rhs.data))
 
-  # TODO(crbug.com/876082) Remove.
   @classmethod
   @ndb.synctasklet
-  def GetMostRecentValuesByNames(cls, test_key, diagnostic_names):
-    """Gets the data in the latests sparse diagnostics with the given
-       set of diagnostic names.
-
-    Args:
-      test_key: The TestKey entity to lookup the diagnotics by
-      diagnostic_names: Set of the names of the diagnostics to look up
-
-    Returns:
-      A dictionary where the keys are the given names, and the values are the
-      corresponding diagnostics' values.
-      None if no diagnostics are found with the given keys or type.
-    """
-    result = yield cls.GetMostRecentValuesByNamesAsync(
-        test_key, diagnostic_names)
-    raise ndb.Return(result)
-
-  # TODO(crbug.com/876082) Remove.
-  @classmethod
-  @ndb.tasklet
-  def GetMostRecentValuesByNamesAsync(cls, test_key, diagnostic_names):
+  def GetMostRecentDataByNamesSync(cls, test_key, diagnostic_names):
     data_by_name = yield cls.GetMostRecentDataByNamesAsync(
         test_key, diagnostic_names)
-    raise ndb.Return({name: data.get('values')
-                      for name, data in data_by_name.iteritems()})
+    raise ndb.Return(data_by_name)
 
   @classmethod
   @ndb.tasklet
@@ -119,14 +97,19 @@ class SparseDiagnostic(JsonModel):
     diagnostics = yield cls.query(
         cls.end_revision == sys.maxint,
         cls.test == test_key).fetch_async()
-    data_by_name = {}
+    diagnostics_by_name = {}
     for diagnostic in diagnostics:
       if diagnostic.name not in diagnostic_names:
         continue
-      assert diagnostic.name not in data_by_name, diagnostic
+      if (diagnostic.name in diagnostics_by_name and
+          diagnostic.start_revision <
+          diagnostics_by_name[diagnostic.name].start_revision):
+        # TODO(crbug.com/877809) Assert
+        continue
       assert diagnostic.data, diagnostic
-      data_by_name[diagnostic.name] = diagnostic.data
-    raise ndb.Return(data_by_name)
+      diagnostics_by_name[diagnostic.name] = diagnostic
+    raise ndb.Return({diagnostic.name: diagnostic.data
+                      for diagnostic in diagnostics_by_name.itervalues()})
 
   @staticmethod
   @ndb.tasklet

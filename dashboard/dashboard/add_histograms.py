@@ -88,15 +88,13 @@ class AddHistogramsProcessHandler(request_handler.RequestHandler):
 
       ProcessHistogramSet(histogram_dicts)
     except Exception as e: # pylint: disable=broad-except
-      logging.error(e.message)
+      logging.error('Error processing histograms: %r', e.message)
       self.response.out.write(json.dumps({'error': e.message}))
 
 
 class AddHistogramsHandler(api_request_handler.ApiRequestHandler):
 
-  def AuthorizedPost(self):
-    datastore_hooks.SetPrivilegedRequest()
-
+  def PrivilegedPost(self):
     with timing.WallTimeLogger('decompress'):
       try:
         data_str = self.request.body
