@@ -10,6 +10,9 @@ class MetricSignificance {
      * The default p value below which the null hypothesis will be rejected.
      */
     this.criticalPValue_ = 0.05;
+    this.referenceColumn_ = undefined;
+    this.IMPROVEMENT = 'improvement';
+    this.REGRESSION = 'regression';
   }
   /**
    * Adds the given values to an entry for the supplied metric and
@@ -21,6 +24,9 @@ class MetricSignificance {
    * @param {Array<number>} value
    */
   add(metric, label, story, value) {
+    if (this.referenceColumn_ === undefined) {
+      this.referenceColumn_ = label;
+    }
     if (!this.data_[metric]) {
       this.data_[metric] = {};
     }
@@ -34,14 +40,20 @@ class MetricSignificance {
     this.data_[metric][label][story] = values.concat(value);
   }
 
-  mostSignificantStories_(metricData) {
+  get referenceColumn() {
+    return this.referenceColumn_;
+  }
+
+  set referenceColumn(referenceColumn) {
+    this.referenceColumn_ = referenceColumn;
+  }
+  mostSignificantStories_(metricData, otherCol) {
     const significantChanges = [];
-    const [firstLabel, secondLabel] = Object.keys(metricData);
-    const storyNames = Object.keys(metricData[firstLabel]);
+    const storyNames = Object.keys(metricData[this.referenceColumn_]);
     for (const story of storyNames) {
-      const firstRun = metricData[firstLabel][story];
-      const secondRun = metricData[secondLabel][story];
-      const evidence = mannwhitneyu.test(firstRun, secondRun);
+      const firstRun = metricData[this.referenceColumn_][story];
+      const secondRun = metricData[otherCol][story];
+      const evidence = this.test_(firstRun, secondRun);
       if (evidence.p < this.criticalPValue_) {
         significantChanges.push({
           story,
@@ -51,7 +63,18 @@ class MetricSignificance {
     }
     return significantChanges;
   }
-
+  test_(xs, ys) {
+    let evidence = mannwhitneyu.test(xs, ys, 'greater');
+    // xs > ys, so ys uses less memory and it is an improvement.
+    evidence.type = this.IMPROVEMENT;
+    if (evidence.p >= this.criticalPValue_) {
+      // There isn't evidence for a improvement in ys, so check for a
+      // regressiom.
+      evidence = mannwhitneyu.test(xs, ys, 'less');
+      evidence.type = this.REGRESSION;
+    }
+    return evidence;
+  }
   getAllData_(metricData, label) {
     const stories = Object.values(metricData[label]);
     // The data for a given metric and label is stored under each story for
@@ -75,10 +98,15 @@ class MetricSignificance {
         throw new Error(
             `Expected metric to have only two labels, received ${numLabels}`);
       }
-      const xs = this.getAllData_(metricData, labels[0]);
-      const ys = this.getAllData_(metricData, labels[1]);
-      const evidence = mannwhitneyu.test(xs, ys);
-      const stories = this.mostSignificantStories_(metricData);
+      if (!labels.includes(this.referenceColumn_)) {
+        throw new Error('Reference column not in labels');
+      }
+      const otherCol =
+          labels[0] === this.referenceColumn_ ? labels[1] : labels[0];
+      const xs = this.getAllData_(metricData, this.referenceColumn_);
+      const ys = this.getAllData_(metricData, otherCol);
+      const evidence = this.test_(xs, ys);
+      const stories = this.mostSignificantStories_(metricData, otherCol);
       if (evidence.p < this.criticalPValue_) {
         significantChanges.push({
           metric,

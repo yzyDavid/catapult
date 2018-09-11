@@ -24,7 +24,10 @@ const menu = new Vue({
     componentMap: null,
     sizeMap: null,
 
-    testResults: []
+    allLabels: [],
+    testResults: [],
+    referenceColumn: '',
+    significanceTester: new MetricSignificance(),
   },
 
   computed: {
@@ -107,13 +110,35 @@ const menu = new Vue({
       this.subsubcomponent = null;
     },
 
+    referenceColumn() {
+      if (this.referenceColumn === null) {
+        this.testResults = [];
+        return;
+      }
+      this.significanceTester.referenceColumn = this.referenceColumn;
+      this.testResults = this.significanceTester.mostSignificant();
+    }
+
   },
   methods: {
     //  Build the available metrics upon the chosen items.
     //  The method applies an intersection for all of them and
     //  return the result as a collection of metrics that matched.
+    //  Also the metric that exactly matches the menu selected items
+    //  will be the first one in array and the first row in table.
     apply() {
-      const metrics = [];
+      let nameOfMetric = 'memory:' +
+        this.browser + ':' +
+        this.subprocess + ':' +
+        this.probe + ':' +
+        this.component;
+      if (this.subcomponent !== null) {
+        nameOfMetric += ':' + this.subcomponent;
+      }
+      if (this.subsubcomponent !== null) {
+        nameOfMetric += ':' + this.subsubcomponent;
+      }
+      let metrics = [];
       for (const name of this.metricNames) {
         if (this.browser !== null && name.includes(this.browser) &&
           this.subprocess !== null && name.includes(this.subprocess) &&
@@ -135,13 +160,76 @@ const menu = new Vue({
           }
         }
       }
+      nameOfMetric += ':' + this.size;
       if (_.uniq(metrics).length === 0) {
         alert('No metrics found');
       } else {
-        alert('You can pick a metric from drop-down');
-        app.parsedMetrics = _.uniq(metrics);
+        metrics = _.uniq(metrics);
+        metrics.splice(metrics.indexOf(nameOfMetric), 1);
+        metrics.unshift(nameOfMetric);
+        app.parsedMetrics = metrics;
       }
-    }
+    },
+
+    /**
+     * Splits a memory metric into it's heirarchical data and
+     * assigns this heirarchy information into the relavent fields
+     * of the menu. It also updates the table to display only the
+     * given metric.
+     * @param {string} metricName The name of the metric to be split.
+     */
+    async splitMemoryMetric(metricName) {
+      if (!metricName.startsWith('memory')) {
+        throw new Error('Expected a memory metric');
+      }
+      const parts = metricName.split(':');
+      const heirarchyInformation = {
+        browser: 1,
+        process: 2,
+        probe: 3,
+        componentStart: 4,
+        // Metrics have a variable number of subcomponents
+        // (.e.g, a metric which is an aggregate over subcomponents will
+        // have one less subcomponent field than it's sub-metrics).
+        // Therefore, the end of the subcomponents field and
+        // location of the size field must be calculated dynamically.
+        componentsEnd: parts.length - 2,
+        size: parts.length - 1,
+      };
+      // Assigning to these fields updates the corresponding select
+      // menu in the UI.
+      this.browser = parts[heirarchyInformation.browser];
+      this.subprocess = parts[heirarchyInformation.process];
+      this.probe = parts[heirarchyInformation.probe];
+      this.size = parts[heirarchyInformation.size];
+      // The size watcher sets 'this.component' to null so we must wait for the
+      // DOM to be updated. Then the size watcher is called before assigning
+      // to 'this.component' and so it is not overwritten with null.
+      await this.$nextTick();
+      this.component = parts[heirarchyInformation.componentStart];
+      const start = heirarchyInformation.componentStart;
+      const end = heirarchyInformation.componentsEnd;
+      for (let i = start + 1; i <= end; i++) {
+        const subcomponent = i - heirarchyInformation.componentStart;
+        switch (subcomponent) {
+          case 1: {
+            // See above comment (component watcher sets subcomponent to null).
+            await this.$nextTick();
+            this.subcomponent = parts[i];
+            break;
+          }
+          case 2: {
+            // See above comment
+            // (subcomponent watcher sets subsubcomponent to null).
+            await this.$nextTick();
+            this.subsubcomponent = parts[i];
+            break;
+          }
+          default: throw new Error('Unexpected number of subcomponents.');
+        }
+      }
+      app.parsedMetrics = [metricName];
+    },
   }
 });
 
@@ -149,6 +237,53 @@ function average(arr) {
   return _.reduce(arr, function(memo, num) {
     return memo + num;
   }, 0) / arr.length;
+}
+
+//  This function returns an object containing:
+//  all the names of labels plus a map like this:
+//  map: [metric_name] -> [map: [lable] -> sampleValue],
+//  where the lable is each name of all sub-labels
+//  and sampleValue is the average for a specific
+//  metric across stories with a specific label.
+function getMetricStoriesLabelsToValuesMap(sampleArr, guidValueInfo) {
+  const newDiagnostics = new Set();
+  const metricToDiagnosticValuesMap = new Map();
+  for (const elem of sampleArr) {
+    let currentDiagnostic = guidValueInfo.
+        get(elem.diagnostics.labels);
+    if (currentDiagnostic === undefined) {
+      continue;
+    }
+    if (currentDiagnostic !== 'number') {
+      currentDiagnostic = currentDiagnostic[0];
+    }
+    newDiagnostics.add(currentDiagnostic);
+
+    if (!metricToDiagnosticValuesMap.has(elem.name)) {
+      const map = new Map();
+      map.set(currentDiagnostic, [average(elem.sampleValues)]);
+      metricToDiagnosticValuesMap.set(elem.name, map);
+    } else {
+      const map = metricToDiagnosticValuesMap.get(elem.name);
+      if (map.has(currentDiagnostic)) {
+        const array = map.get(currentDiagnostic);
+        array.push(average(elem.sampleValues));
+        map.set(currentDiagnostic, array);
+        metricToDiagnosticValuesMap.set(elem.name, map);
+      } else {
+        map.set(currentDiagnostic, [average(elem.sampleValues)]);
+        metricToDiagnosticValuesMap.set(elem.name, map);
+      }
+    }
+  }
+  return {
+    labelNames: Array.from(newDiagnostics),
+    mapLabelToValues: metricToDiagnosticValuesMap
+  };
+}
+
+function fromBytesToMiB(value) {
+  return (value / MiB).toFixed(5);
 }
 
 
@@ -162,14 +297,14 @@ function readSingleFile(e) {
   //  results for all guid-related( for now they are not
   //  divided in 3 parts depending on the type ) and
   //  all results with sample-value-related and
-  //  map guid to value within the same structure
+  //  map guid to value within the same structure.
   const reader = new FileReader();
   reader.onload = function(e) {
     const contents = extractData(e.target.result);
     const sampleArr = contents.sampleValueArray;
     const guidValueInfo = contents.guidValueInfo;
     const metricAverage = new Map();
-    const significanceTester = new MetricSignificance();
+    const allLabels = new Set();
     for (const e of sampleArr) {
       // This version of the tool focuses on analysing memory
       // metrics, which contain a slightly different structure
@@ -178,38 +313,53 @@ function readSingleFile(e) {
         const { name, sampleValues, diagnostics } = e;
         const { labels, stories } = diagnostics;
         const label = guidValueInfo.get(labels)[0];
+        allLabels.add(label);
         const story = guidValueInfo.get(stories)[0];
-        significanceTester.add(name, label, story, sampleValues);
-      }
-      if (metricAverage.has(e.name)) {
-        const aux = metricAverage.get(e.name);
-        aux.push(average(e.sampleValues));
-        metricAverage.set(e.name, aux);
-      } else {
-        metricAverage.set(e.name, [average(e.sampleValues)]);
+        menu.significanceTester.add(name, label, story, sampleValues);
       }
     }
-    menu.testResults = significanceTester.mostSignificant();
+    menu.allLabels = Array.from(allLabels);
+    let metricNames = [];
+    sampleArr.map(e => metricNames.push(e.name));
+    metricNames = _.uniq(metricNames);
+
+
     //  The content for the default table: with name
     //  of the metric, the average value of the sample values
     //  plus an id. The latest is used to expand the row.
     //  It may disappear later.
     const tableElems = [];
     let id = 1;
-    for (const [key, value] of metricAverage.entries()) {
+    for (const name of metricNames) {
       tableElems.push({
         id: id++,
-        metric: key,
-        averageSampleValues: average(value)
+        metric: name
       });
     }
+
+    const labelsResult = getMetricStoriesLabelsToValuesMap(
+        sampleArr, guidValueInfo);
+    const columnsForChosenDiagnostic = labelsResult.labelNames;
+    const metricToDiagnosticValuesMap = labelsResult.mapLabelToValues;
+    for (const elem of tableElems) {
+      if (metricToDiagnosticValuesMap.get(elem.metric) === undefined) {
+        continue;
+      }
+      for (const diagnostic of columnsForChosenDiagnostic) {
+        if (!metricToDiagnosticValuesMap.get(elem.metric).has(diagnostic)) {
+          continue;
+        }
+        elem[diagnostic] = fromBytesToMiB(average(metricToDiagnosticValuesMap
+            .get(elem.metric).get(diagnostic)));
+      }
+    }
+
+
     app.gridData = tableElems;
+    app.defaultGridData = tableElems;
     app.sampleArr = sampleArr;
     app.guidValue = guidValueInfo;
-
-    let metricNames = [];
-    sampleArr.map(e => metricNames.push(e.name));
-    metricNames = _.uniq(metricNames);
+    app.columnsForChosenDiagnostic = columnsForChosenDiagnostic;
 
     const result = parseAllMetrics(metricNames);
     menu.sampelArr = sampleArr;
@@ -254,14 +404,16 @@ function extractData(contents) {
         guid: e.guid,
         diagnostics: {}
       };
+      if (e.diagnostics === undefined || e.diagnostics === null) {
+        continue;
+      }
       if (e.diagnostics.hasOwnProperty('traceUrls')) {
         elem.diagnostics.traceUrls = e.diagnostics.traceUrls;
       }
-      if (e.diagnostics.hasOwnProperty('benchmarkStart')) {
-        elem.diagnostics.benchmarkStart = e.diagnostics.benchmarkStart;
-      }
       if (e.diagnostics.hasOwnProperty('labels')) {
         elem.diagnostics.labels = e.diagnostics.labels;
+      } else {
+        elem.diagnostics.labels = e.diagnostics.benchmarkStart;
       }
       if (e.diagnostics.hasOwnProperty('stories')) {
         elem.diagnostics.stories = e.diagnostics.stories;

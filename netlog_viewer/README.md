@@ -7,13 +7,14 @@ Introduction
 This is a WebApp that allows someone to perform post-mortem analysis of a
 saved NetLog dump. The initial code was taken out of Chromium.
 The code should contain all changes made to net-internals up to chromium commit
-0036296a1128ac9cbefeaff51c8df831ec421c36. The full design doc can be found
+940b87bb7cb870e5d4415e238e192651a093db05. The full design doc can be found
 [here](https://docs.google.com/document/d/1Ll7T5cguj5m2DqkUTad5DWRCqtbQ3L1q9FRvTN5-Y28/edit#).
 
 Suggested merge steps:
 
 1.
 ```
+cd CHROME_DIR/chrome/browser/resources/net_internals
 git diff --relative --src-prefix="a/netlog_viewer/netlog_viewer/"\
 --dst-prefix="b/netlog_viewer/netlog_viewer/"\
 R1 R2 . > diff.txt
@@ -28,6 +29,35 @@ git apply --reject --whitespace=fix diff.txt
 
 3.
 Manually merge any rejected chunks in `*.rej` files.
+
+4.
+```
+cd CHROME_DIR/chrome/test/data/webui/net_internals
+git diff --relative R1 R2 . > test-diff.txt
+```
+
+5.
+edit test-diff.txt and convert the filenames to match, for example: log_view_painter.js
+-> log_view_painter_test.html, and remove diff chunks for tests that don't exist
+in the catapult repo.
+
+6.
+```
+cd CATAPULT_DIR/netlog_viewer/netlog_viewer
+git apply --reject --whitespace=fix test-diff.txt
+```
+
+7.
+Manually merge any rejected chunks in `*.rej` files.
+
+8.
+Run netlog_viewer/bin/run_dev_server_tests and fix any failures that weren't
+already present before starting the merge.
+
+9.
+Start a server for the webapp and open in Chrome (see Workflow section), load a
+netlog file, and manually verify that everything looks fine.
+
 
 Motivation
 ------------
