@@ -4,7 +4,9 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  class ChartLegend extends cp.ElementBase {
+  class ChartLegend extends Polymer.Element {
+    static get is() { return 'chart-legend'; }
+
     async onLeafMouseOver_(event) {
       this.dispatchEvent(new CustomEvent('leaf-mouseover', {
         bubbles: true,
@@ -34,7 +36,7 @@ tr.exportTo('cp', () => {
     items: {type: Array},
   };
 
-  cp.ElementBase.register(ChartLegend);
+  customElements.define(ChartLegend.is, ChartLegend);
 
   return {
     ChartLegend,
