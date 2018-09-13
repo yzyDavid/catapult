@@ -84,7 +84,10 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
     ndb.put_multi(alert_entities)
     return {}
 
-  def AuthorizedPost(self, *args):
+  def PrivilegedPost(self, *args):
+    return self.UnprivilegedPost(*args)
+
+  def UnprivilegedPost(self, *args):
     """Returns alert data in response to API requests.
 
     Possible list types:

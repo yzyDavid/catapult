@@ -20,7 +20,10 @@ class ReportNamesHandler(api_request_handler.ApiRequestHandler):
   def _AllowAnonymous(self):
     return True
 
-  def AuthorizedPost(self):
+  def PrivilegedPost(self, *args):
+    return self.UnprivilegedPost(*args)
+
+  def UnprivilegedPost(self, *_):
     self.response.headers['Cache-Control'] = '%s, max-age=%d' % (
         'private' if utils.IsInternalUser() else 'public', CACHE_SECONDS)
     return report_template.List()

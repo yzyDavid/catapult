@@ -89,6 +89,14 @@ class Descriptor(object):
     self.statistic = statistic
     self.build_type = build_type
 
+  @property
+  def master(self):
+    return self.bot.split(':')[0]
+
+  @property
+  def slave(self):
+    return self.bot.split(':')[1]
+
   def Clone(self):
     return Descriptor(self.test_suite, self.measurement, self.bot,
                       self.test_case, self.statistic, self.build_type)

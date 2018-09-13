@@ -20,7 +20,10 @@ class DescribeHandler(api_request_handler.ApiRequestHandler):
   def _AllowAnonymous(self):
     return True
 
-  def AuthorizedPost(self, *args):
+  def PrivilegedPost(self, *args):
+    return self.UnprivilegedPost(*args)
+
+  def UnprivilegedPost(self, *args):
     # TODO(benjhayden): Replace IsInternalUser with descriptor['any_internal'].
     self.response.headers['Cache-Control'] = '%s, max-age=%d' % (
         'private' if utils.IsInternalUser() else 'public', CACHE_SECONDS)
