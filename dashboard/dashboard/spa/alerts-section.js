@@ -593,7 +593,7 @@ tr.exportTo('cp', () => {
     },
 
     loadReportNames: statePath => async(dispatch, getState) => {
-      const reportTempateInfos = await cp.ReadReportNames()(dispatch, getState);
+      const reportTemplateInfos = await cp.ReadReportNames()(dispatch, getState);
       const rootState = getState();
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(

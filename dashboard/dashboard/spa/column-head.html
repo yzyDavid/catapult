@@ -5,7 +5,8 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/dashboard/spa/element-base.html">
+<link rel="import" href="/bower_components/polymer/polymer.html">
+<link rel="import" href="/tracing/base/base.html">
 
 <dom-module id="column-head">
   <template>
@@ -16,19 +17,23 @@ found in the LICENSE file.
         cursor: pointer;
         display: flex;
         justify-content: center;
-        transition: background var(--transition-long);
+        transition: background var(--transition-long, 1s);
       }
       :host(:hover) {
         background: white radial-gradient(circle, transparent 1%, white 1%) center/15000%;
       }
       :host(:active) {
-        background-color: var(--primary-color-medium);
+        background-color: var(--primary-color-medium, lightblue);
         background-size: 100%;
         transition: background 0s;
       }
     </style>
 
-    <iron-icon icon="[[getIcon_(name, sortColumn, sortDescending)]]"></iron-icon>
+    <iron-icon
+        id="icon"
+        icon="[[getIcon_(name, sortColumn, sortDescending)]]"
+        hidden$="[[isIconHidden_(name, sortColumn)]]">
+    </iron-icon>
     <slot></slot>
   </template>
 </dom-module>
