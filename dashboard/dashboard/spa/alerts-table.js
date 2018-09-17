@@ -216,6 +216,7 @@ tr.exportTo('cp', () => {
 
   AlertsTable.reducers = {
     sort: (state, action, rootState) => {
+      if (state.areAlertGroupsPlaceholders) return state;
       const sortDescending = state.sortDescending ^ (state.sortColumn ===
           action.sortColumn);
       const alertGroups = cp.AlertsSection.sortGroups(

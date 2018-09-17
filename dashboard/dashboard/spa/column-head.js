@@ -7,17 +7,22 @@
   class ColumnHead extends Polymer.Element {
     static get is() { return 'column-head'; }
 
-    isIconHidden_(name, sortColumn) {
-      return name !== sortColumn;
+    isIconHidden_(disabled, name, sortColumn) {
+      return disabled || (name !== sortColumn);
     }
 
-    getIcon_(name, sortColumn, sortDescending) {
-      if (name !== sortColumn) return '';
+    getIcon_(disabled, name, sortColumn, sortDescending) {
+      if (disabled || (name !== sortColumn)) return '';
       return sortDescending ? 'cp:arrow-downward' : 'cp:arrow-upward';
     }
   }
 
   ColumnHead.properties = {
+    disabled: {
+      type: Boolean,
+      reflectToAttribute: true,
+      value: false,
+    },
     name: {
       type: String,
       value: '',
