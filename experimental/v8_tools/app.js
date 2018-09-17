@@ -6,18 +6,14 @@ const app = new Vue({
   data: {
     sampleArr: [],
     guidValue: null,
-    selected_metric: null,
-    selected_story: null,
-    selected_diagnostic: null,
     graph: new GraphData(),
     searchQuery: '',
     gridColumns: ['metric'],
     gridData: [],
     parsedMetrics: null,
     columnsForChosenDiagnostic: null,
-    resetDropDownMenu: false,
     defaultGridData: [],
-    typesOfPlot: [],
+    typesOfPlot: ['Cumulative frequency plot', 'Dot plot'],
     chosenTypeOfPlot: null
   },
 
@@ -27,6 +23,7 @@ const app = new Vue({
     //  available.
     resetTableData() {
       this.gridData = this.defaultGridData;
+      this.typesOfPlot = ['Cumulative frequency plot', 'Dot plot'];
     },
 
     //  Get all stories for a specific metric.
@@ -48,9 +45,13 @@ const app = new Vue({
       return _.uniq(stories);
     },
 
-    getDiagnostic(elem) {
+    //  Extract a diagnostic from a specific
+    //  element (like metric). This should be 'parsed' because
+    //  sometimes it might be either a number or a
+    //  single element array.
+    getDiagnostic(elem, diagnostic) {
       let currentDiagnostic = this.guidValue.
-          get(elem.diagnostics.labels);
+          get(elem.diagnostics[diagnostic]);
       if (currentDiagnostic === undefined) {
         return undefined;
       }
@@ -60,18 +61,6 @@ const app = new Vue({
       return currentDiagnostic;
     },
 
-    getStory(elem) {
-      let nameOfStory = this.guidValue.
-          get(elem.diagnostics.stories);
-      if (nameOfStory === undefined) {
-        return undefined;
-      }
-      if (typeof nameOfStory !== 'number') {
-        nameOfStory = nameOfStory[0];
-      }
-      return nameOfStory;
-    },
-
     //  This method creates an object for multiple metrics,
     //  multiple stories and some diagnostics:
     //  {labelName: {storyName: { metricName: sampleValuesArray}}}
@@ -79,11 +68,11 @@ const app = new Vue({
         storiesName, labelsName) {
       const obj = {};
       for (const elem of metricsDependingOnGrid) {
-        const currentDiagnostic = this.getDiagnostic(elem);
+        const currentDiagnostic = this.getDiagnostic(elem, 'labels');
         if (currentDiagnostic === undefined) {
           continue;
         }
-        const nameOfStory = this.getStory(elem);
+        const nameOfStory = this.getDiagnostic(elem, 'stories');
         if (nameOfStory === undefined) {
           continue;
         }
@@ -122,16 +111,6 @@ const app = new Vue({
           .plotBar();
     },
 
-    //  Draw a cumulative frequency plot depending on the target value.
-    //  This is for displaying results for the selected parameters
-    // from the drop-down menu.
-    plotCumulativeFrequency() {
-      this
-          .plotCumulativeFrequencyPlot(JSON
-              .parse(JSON.stringify((this.filteredData))),
-          this.selected_story);
-    },
-
     //  Draw a dot plot depending on the target value.
     //  This is mainly for results from the table.
     plotDotPlot(target, story, traces) {
@@ -148,11 +127,14 @@ const app = new Vue({
 
     //  Draw a cumulative frequency plot depending on the target value.
     //  This is mainly for the results from the table.
-    plotCumulativeFrequencyPlot(target, story) {
+    plotCumulativeFrequencyPlot(target, story, traces) {
+      const openTrace = (label, index) => {
+        window.open(traces[label][index]);
+      };
       this.graph.yAxis('Cumulative frequency')
           .xAxis('Memory used (MiB)')
           .title(story)
-          .setData(target)
+          .setData(target, openTrace)
           .plotCumulativeFrequency();
     },
 
@@ -165,8 +147,8 @@ const app = new Vue({
     },
 
     //  Being given a metric, a story, a diagnostic and a set of
-    //  subdiagnostics (for example, 3 labels from the total available
-    //  ones), the method return the sample values for each subdiagnostic.
+    //  subdiagnostics (i.e. 3 labels from the total of 4), the
+    //  method return the sample values for each subdiagnostic.
     getSubdiagnostics(
         getTargetValueFromSample, metric, story, diagnostic, diagnostics) {
       const result = this.sampleArr
@@ -211,12 +193,19 @@ const app = new Vue({
       const values = sample.sampleValues;
       return values.map(value => toMiB(value));
     },
+
+    getTraceLinks(sample) {
+      const traceId = sample.diagnostics.traceUrls;
+      return this.guidValue.get(traceId);
+    },
     //  Draw a plot by default with all the sub-diagnostics
     //  in the same plot;
     plotSingleMetricWithAllSubdiagnostics(metric, story, diagnostic) {
       const obj = this.getSubdiagnostics(
           this.getSampleValues, metric, story, diagnostic);
-      this.plotCumulativeFrequencyPlot(obj, story);
+      const traces = this.targetForMultipleDiagnostics(
+          this.getTraceLinks, metric, story, diagnostic);
+      this.plotCumulativeFrequencyPlot(obj, story, traces);
     },
 
     //  Draw a plot depending on the target value which is made
@@ -226,16 +215,12 @@ const app = new Vue({
         diagnostics, chosenPlot) {
       const target = this.targetForMultipleDiagnostics(
           this.getSampleValues, metric, story, diagnostic, diagnostics);
+      const traces = this.targetForMultipleDiagnostics(
+          this.getTraceLinks, metric, story, diagnostic, diagnostics);
       if (chosenPlot === 'Dot plot') {
-        const getTraceLinks = (sample) => {
-          const traceId = sample.diagnostics.traceUrls;
-          return this.guidValue.get(traceId);
-        };
-        const traces = this.targetForMultipleDiagnostics(
-            getTraceLinks, metric, story, diagnostic, diagnostics);
         this.plotDotPlot(target, story, traces);
       } else {
-        this.plotCumulativeFrequencyPlot(target, story);
+        this.plotCumulativeFrequencyPlot(target, story, traces);
       }
     },
 
@@ -260,84 +245,7 @@ const app = new Vue({
     },
     data_loaded() {
       return this.sampleArr.length > 0;
-    },
-
-    seen_stories() {
-      return this.stories && this.stories.length > 0;
-    },
-
-    seen_diagnostics() {
-      return this.diagnostics && this.diagnostics.length > 0;
-    },
-
-    //  Compute the metrics for the drop-down menu;
-    //  The user will chose one of them.
-    metrics() {
-      if (this.parsedMetrics === null ||
-        this.resetDropDownMenu === true) {
-        const metricsNames = [];
-        this.sampleArr.map(el => metricsNames.push(el.name));
-        return _.uniq(metricsNames);
-      }
-      return this.parsedMetrics;
-    },
-    //  Compute the stories depending on the chosen metric.
-    //  The user should chose one of them.
-    stories() {
-      const reqMetrics = this.sampleArr
-          .filter(elem => elem.name === this.selected_metric);
-      const storiesByGuid = [];
-      for (const elem of reqMetrics) {
-        let storyName = this.guidValue.get(elem.diagnostics.stories);
-        if (storyName === undefined) {
-          continue;
-        }
-        if (typeof storyName !== 'number') {
-          storyName = storyName[0];
-        }
-        storiesByGuid.push(storyName);
-      }
-      return _.uniq(storiesByGuid);
-    },
-
-    //  Compute all diagnostic elements; the final result will actually
-    //  depend on the metric, the story and this diagnostic.
-    diagnostics() {
-      if (this.selected_story !== null && this.selected_metric !== null) {
-        const result = this.sampleArr
-            .filter(value => value.name === this.selected_metric &&
-                    this.guidValue
-                        .get(value.diagnostics.stories)[0] ===
-                        this.selected_story);
-        const allDiagnostics = result.map(val => Object.keys(val.diagnostics));
-        return _.union.apply(this, allDiagnostics);
-      }
-    },
-
-    //  Compute the final result with the chosen metric, story and diagnostics.
-    //  These are chosen from the drop-down menu.
-    filteredData() {
-      if (this.selected_story === null ||
-        this.selected_metric === null ||
-        this.selected_diagnostic === null) {
-        return undefined;
-      }
-      return this
-          .getSubdiagnostics(this.getSampleValues,
-              this.selected_metric,
-              this.selected_story,
-              this.selected_diagnostic);
-    },
-
-    //  Extract all diagnostic names from all elements.
-    allDiagnostics() {
-      if (this.sampleArr === undefined) {
-        return undefined;
-      }
-      const allDiagnostics = this.sampleArr
-          .map(val => Object.keys(val.diagnostics));
-      return _.union.apply(this, allDiagnostics);
-    },
+    }
   },
 
   watch: {
@@ -348,17 +256,12 @@ const app = new Vue({
       this.plotCumulativeFrequency();
     },
 
-    metrics() {
-      this.selected_metric = null;
-      this.selected_story = null;
-      this.selected_diagnostic = null;
-    },
     //  Whenever we have new inputs from the menu (parsed inputs that
     //  where obtained by choosing from the tree) these should be
     //  added in the table (adding the average sample value).
     //  Also it creates by default a stack plot for all the metrics
     //  obtained from the tree-menu, all the stories from the top-level
-    //  metric and all available labels.
+    //  metric and all labels.
     parsedMetrics() {
       const newGridData = [];
       for (const metric of this.parsedMetrics) {
@@ -384,7 +287,6 @@ const app = new Vue({
           metricsDependingOnGrid.push(metric);
         }
       }
-
       //  The top level metric is taken as source in
       //  computing stories.
       const storiesName = this.getStoriesByMetric(this
@@ -399,7 +301,8 @@ const app = new Vue({
       //  the stacked plot and bar plot, we avoid for the moment
       //  other types of plot that should be actually used without
       //  using the tree menu)
-      this.typesOfPlot = ['Bar chart plot', 'Stacked bar plot'];
+      this.typesOfPlot = ['Bar chart plot', 'Stacked bar plot',
+        'Cumulative frequency plot', 'Dot plot'];
       this.chosenTypeOfPlot = 'Stacked bar plot';
     }
   }

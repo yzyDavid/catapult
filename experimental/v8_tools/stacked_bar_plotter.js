@@ -15,6 +15,18 @@ class StackedBarPlotter {
      * The column in a datasource referring to the data.
      */
     this.data_ = 1;
+    /**
+     * @private @const {Array<string>} colors_
+     * An array of hexcodes representing the available color
+     * options for stacks in the plot.
+     */
+    this.colors_ = d3.schemeCategory10;
+    /**
+     * @private @const {Object}
+     * Maps stack names to their colors, which are assigned
+     * from the colors array.
+     */
+    this.colorForStack_ = {};
   }
   /**
    * Initalises the chart by computing the scales for the axes and
@@ -30,8 +42,14 @@ class StackedBarPlotter {
     this.scaleForYAxis_ = this.createYAxisScale_(chartDimensions, data);
     this.xAxisGenerator_ = d3.axisBottom(this.outerBandScale_);
     this.yAxisGenerator_ = d3.axisLeft(this.scaleForYAxis_);
+    // Note that the group for the xaxis which is transformed must be
+    // wrapped in another group. This is to have a g element which
+    // preserves the co-ordinate system of the chart, allowing a
+    // clip path to be used based on the co-ordinate system of the chart
+    // rather than the transformed system of the axis.
     chart.append('g')
         .attr('class', 'xaxis')
+        .append('g')
         .call(this.xAxisGenerator_)
         .attr('transform', `translate(0, ${chartDimensions.height})`);
     this.yAxisDrawing_ = chart.append('g')
@@ -98,6 +116,15 @@ class StackedBarPlotter {
     return data.reduce((a, b) => a + b, 0);
   }
 
+  getColorForStack_(name) {
+    if (!(name in this.colorForStack_)) {
+      const numColors = this.colors_.length;
+      const numAssigned = Object.entries(this.colorForStack_).length;
+      this.colorForStack_[name] = this.colors_[numAssigned % numColors];
+    }
+    return this.colorForStack_[name];
+  }
+
   /**
    * Computes the start position and height of each stack for
    * the bar corresponing to the supplied data.
@@ -115,7 +142,9 @@ class StackedBarPlotter {
   stackLocations_(data) {
     const stackedAverages = [];
     let cumulativeAvg = 0;
-    for (const [name, values] of Object.entries(data)) {
+    const compareStackNames = ([a], [b]) => a.localeCompare(b);
+    const stacks = Object.entries(data).sort(compareStackNames);
+    for (const [name, values] of stacks) {
       const average = this.avg_(values);
       const yValues = {
         start: cumulativeAvg,
@@ -162,7 +191,9 @@ class StackedBarPlotter {
       }
     }
     const tickRotation = -30;
-    d3.selectAll('.xaxis .tick text')
+    d3.select('.xaxis')
+        .attr('clip-path', 'url(#regionForXAxisTickText)');
+    d3.selectAll('.xaxis text')
         .attr('text-anchor', 'end')
         .attr('font-size', 12)
         .attr('transform', `rotate(${tickRotation})`)
@@ -171,17 +202,17 @@ class StackedBarPlotter {
   }
 
   drawLegendLabels_(legend, stackNames) {
-    stackNames.forEach((stack, i) => {
+    stackNames.forEach((stackName, i) => {
       const boxSize = 10;
       const offset = `${i * 1}em`;
       legend.append('rect')
-          .attr('fill', d3.schemeCategory10[i])
+          .attr('fill', this.getColorForStack_(stackName))
           .attr('height', boxSize)
           .attr('width', boxSize)
           .attr('y', offset)
           .attr('x', 0);
       legend.append('text')
-          .text(stack)
+          .text(stackName)
           .attr('x', boxSize)
           .attr('y', offset)
           .attr('dy', boxSize)
@@ -202,7 +233,6 @@ class StackedBarPlotter {
   drawStackedBar_(selection, bars, chartDimensions, key) {
     const barName = bars[this.name_];
     const stacks = bars[this.data_];
-    const colors = d3.schemeCategory10;
     const x = this.outerBandScale_(barName) + this.innerBandScale_(key);
     let totalHeight = 0;
     stacks.forEach((stack, i) => {
@@ -214,14 +244,15 @@ class StackedBarPlotter {
           .attr('y', this.scaleForYAxis_(positions.height + positions.start))
           .attr('width', this.innerBandScale_.bandwidth())
           .attr('height', height)
-          .attr('fill', colors[i]);
+          .attr('fill', this.getColorForStack_(stack[this.name_]));
       totalHeight += positions.height;
     });
     const barMid = x + this.innerBandScale_.bandwidth() / 2;
+    const padding = 5;
     selection.append('text')
         .text(this.getNumericLabelForKey_(key))
         .attr('fill', 'black')
-        .attr('y', this.scaleForYAxis_(totalHeight))
+        .attr('y', this.scaleForYAxis_(totalHeight) - padding)
         .attr('x', barMid)
         .append('title')
         .text(key);
