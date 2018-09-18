@@ -191,7 +191,7 @@ tr.exportTo('cp', () => {
   };
 
   const COS_45 = Math.cos(Math.PI / 4);
-  const ERROR_ICON_RADIUS_PX = 10.8;
+  const ERROR_ICON_RADIUS_PX = 12;
 
   ChartBase.reducers = {
     unboldLines: (state, action, rootState) => {
@@ -220,7 +220,7 @@ tr.exportTo('cp', () => {
 
     dotMouseOver: (state, action, rootState) => {
       let dotRadius = state.dotRadius;
-      if (action.datum.icon === 'error') dotRadius = ERROR_ICON_RADIUS_PX;
+      if (action.datum.icon) dotRadius = ERROR_ICON_RADIUS_PX;
       const offset = COS_45 * dotRadius;
 
       // All these coordinates are pixels relative to the top left corner of

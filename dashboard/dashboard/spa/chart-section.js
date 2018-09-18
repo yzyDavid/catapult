@@ -783,7 +783,7 @@ tr.exportTo('cp', () => {
       sparkLayout.dotRadius = 0;
       sparkLayout.yAxis.generateTicks = false;
       sparkLayout.xAxis.generateTicks = false;
-      sparkLayout.graphHeight = 150;
+      sparkLayout.graphHeight = 100;
 
       function maybeAddParameterTab(propertyName, tabName, matrixName) {
         let options = state[propertyName].selectedOptions;
