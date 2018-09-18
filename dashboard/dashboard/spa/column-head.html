@@ -18,13 +18,13 @@ found in the LICENSE file.
         justify-content: center;
         transition: background var(--transition-long, 1s);
       }
-      :host:not([disabled]) {
+      :host(:not([disabled])) {
         cursor: pointer;
       }
-      :host(:hover):not([disabled]) {
+      :host(:hover:not([disabled])) {
         background: white radial-gradient(circle, transparent 1%, white 1%) center/15000%;
       }
-      :host(:active):not([disabled]) {
+      :host(:active:not([disabled])) {
         background-color: var(--primary-color-medium, lightblue);
         background-size: 100%;
         transition: background 0s;
@@ -33,8 +33,7 @@ found in the LICENSE file.
 
     <iron-icon
         id="icon"
-        icon="[[getIcon_(disabled, name, sortColumn, sortDescending)]]"
-        hidden$="[[isIconHidden_(disabled, name, sortColumn)]]">
+        icon="[[getIcon_(disabled, name, sortColumn, sortDescending)]]">
     </iron-icon>
     <slot></slot>
   </template>

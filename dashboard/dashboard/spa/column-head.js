@@ -7,10 +7,6 @@
   class ColumnHead extends Polymer.Element {
     static get is() { return 'column-head'; }
 
-    isIconHidden_(disabled, name, sortColumn) {
-      return disabled || (name !== sortColumn);
-    }
-
     getIcon_(disabled, name, sortColumn, sortDescending) {
       if (disabled || (name !== sortColumn)) return '';
       return sortDescending ? 'cp:arrow-downward' : 'cp:arrow-upward';
