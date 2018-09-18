@@ -29,11 +29,18 @@ found in the LICENSE file.
         background-size: 100%;
         transition: background 0s;
       }
+      #icon {
+        transition: color var(--transition-short, 0.5s);
+      }
+      #icon[empty] {
+        color: var(--background-color, white);
+      }
     </style>
 
     <iron-icon
         id="icon"
-        icon="[[getIcon_(disabled, name, sortColumn, sortDescending)]]">
+        empty$="[[isIconEmpty_(disabled, name, sortColumn)]]"
+        icon="[[getIcon_(sortDescending)]]">
     </iron-icon>
     <slot></slot>
   </template>

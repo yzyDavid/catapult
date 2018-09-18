@@ -3,12 +3,15 @@
    found in the LICENSE file.
 */
 'use strict';
-(() => {
+tr.exportTo('cp', () => {
   class ColumnHead extends Polymer.Element {
     static get is() { return 'column-head'; }
 
-    getIcon_(disabled, name, sortColumn, sortDescending) {
-      if (disabled || (name !== sortColumn)) return '';
+    isIconEmpty_(disabled, name, sortColumn) {
+      return disabled || (name !== sortColumn);
+    }
+
+    getIcon_(sortDescending) {
       return sortDescending ? 'cp:arrow-downward' : 'cp:arrow-upward';
     }
   }
@@ -34,4 +37,6 @@
   };
 
   customElements.define(ColumnHead.is, ColumnHead);
-})();
+
+  return {ColumnHead};
+});
