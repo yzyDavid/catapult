@@ -71,6 +71,31 @@ tr.exportTo('cp', () => {
       this.dispatch('setTitle', this.statePath, event.target.value);
     }
 
+    async onCopy_(event) {
+      this.dispatchEvent(new CustomEvent('new-chart', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          options: {
+            clone: true,
+            minRevision: this.minRevision,
+            maxRevision: this.maxRevision,
+            title: this.title,
+            parameters: {
+              testSuites: [...this.testSuite.selectedOptions],
+              testSuitesAggregated: this.testSuite.isAggregated,
+              measurements: [...this.measurement.selectedOptions],
+              bots: [...this.bot.selectedOptions],
+              botsAggregated: this.bot.isAggregated,
+              testCases: [...this.testCase.selectedOptions],
+              testCasesAggregated: this.testCase.isAggregated,
+              statistics: [...this.statistic.selectedOptions],
+            },
+          },
+        },
+      }));
+    }
+
     onClose_(event) {
       this.dispatchEvent(new CustomEvent('close-section', {
         bubbles: true,
@@ -927,6 +952,7 @@ tr.exportTo('cp', () => {
     },
 
     updateSparklineRevisions: (state, action, rootState) => {
+      if (!state || !state.relatedTabs) return state;
       function updateSparkline(sparkline) {
         return {
           ...sparkline,
@@ -1258,13 +1284,25 @@ tr.exportTo('cp', () => {
   };
 
   ChartSection.isEmpty = state => (
-    state.testSuite.selectedOptions.length === 0 &&
-    state.measurement.selectedOptions.length === 0 &&
-    state.bot.selectedOptions.length === 0 &&
-    state.testCase.selectedOptions.length === 0);
+    !state ||
+    !state.testSuite ||
+    !state.measurement ||
+    !state.bot ||
+    !state.testCase || (
+        state.testSuite.selectedOptions.length === 0 &&
+        state.measurement.selectedOptions.length === 0 &&
+        state.bot.selectedOptions.length === 0 &&
+        state.testCase.selectedOptions.length === 0));
 
   ChartSection.matchesOptions = (state, options) => {
-    if (options === undefined) return false;
+    if (!options ||
+        !state ||
+        !state.testSuite ||
+        !state.measurement ||
+        !state.bot ||
+        !state.testCase) {
+      return false;
+    }
     if (options.parameters) {
       if (options.parameters.testSuites && !tr.b.setsEqual(
           new Set(options.parameters.testSuites),

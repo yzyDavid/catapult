@@ -6,7 +6,7 @@
 tr.exportTo('cp', () => {
   class ChartParameter extends cp.ElementBase {
     isMultiple_(ary) {
-      return ary.length > 1;
+      return ary && ary.length > 1;
     }
 
     onAggregateChange_(event) {

@@ -619,7 +619,10 @@ tr.exportTo('cp', () => {
         // If the user mashes the OPEN CHART button in the alerts-section, for
         // example, don't open multiple copies of the same chart.
         // TODO scroll to the matching chart.
-        if (!cp.ChartSection.matchesOptions(chart, action.options)) continue;
+        if (action.options.clone ||
+            !cp.ChartSection.matchesOptions(chart, action.options)) {
+          continue;
+        }
         if (state.chartSectionIds.includes(chart.sectionId)) return state;
         return {
           ...state,

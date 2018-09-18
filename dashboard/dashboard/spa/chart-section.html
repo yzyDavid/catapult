@@ -56,14 +56,8 @@ found in the LICENSE file.
         };
       }
 
-      #toggle_chart_only {
-        align-self: flex-start;
-        flex-shrink: 0;
-        margin: 0;
-        min-width: 0;
-        padding: 0 8px;
-      }
-
+      #toggle_chart_only,
+      #copy,
       #close {
         align-self: flex-start;
         cursor: pointer;
@@ -201,7 +195,18 @@ found in the LICENSE file.
           state-path="[[statePath]]">
       </expand-button>
 
-      <iron-icon id="close" icon="cp:close" on-click="onClose_">
+      <iron-icon
+          id="copy"
+          icon="cp:copy"
+          title="Clone"
+          on-click="onCopy_">
+      </iron-icon>
+
+      <iron-icon
+          id="close"
+          icon="cp:close"
+          title="Close"
+          on-click="onClose_">
       </iron-icon>
     </div>
 
