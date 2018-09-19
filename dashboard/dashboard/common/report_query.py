@@ -77,7 +77,6 @@ class ReportQuery(object):
 
   @ndb.tasklet
   def FetchAsync(self):
-    yield [bot_configurations.Prefetch(), descriptor.PrefetchConfiguration()]
     yield self._ResolveCommitPositions()
 
     # Get data for each descriptor in each table row in parallel.
@@ -101,8 +100,8 @@ class ReportQuery(object):
   @ndb.tasklet
   def _ResolveCommitPositions(self):
     commit_pos_bots, chromium_commit_pos_bots = yield [
-        stored_object.GetCachedAsync('bots_with_different_r_commit_pos'),
-        stored_object.GetCachedAsync(
+        stored_object.GetAsync('bots_with_different_r_commit_pos'),
+        stored_object.GetAsync(
             'bots_with_different_r_chromium_commit_pos')]
     self._commit_pos_bots, self._chromium_commit_pos_bots = (
         commit_pos_bots, chromium_commit_pos_bots)

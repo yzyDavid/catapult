@@ -5,6 +5,8 @@
 import json
 import unittest
 
+from google.appengine.ext import ndb
+
 from dashboard.api import api_auth
 from dashboard.api import report_template as api_report_template
 from dashboard.common import testing_common
@@ -23,7 +25,14 @@ class ReportTemplateTest(testing_common.TestCase):
   def _Post(self, **params):
     return json.loads(self.Post('/api/report/template', params).body)
 
+  def testUnprivileged(self):
+    response = self.Post('/api/report/template', dict(
+        owners=testing_common.INTERNAL_USER.email(),
+        name='Test:New',
+        template=json.dumps({'rows': []})), status=403)
+
   def testInvalid(self):
+    self.SetCurrentUserOAuth(testing_common.INTERNAL_USER)
     self.Post('/api/report/template', dict(
         template=json.dumps({'rows': []})), status=400)
     self.Post('/api/report/template', dict(
@@ -38,13 +47,25 @@ class ReportTemplateTest(testing_common.TestCase):
         name='Test:New',
         template=json.dumps({'rows': []}))
     names = [d['name'] for d in response]
-    self.assertIn('Test:External', names)
-    self.assertIn('Test:Internal', names)
     self.assertIn('Test:New', names)
 
     template = report_template.ReportTemplate.query(
         report_template.ReportTemplate.name == 'Test:New').get()
     self.assertEqual({'rows': []}, template.template)
+
+  def testInternal_UpdateTemplate(self):
+    self.SetCurrentUserOAuth(testing_common.INTERNAL_USER)
+    response = self._Post(
+        owners=testing_common.INTERNAL_USER.email(),
+        name='Test:New',
+        template=json.dumps({'rows': []}))
+    response = self._Post(
+        owners=testing_common.INTERNAL_USER.email(),
+        name='Test:Updated',
+        id=response[0]['id'],
+        template=json.dumps({'rows': []}))
+    template = ndb.Key('ReportTemplate', response[0]['id']).get()
+    self.assertEqual('Test:Updated', template.name)
 
   def testAnonymous_PutTemplate(self):
     self.SetCurrentUserOAuth(None)

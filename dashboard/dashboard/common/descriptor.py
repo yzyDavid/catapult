@@ -62,17 +62,6 @@ COMPLEX_TEST_SUITES = [
 ]
 
 
-@ndb.tasklet
-def PrefetchConfiguration():
-  yield [
-      stored_object.GetCachedAsync(COMPOSITE_TEST_SUITES_KEY),
-      stored_object.GetCachedAsync(GROUPABLE_TEST_SUITE_PREFIXES_KEY),
-      stored_object.GetCachedAsync(PARTIAL_TEST_SUITES_KEY),
-      stored_object.GetCachedAsync(POLY_MEASUREMENT_TEST_SUITES_KEY),
-      stored_object.GetCachedAsync(TWO_TWO_TEST_SUITES_KEY),
-  ]
-
-
 class Descriptor(object):
   """Describe a timeseries by its characteristics.
 
@@ -148,10 +137,8 @@ class Descriptor(object):
       raise ndb.Return((measurement, path.pop(0).replace('_', ':').replace(
           'long:running:tools', 'long_running_tools')))
 
-    two_two_suites = stored_object.GetIfCached(TWO_TWO_TEST_SUITES_KEY)
-    if two_two_suites is None:
-      two_two_suites = yield stored_object.GetCachedAsync(
-          TWO_TWO_TEST_SUITES_KEY)
+    two_two_suites = yield stored_object.GetAsync(
+        TWO_TWO_TEST_SUITES_KEY)
     if two_two_suites and test_suite in two_two_suites:
       parts, path[:] = path[:], []
       raise ndb.Return(':'.join(parts[:2]), ':'.join(parts[2:]))
@@ -165,11 +152,8 @@ class Descriptor(object):
         raise ndb.Return((measurement, None))
       raise ndb.Return((measurement, case + ':' + path.pop(0)))
 
-    poly_measurement_test_suites = stored_object.GetIfCached(
+    poly_measurement_test_suites = yield stored_object.GetAsync(
         POLY_MEASUREMENT_TEST_SUITES_KEY)
-    if poly_measurement_test_suites is None:
-      poly_measurement_test_suites = yield stored_object.GetCachedAsync(
-          POLY_MEASUREMENT_TEST_SUITES_KEY)
     if (poly_measurement_test_suites and
         test_suite in poly_measurement_test_suites):
       parts, path[:] = path[:], []
@@ -205,10 +189,8 @@ class Descriptor(object):
 
     test_suite = path.pop(0)
 
-    partial_suites = stored_object.GetIfCached(PARTIAL_TEST_SUITES_KEY)
-    if partial_suites is None:
-      partial_suites = yield stored_object.GetCachedAsync(
-          PARTIAL_TEST_SUITES_KEY)
+    partial_suites = yield stored_object.GetAsync(
+        PARTIAL_TEST_SUITES_KEY)
     if partial_suites and test_suite in partial_suites:
       if len(path) == 0:
         raise ndb.Return(cls(bot=bot))
@@ -217,11 +199,8 @@ class Descriptor(object):
     if test_suite.startswith('resource_sizes '):
       test_suite = 'resource_sizes:' + test_suite[16:-1]
     else:
-      groupable_prefixes = stored_object.GetIfCached(
+      groupable_prefixes = yield stored_object.GetAsync(
           GROUPABLE_TEST_SUITE_PREFIXES_KEY)
-      if groupable_prefixes is None:
-        groupable_prefixes = yield stored_object.GetCachedAsync(
-            GROUPABLE_TEST_SUITE_PREFIXES_KEY)
       if groupable_prefixes is not None:
         for prefix in groupable_prefixes:
           if test_suite.startswith(prefix):
@@ -235,6 +214,9 @@ class Descriptor(object):
     if path[-1] == 'ref':
       path.pop()
       build_type = REFERENCE_BUILD_TYPE
+    elif path[-1].endswith('_ref'):
+      build_type = REFERENCE_BUILD_TYPE
+      path[-1] = path[-1][:-4]
 
     if len(path) == 0:
       raise ndb.Return(cls(
@@ -272,9 +254,7 @@ class Descriptor(object):
     if not self.bot:
       raise ndb.Return(set())
 
-    test_paths = self._BotTestPathsSync()
-    if test_paths is None:
-      test_paths = yield self._BotTestPathsAsync()
+    test_paths = yield self._BotTestPathsAsync()
     if not self.test_suite:
       raise ndb.Return(test_paths)
 
@@ -294,13 +274,6 @@ class Descriptor(object):
 
     raise ndb.Return(test_paths)
 
-  def _BotTestPathsSync(self):
-    master, slave = self.bot.split(':')
-    aliases = bot_configurations.GetAliasesIfCached(slave)
-    if aliases is None:
-      return None
-    return {master + '/' + alias for alias in aliases}
-
   @ndb.tasklet
   def _BotTestPathsAsync(self):
     master, slave = self.bot.split(':')
@@ -313,20 +286,15 @@ class Descriptor(object):
       raise ndb.Return({p + '/resource_sizes (%s)' % self.test_suite[15:]
                         for p in test_paths})
 
-    composite_test_suites = stored_object.GetIfCached(COMPOSITE_TEST_SUITES_KEY)
-    if composite_test_suites is None:
-      composite_test_suites = yield stored_object.GetCachedAsync(
-          COMPOSITE_TEST_SUITES_KEY)
+    composite_test_suites = yield stored_object.GetAsync(
+        COMPOSITE_TEST_SUITES_KEY)
     if composite_test_suites and self.test_suite in composite_test_suites:
       raise ndb.Return({p + '/' + self.test_suite.replace(':', '/')
                         for p in test_paths})
 
     first_part = self.test_suite.split(':')[0]
-    groupable_prefixes = stored_object.GetIfCached(
+    groupable_prefixes = yield stored_object.GetAsync(
         GROUPABLE_TEST_SUITE_PREFIXES_KEY)
-    if groupable_prefixes is None:
-      groupable_prefixes = yield stored_object.GetCachedAsync(
-          GROUPABLE_TEST_SUITE_PREFIXES_KEY)
     if groupable_prefixes is not None:
       for prefix in groupable_prefixes:
         if prefix[:-1] == first_part:
@@ -338,11 +306,8 @@ class Descriptor(object):
 
   @ndb.tasklet
   def _AppendMeasurement(self, test_paths):
-    poly_measurement_test_suites = stored_object.GetIfCached(
+    poly_measurement_test_suites = yield stored_object.GetAsync(
         POLY_MEASUREMENT_TEST_SUITES_KEY)
-    if poly_measurement_test_suites is None:
-      poly_measurement_test_suites = yield stored_object.GetCachedAsync(
-          POLY_MEASUREMENT_TEST_SUITES_KEY)
     if (poly_measurement_test_suites and
         self.test_suite in poly_measurement_test_suites):
       raise ndb.Return({p + '/' + self.measurement.replace(':', '/')
@@ -372,10 +337,8 @@ class Descriptor(object):
         'memory.top_10_mobile',
         'v8:runtime_stats.top_25',
     ]
-    two_two_suites = stored_object.GetIfCached(TWO_TWO_TEST_SUITES_KEY)
-    if two_two_suites is None:
-      two_two_suites = yield stored_object.GetCachedAsync(
-          TWO_TWO_TEST_SUITES_KEY)
+    two_two_suites = yield stored_object.GetAsync(
+        TWO_TWO_TEST_SUITES_KEY)
     if two_two_suites is not None:
       poly_case_test_suites += two_two_suites
     if self.test_suite in poly_case_test_suites:

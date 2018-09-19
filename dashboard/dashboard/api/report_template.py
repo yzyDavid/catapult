@@ -12,10 +12,7 @@ class ReportTemplateHandler(api_request_handler.ApiRequestHandler):
 
   # Do not allow anonymous PutTemplate!
 
-  def PrivilegedPost(self, *args):
-    return self.UnprivilegedPost(*args)
-
-  def UnprivilegedPost(self, *_):
+  def PrivilegedPost(self, *_):
     template = json.loads(self.request.get('template'))
     name = self.request.get('name', None)
     owners = self.request.get('owners', None)
