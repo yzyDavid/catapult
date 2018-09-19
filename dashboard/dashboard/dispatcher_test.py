@@ -16,7 +16,7 @@ class DispatcherTest(unittest.TestCase):
     os.environ['CURRENT_MODULE_ID'] = ''
     os.environ['CURRENT_VERSION_ID'] = ''
 
-    from dashboard import dispatcher # pylint: disable=unused-import
+    from dashboard import dispatcher
 
 
 if __name__ == '__main__':
