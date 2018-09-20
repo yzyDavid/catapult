@@ -59,12 +59,13 @@ class ReportTemplateTest(testing_common.TestCase):
         owners=testing_common.INTERNAL_USER.email(),
         name='Test:New',
         template=json.dumps({'rows': []}))
+    new_id = [info['id'] for info in response if info['name'] == 'Test:New'][0]
     response = self._Post(
         owners=testing_common.INTERNAL_USER.email(),
         name='Test:Updated',
-        id=response[0]['id'],
+        id=new_id,
         template=json.dumps({'rows': []}))
-    template = ndb.Key('ReportTemplate', response[0]['id']).get()
+    template = ndb.Key('ReportTemplate', new_id).get()
     self.assertEqual('Test:Updated', template.name)
 
   def testAnonymous_PutTemplate(self):
