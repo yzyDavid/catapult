@@ -78,14 +78,6 @@ class Descriptor(object):
     self.statistic = statistic
     self.build_type = build_type
 
-  @property
-  def master(self):
-    return self.bot.split(':')[0]
-
-  @property
-  def slave(self):
-    return self.bot.split(':')[1]
-
   def Clone(self):
     return Descriptor(self.test_suite, self.measurement, self.bot,
                       self.test_case, self.statistic, self.build_type)
@@ -235,13 +227,6 @@ class Descriptor(object):
         statistic = suffix
         measurement = measurement[:-(1 + len(suffix))]
 
-    if test_case and test_case.endswith('_ref'):
-      test_case = test_case[:-4]
-      build_type = REFERENCE_BUILD_TYPE
-    if test_case == REFERENCE_BUILD_TYPE:
-      build_type = REFERENCE_BUILD_TYPE
-      test_case = None
-
     if path:
       raise ValueError('Unable to parse %r' % test_path)
 
@@ -259,7 +244,7 @@ class Descriptor(object):
     if not self.bot:
       raise ndb.Return(set())
 
-    test_paths = yield self._BotTestPathsAsync()
+    test_paths = yield self._BotTestPaths()
     if not self.test_suite:
       raise ndb.Return(test_paths)
 
@@ -280,7 +265,7 @@ class Descriptor(object):
     raise ndb.Return(test_paths)
 
   @ndb.tasklet
-  def _BotTestPathsAsync(self):
+  def _BotTestPaths(self):
     master, slave = self.bot.split(':')
     aliases = yield bot_configurations.GetAliasesAsync(slave)
     raise ndb.Return({master + '/' + alias for alias in aliases})
