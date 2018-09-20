@@ -12,19 +12,24 @@ found in the LICENSE file.
         align-items: center;
         display: inline-flex;
         outline: none;
-        position: relative;
+        width: 100%;
       }
       :host([hidden]) {
         visibility: hidden;
       }
       label {
+        align-items: center;
         cursor: pointer;
+        display: inline-flex;
+        height: 32px;
+        position: relative;
+        width: 100%;
       }
       label:before, label:after {
         content: "";
         position: absolute;
-        left: -2px;
-        top: 0;
+        left: -22px;
+        top: 8px;
       }
       label:before {
         background: var(--background-color, white);
@@ -48,8 +53,8 @@ found in the LICENSE file.
         border-style: none none solid solid;
         border-width: 2px;
         height: 6px;
-        left: 2px;
-        top: 5px;
+        left: -18px;
+        top: 13px;
         transform: rotate(-45deg);
         width: 12px;
       }
