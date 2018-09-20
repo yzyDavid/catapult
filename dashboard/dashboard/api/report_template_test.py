@@ -26,7 +26,7 @@ class ReportTemplateTest(testing_common.TestCase):
     return json.loads(self.Post('/api/report/template', params).body)
 
   def testUnprivileged(self):
-    response = self.Post('/api/report/template', dict(
+    self.Post('/api/report/template', dict(
         owners=testing_common.INTERNAL_USER.email(),
         name='Test:New',
         template=json.dumps({'rows': []})), status=403)
