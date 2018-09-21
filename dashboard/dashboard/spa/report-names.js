@@ -5,12 +5,13 @@
 'use strict';
 tr.exportTo('cp', () => {
   class ReportNamesRequest extends cp.RequestBase {
+    constructor(options) {
+      super(options);
+      this.method_ = 'POST';
+    }
+
     get url_() {
-      // The ReportHandler doesn't use this query parameter, but it helps caches
-      // (such as the browser cache) understand that it returns different data
-      // depending on whether the user is authorized to access internal data.
-      const internal = this.headers_.has('Authorization');
-      return '/api/report/names' + (internal ? '?internal' : '');
+      return '/api/report/names';
     }
 
     async localhostResponse_() {
@@ -30,41 +31,7 @@ tr.exportTo('cp', () => {
     }
   }
 
-  class ReportNamesCache extends cp.CacheBase {
-    computeCacheKey_() {
-      let internal = '';
-      if (this.rootState_.userEmail) internal = 'Internal';
-      return `reportTemplateInfos${internal}`;
-    }
-
-    get isInCache_() {
-      return this.rootState_[this.cacheKey_] !== undefined;
-    }
-
-    async readFromCache_() {
-      // The cache entry may be a promise: see onStartRequest_().
-      return await this.rootState_[this.cacheKey_];
-    }
-
-    createRequest_() {
-      return new ReportNamesRequest({});
-    }
-
-    onStartRequest_(request) {
-      this.dispatch_(Redux.UPDATE('', {
-        [this.cacheKey_]: request.response,
-      }));
-    }
-
-    onFinishRequest_(result) {
-      this.dispatch_(Redux.UPDATE('', {
-        [this.cacheKey_]: result,
-      }));
-    }
-  }
-
-  const ReadReportNames = () => async(dispatch, getState) =>
-    await new ReportNamesCache({}, dispatch, getState).read();
+  const ReadReportNames = async() => await new ReportNamesRequest({}).response;
 
   return {
     ReadReportNames,

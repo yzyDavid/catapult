@@ -593,7 +593,7 @@ tr.exportTo('cp', () => {
     },
 
     loadReportNames: statePath => async(dispatch, getState) => {
-      const reportTemplateInfos = await cp.ReadReportNames()(dispatch, getState);
+      const reportTemplateInfos = await cp.ReadReportNames();
       const rootState = getState();
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
@@ -829,7 +829,7 @@ tr.exportTo('cp', () => {
         }),
       ];
       if (state.report.selectedOptions.length) {
-        const reportTempateInfos = await dispatch(cp.ReadReportNames());
+        const reportTempateInfos = await cp.ReadReportNames();
         for (const name of state.report.selectedOptions) {
           for (const reportId of reportTempateInfos) {
             if (reportId.name === name) {
@@ -899,7 +899,6 @@ tr.exportTo('cp', () => {
         lineDescriptors.push({
           ...lineDescriptors[0],
           buildType: 'ref',
-          icons: [],
         });
       }
       const minTimestampMs = new Date() - MS_PER_MONTH;
@@ -943,12 +942,6 @@ tr.exportTo('cp', () => {
       testCases: [alert.testCase],
       statistic: 'avg', // TODO
       buildType: 'test',
-      icons: [ // TODO ChartTimeseries should get this from the backend
-        {
-          revision: alert.endRevision,
-          icon: alert.improvement ? 'cp:thumb-up' : 'cp:error',
-        },
-      ],
     };
   };
 

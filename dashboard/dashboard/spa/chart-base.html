@@ -85,15 +85,10 @@ found in the LICENSE file.
         background-color: var(--background-color);
         border-style: solid;
         border-width: 2px;
-        display: flex;
         padding: 8px;
         position: absolute;
         white-space: pre;
         z-index: var(--layer-menu);
-      }
-
-      #tooltip[hidden] {
-        display: none;
       }
 
       #tooltip td {
@@ -283,7 +278,7 @@ found in the LICENSE file.
                   class="icon">
                 <body xmlns="http://www.w3.org/1999/xhtml">
                   <iron-icon
-                      icon="[[datum.icon]]"
+                      icon$="[[datum.icon]]"
                       style$="color: [[datum.iconColor]]"
                       on-click="onDotClick_"
                       on-mouseover="onDotMouseOver_"

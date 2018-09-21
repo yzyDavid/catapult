@@ -60,6 +60,7 @@ found in the LICENSE file.
         align-items: center;
         display: flex;
         flex-direction: column;
+        margin-top: 16px;
       }
 
       .report {
@@ -286,11 +287,13 @@ found in the LICENSE file.
                     state-path="[[statePath]].tables.[[tableIndex]].statistic">
                 </dropdown-input>
 
-                <cp-input
-                    label="Documentation"
-                    value="[[table.url]]"
-                    on-keyup="onTemplateUrlKeyUp_">
-                </cp-input>
+                <div>
+                  <cp-input
+                      label="Documentation"
+                      value="[[table.url]]"
+                      on-keyup="onTemplateUrlKeyUp_">
+                  </cp-input>
+                </div>
               </div>
 
               <table>

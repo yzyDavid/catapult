@@ -70,11 +70,15 @@ tr.exportTo('cp', () => {
     }
 
     async onSelectSource_(event) {
-      await this.dispatch('loadReports', this.statePath);
       if (this.source.selectedOptions.includes(ReportSection.CREATE)) {
-        const name = this.shadowRoot.querySelector('.report_name_input');
-        if (name) {
-          name.focus();
+        this.$.source.blur();
+        for (let i = 0; i < 10; ++i) {
+          const name = this.shadowRoot.querySelector('.report_name_input');
+          if (name) {
+            name.focus();
+            break;
+          }
+          await cp.timeout(100);
         }
       }
     }
@@ -170,6 +174,10 @@ tr.exportTo('cp', () => {
           testCases.add(testCase);
         }
       }
+      let maxRevision = this.maxRevision;
+      if (maxRevision === 'latest') {
+        maxRevision = undefined;
+      }
 
       this.dispatchEvent(new CustomEvent('new-chart', {
         bubbles: true,
@@ -177,7 +185,7 @@ tr.exportTo('cp', () => {
         detail: {
           options: {
             minRevision: this.minRevision,
-            maxRevision: this.maxRevision,
+            maxRevision,
             parameters: {
               testSuites: [...testSuites],
               measurements: [...measurements],
@@ -208,7 +216,7 @@ tr.exportTo('cp', () => {
       await this.dispatch('toggleEditing', this.statePath,
           event.model.tableIndex);
       if (this.tables[event.model.tableIndex].isEditing) {
-        this.shadowRoot.querySelector('cp-input').focus();
+        this.shadowRoot.querySelector('.report_name_input').focus();
       }
     }
 
@@ -311,6 +319,12 @@ tr.exportTo('cp', () => {
     async onOutRow_(event) {
       await this.dispatch('hideTooltip', this.statePath);
     }
+
+    observeSources_() {
+      this.debounce('loadReports', () => {
+        this.dispatch('loadReports', this.statePath);
+      }, Polymer.Async.timeOut.after(200));
+    }
   }
 
   ReportSection.canEdit = (table, userEmail) =>
@@ -347,7 +361,10 @@ tr.exportTo('cp', () => {
     ...cp.buildProperties('state', ReportSection.State),
     userEmail: {statePath: 'userEmail'},
   };
-  ReportSection.observers = ['observeUserEmail_(userEmail)'];
+  ReportSection.observers = [
+    'observeSources_(source.selectedOptions, minRevision, maxRevision)',
+    'observeUserEmail_(userEmail)',
+  ];
 
   const DASHES = '-'.repeat(5);
   const PLACEHOLDER_TABLE = {
@@ -413,7 +430,6 @@ tr.exportTo('cp', () => {
         statePath,
         milestone,
       });
-      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     restoreState: (statePath, options) => async(dispatch, getState) => {
@@ -428,7 +444,6 @@ tr.exportTo('cp', () => {
         ReportSection.actions.selectMilestone(
             statePath, state.milestone)(dispatch, getState);
       }
-      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     toggleEditing: (statePath, tableIndex) => async(dispatch, getState) => {
@@ -444,8 +459,7 @@ tr.exportTo('cp', () => {
     },
 
     loadSources: statePath => async(dispatch, getState) => {
-      const reportTemplateInfos = await cp.ReadReportNames()(dispatch,
-          getState);
+      const reportTemplateInfos = await cp.ReadReportNames();
       const rootState = getState();
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
@@ -455,7 +469,6 @@ tr.exportTo('cp', () => {
         statePath,
         reportNames,
       });
-      ReportSection.actions.loadReports(statePath)(dispatch, getState);
     },
 
     loadReports: statePath => async(dispatch, getState) => {
@@ -464,7 +477,7 @@ tr.exportTo('cp', () => {
       let testSuites = [];
       if (state.source.selectedOptions.includes(ReportSection.CREATE)) {
         testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-            await cp.ReadTestSuites()(dispatch, getState));
+            await cp.ReadTestSuites());
       }
       dispatch({
         type: ReportSection.reducers.requestReports.name,
@@ -476,19 +489,13 @@ tr.exportTo('cp', () => {
         name !== ReportSection.CREATE);
       const requestedReports = new Set(state.source.selectedOptions);
       const revisions = [state.minRevision, state.maxRevision];
-      const reportTemplateInfos = await cp.ReadReportNames()(dispatch,
-          getState);
+      const reportTemplateInfos = await cp.ReadReportNames();
       const readers = [];
 
       for (const name of names) {
         for (const templateInfo of reportTemplateInfos) {
           if (templateInfo.name === name) {
-            readers.push(cp.ReportReader({
-              ...templateInfo,
-              revisions,
-              dispatch,
-              getState,
-            }));
+            readers.push(cp.ReportReader({...templateInfo, revisions}));
           }
         }
       }
@@ -507,7 +514,7 @@ tr.exportTo('cp', () => {
         }
         if (testSuites.length === 0) {
           testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-              await cp.ReadTestSuites()(dispatch, getState));
+              await cp.ReadTestSuites());
         }
         dispatch({
           type: ReportSection.reducers.receiveReports.name,
@@ -626,7 +633,7 @@ tr.exportTo('cp', () => {
           type: ReportSection.reducers.templateAddRow.name,
           statePath: `${statePath}.tables.${tableIndex}`,
           rowIndex,
-          testSuites: await cp.ReadTestSuites()(dispatch, getState),
+          testSuites: await cp.ReadTestSuites(),
         });
         const path = `${statePath}.tables.${tableIndex}.rows.${rowIndex + 1}`;
         cp.ChartSection.actions.describeTestSuites(path)(dispatch, getState);
@@ -680,7 +687,6 @@ tr.exportTo('cp', () => {
         dispatch(Redux.UPDATE(statePath, {minRevisionInput}));
         if (!minRevisionInput.match(/^\d{6}$/)) return;
         dispatch(Redux.UPDATE(statePath, {minRevision: minRevisionInput}));
-        ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     setMaxRevision: (statePath, maxRevisionInput) =>
@@ -688,7 +694,6 @@ tr.exportTo('cp', () => {
         dispatch(Redux.UPDATE(statePath, {maxRevisionInput}));
         if (!maxRevisionInput.match(/^\d{6}$/)) return;
         dispatch(Redux.UPDATE(statePath, {maxRevision: maxRevisionInput}));
-        ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
 
     showTooltip: (statePath, tooltip) => async(dispatch, getState) => {

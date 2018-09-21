@@ -143,7 +143,9 @@ tr.exportTo('cp', () => {
     isExpanded: options => options.isExpanded !== false,
     minimapLayout: options => {
       const minimapLayout = {
-        ...cp.ChartTimeseries.buildState({}),
+        ...cp.ChartTimeseries.buildState({
+          levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
+        }),
         dotCursor: '',
         dotRadius: 0,
         graphHeight: 40,
@@ -154,7 +156,9 @@ tr.exportTo('cp', () => {
       return minimapLayout;
     },
     chartLayout: options => {
-      const chartLayout = cp.ChartTimeseries.buildState({});
+      const chartLayout = cp.ChartTimeseries.buildState({
+        levelOfDetail: cp.LEVEL_OF_DETAIL.ANNOTATIONS,
+      });
       chartLayout.xAxis.height = 15;
       chartLayout.xAxis.showTickLines = true;
       chartLayout.yAxis.width = 50;
@@ -164,8 +168,8 @@ tr.exportTo('cp', () => {
     isShowingOptions: options => false,
     isLinked: options => options.isLinked !== false,
     cursorRevision: options => 0,
-    minRevision: options => 0,
-    maxRevision: options => 0,
+    minRevision: options => options.minRevision,
+    maxRevision: options => options.maxRevision,
     mode: options => options.mode || 'normalizeUnit',
     zeroYAxis: options => options.zeroYAxis || false,
     fixedXAxis: options => options.fixedXAxis !== false,
@@ -182,12 +186,12 @@ tr.exportTo('cp', () => {
   ];
 
   ChartPair.LinkedState = {
-    linkedCursorRevision: options => 0,
-    linkedMinRevision: options => 0,
-    linkedMaxRevision: options => 0,
-    linkedMode: options => 'normalizeUnit',
-    linkedZeroYAxis: options => false,
-    linkedFixedXAxis: options => true,
+    linkedCursorRevision: options => undefined,
+    linkedMinRevision: options => options.minRevision,
+    linkedMaxRevision: options => options.maxRevision,
+    linkedMode: options => options.mode || 'normalizeUnit',
+    linkedZeroYAxis: options => options.zeroYAxis || false,
+    linkedFixedXAxis: options => options.fixedXAxis !== false,
   };
 
   ChartPair.properties = {
@@ -202,6 +206,11 @@ tr.exportTo('cp', () => {
   ChartPair.actions = {
     updateRevisions: (statePath, minRevision, maxRevision) =>
       async(dispatch, getState) => {
+        const state = Polymer.Path.get(getState(), statePath);
+        if (minRevision === state.minRevision &&
+            maxRevision === state.maxRevision) {
+          return;
+        }
         dispatch(Redux.UPDATE(statePath, {minRevision, maxRevision}));
         ChartPair.actions.load(statePath)(dispatch, getState);
       },
@@ -213,6 +222,11 @@ tr.exportTo('cp', () => {
     updateLinkedRevisions: (
         linkedStatePath, linkedMinRevision, linkedMaxRevision) =>
       async(dispatch, getState) => {
+        const state = Polymer.Path.get(getState(), linkedStatePath);
+        if (linkedMinRevision === state.linkedMinRevision &&
+            linkedMaxRevision === state.linkedMaxRevision) {
+          return;
+        }
         dispatch(Redux.UPDATE(linkedStatePath, {
           linkedMinRevision, linkedMaxRevision,
         }));
@@ -259,7 +273,6 @@ tr.exportTo('cp', () => {
         type: ChartPair.reducers.brushMinimap.name,
         statePath,
       });
-      ChartPair.actions.load(statePath)(dispatch, getState);
     },
 
     brushChart: (statePath, brushIndex, value) =>
@@ -285,48 +298,44 @@ tr.exportTo('cp', () => {
             getState);
 
       let firstRevision = tr.b.math.Statistics.min(timeserieses.map(ts => {
-        if (!ts || !ts.data) return Infinity;
-        const hist = ts.data[0];
-        if (hist === undefined) return Infinity;
-        return cp.ChartTimeseries.getX(hist);
+        if (!ts) return Infinity;
+        const datum = ts[0];
+        if (datum === undefined) return Infinity;
+        return cp.ChartTimeseries.getX(datum);
       }));
       if (firstRevision === Infinity) {
         firstRevision = undefined;
       }
 
       let lastRevision = tr.b.math.Statistics.max(timeserieses.map(ts => {
-        if (!ts || !ts.data) return -Infinity;
-        const hist = ts.data[ts.data.length - 1];
-        if (hist === undefined) return -Infinity;
-        return cp.ChartTimeseries.getX(hist);
+        if (!ts) return -Infinity;
+        const datum = ts[ts.length - 1];
+        if (datum === undefined) return -Infinity;
+        return cp.ChartTimeseries.getX(datum);
       }));
       if (lastRevision === -Infinity) {
         lastRevision = undefined;
       }
 
       let minRevision = state.minRevision;
-      if (minRevision === undefined ||
-          minRevision >= lastRevision) {
+      if (!minRevision || minRevision >= lastRevision) {
         let closestTimestamp = Infinity;
         const minTimestampMs = new Date() - cp.MS_PER_MONTH;
         for (const timeseries of timeserieses) {
-          const hist = tr.b.findClosestElementInSortedArray(
-              timeseries.data,
-              cp.ChartTimeseries.getTimestamp,
-              minTimestampMs);
-          if (hist) {
-            const timestamp = cp.ChartTimeseries.getTimestamp(hist);
-            if (Math.abs(timestamp - minTimestampMs) <
-                Math.abs(closestTimestamp - minTimestampMs)) {
-              minRevision = cp.ChartTimeseries.getX(hist);
-              closestTimestamp = timestamp;
-            }
+          const datum = tr.b.findClosestElementInSortedArray(
+              timeseries, d => d.timestamp, minTimestampMs);
+          if (!datum) continue;
+          const timestamp = datum.timestamp;
+          if (Math.abs(timestamp - minTimestampMs) <
+              Math.abs(closestTimestamp - minTimestampMs)) {
+            minRevision = cp.ChartTimeseries.getX(datum);
+            closestTimestamp = timestamp;
           }
         }
       }
 
       let maxRevision = state.maxRevision;
-      if (maxRevision === undefined || maxRevision <= firstRevision) {
+      if (!maxRevision || maxRevision <= firstRevision) {
         maxRevision = lastRevision;
         dispatch(Redux.UPDATE(statePath, {maxRevision}));
       }
@@ -367,10 +376,7 @@ tr.exportTo('cp', () => {
     },
 
     chartClick: statePath => async(dispatch, getState) => {
-      dispatch({
-        type: ChartPair.reducers.chartClick.name,
-        statePath,
-      });
+      dispatch(Redux.UPDATE(`${statePath}.chartLayout.xAxis`, {brushes: []}));
     },
 
     dotClick: (statePath, ctrlKey, lineIndex, datumIndex) =>
@@ -554,20 +560,6 @@ tr.exportTo('cp', () => {
       return {...state, measurement, bot, testCase};
     },
 
-    chartClick: (state, action, rootState) => {
-      return {
-        ...state,
-        chartLayout: {
-          ...state.chartLayout,
-          xAxis: {
-            ...state.chartLayout.xAxis,
-            brushes: [],
-          },
-        },
-        histograms: undefined,
-      };
-    },
-
     dotClick: (state, action, rootState) => {
       const sequence = state.chartLayout.lines[action.lineIndex];
       if (!sequence || !sequence.data[action.datumIndex]) return state;
@@ -613,8 +605,7 @@ tr.exportTo('cp', () => {
       const staleTimestamp = now - staleMs;
       let anyStale = false;
       const lines = state.chartLayout.lines.map(line => {
-        const minDate = cp.ChartTimeseries.getTimestamp(
-            line.data[line.data.length - 1].hist);
+        const minDate = line.data[line.data.length - 1].datum.timestamp;
         if (minDate >= staleTimestamp) return line;
         anyStale = true;
         let hue;
@@ -642,35 +633,22 @@ tr.exportTo('cp', () => {
     lineDescriptors, refStatePath, dispatch, getState) => {
     for (const lineDescriptor of lineDescriptors) {
       const fetchDescriptors = cp.ChartTimeseries.createFetchDescriptors(
-          lineDescriptor);
+          lineDescriptor, cp.LEVEL_OF_DETAIL.XY);
 
       const results = await Promise.all(fetchDescriptors.map(
           async fetchDescriptor => {
-            const reader = cp.TimeseriesReader({
-              lineDescriptor,
-              fetchDescriptor,
-              refStatePath,
-              dispatch,
-              getState,
-            });
-            for await (const result of reader) {
-              return result;
+            const reader = new cp.TimeseriesRequest(fetchDescriptor).reader();
+            for await (const timeseries of reader) {
+              return timeseries;
             }
-          }
-      ));
+          }));
 
-      const timeserieses = results.map(result => result.timeseries);
-
-      for (const timeseries of timeserieses) {
-        if (!timeseries || !timeseries.data) {
-          throw new Error('Timeseries data formatted incorrectly', timeseries);
-        }
-        if (timeseries.data.length) {
-          return {
-            firstNonEmptyLineDescriptor: lineDescriptor,
-            timeserieses,
-          };
-        }
+      for (const timeseries of results) {
+        if (!timeseries || !timeseries.length) continue;
+        return {
+          firstNonEmptyLineDescriptor: lineDescriptor,
+          timeserieses: results,
+        };
       }
     }
 

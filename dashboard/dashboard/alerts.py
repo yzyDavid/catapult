@@ -10,6 +10,7 @@ from google.appengine.datastore.datastore_query import Cursor
 from google.appengine.ext import ndb
 
 from dashboard import email_template
+from dashboard.common import descriptor
 from dashboard.common import request_handler
 from dashboard.common import utils
 from dashboard.models import anomaly
@@ -109,6 +110,29 @@ def AnomalyDicts(anomalies):
   """Makes a list of dicts with properties of Anomaly entities."""
   bisect_statuses = _GetBisectStatusDict(anomalies)
   return [GetAnomalyDict(a, bisect_statuses.get(a.bug_id)) for a in anomalies]
+
+def AnomalyDicts2(anomalies):
+  ads = AnomalyDicts(anomalies)
+  for ad in ads:
+    desc = descriptor.Descriptor.FromTestPathSync(
+        '/'.join([ad['master'], ad['bot'], ad['testsuite'], ad['test']]))
+    ad['descriptor'] = {
+        'testSuite': desc.test_suite,
+        'measurement': desc.measurement,
+        'bot': desc.bot,
+        'testCase': desc.test_case,
+        'statistic': desc.statistic,
+    }
+    del ad['master']
+    del ad['bot']
+    del ad['testsuite']
+    del ad['type']
+    del ad['display_end']
+    del ad['display_start']
+    del ad['date']
+    del ad['percent_changed']
+    del ad['ref_test']
+  return ads
 
 
 def GetAnomalyDict(anomaly_entity, bisect_status=None):

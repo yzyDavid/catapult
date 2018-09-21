@@ -26,9 +26,6 @@ found in the LICENSE file.
     FIXTURE = fixture('input');
   });
 
-  teardown(function() {
-  });
-
   suite('basic tests', function() {
     test('setImmutable', function() {
       assert.deepEqual({b: 'c'}, cp.setImmutable(

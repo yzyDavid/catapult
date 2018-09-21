@@ -106,5 +106,5 @@ class GoogleAnalytics {
   }
 }
 
-const ga = new GoogleAnalytics();
-export default ga;
+const analytics = new GoogleAnalytics();
+export default analytics;

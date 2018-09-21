@@ -5,13 +5,13 @@
 'use strict';
 tr.exportTo('cp', () => {
   class TestSuitesRequest extends cp.RequestBase {
+    constructor(options) {
+      super(options);
+      this.method_ = 'POST';
+    }
+
     get url_() {
-      // The TestSuitesHandler doesn't use this query parameter, but it helps
-      // the browser cache understand that it returns different data depending
-      // on whether the user is authorized to access internal data.
-      let internal = '';
-      if (this.headers_.has('Authorization')) internal = '?internal';
-      return `/api/test_suites${internal}`;
+      return '/api/test_suites';
     }
 
     async localhostResponse_() {
@@ -24,41 +24,7 @@ tr.exportTo('cp', () => {
     }
   }
 
-  class TestSuitesCache extends cp.CacheBase {
-    computeCacheKey_() {
-      let internal = '';
-      if (this.rootState_.userEmail) internal = 'Internal';
-      return `testSuites${internal}`;
-    }
-
-    get isInCache_() {
-      return this.rootState_[this.cacheKey_] !== undefined;
-    }
-
-    async readFromCache_() {
-      // The cache entry may be a promise: see onStartRequest_().
-      return await this.rootState_[this.cacheKey_];
-    }
-
-    createRequest_() {
-      return new TestSuitesRequest({});
-    }
-
-    onStartRequest_(request) {
-      this.dispatch_(Redux.UPDATE('', {
-        [this.cacheKey_]: request.response,
-      }));
-    }
-
-    onFinishRequest_(result) {
-      this.dispatch_(Redux.UPDATE('', {
-        [this.cacheKey_]: result,
-      }));
-    }
-  }
-
-  const ReadTestSuites = () => async(dispatch, getState) =>
-    await new TestSuitesCache({}, dispatch, getState).read();
+  const ReadTestSuites = async() => await new TestSuitesRequest({}).response;
 
   return {
     ReadTestSuites,

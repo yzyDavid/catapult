@@ -7,6 +7,40 @@ tr.exportTo('cp', () => {
   // TODO compute this based on how multiple timeseries x coordinates line up
   const MAX_POINTS = 500;
 
+  function mergeData(target, source) {
+    if (target.revision === undefined) {
+      Object.assign(target, source);
+      if (target.diagnostics) {
+        const shallowClone = new tr.v.d.DiagnosticMap();
+        shallowClone.addDiagnostics(target.diagnostics);
+        target.diagnostics = shallowClone;
+      }
+      return;
+    }
+
+    if (source.diagnostics) {
+      if (!target.diagnostics) {
+        target.diagnostics = new tr.v.d.DiagnosticMap();
+      }
+      target.diagnostics.addDiagnostics(source.diagnostics);
+    }
+
+    target.revision = Math.min(target.revision, source.revision);
+    if (source.timestamp < target.timestamp) target.timestamp = source.timestamp;
+
+    const deltaMean = target.avg - source.avg;
+    target.avg = (
+        (target.avg * target.count) + (source.avg * source.count)) /
+        (target.count + source.count);
+    const thisVar = target.std * target.std;
+    const otherVar = source.std * source.std;
+    const thisCount = target.count;
+    target.count += source.count;
+    target.std = Math.sqrt(thisVar + otherVar + (
+      thisCount * source.count * deltaMean * deltaMean /
+      target.count));
+  }
+
   class TimeseriesIterator {
     constructor(lineDescriptor, timeseries, range) {
       this.minTimestampMs_ = range.minTimestampMs;
@@ -16,7 +50,7 @@ tr.exportTo('cp', () => {
       this.lineDescriptor_ = lineDescriptor;
       this.timeseries_ = timeseries;
       this.index_ = this.findStartIndex_();
-      // The index of the last Histogram that will be yielded:
+      // The index of the last datum that will be yielded:
       this.endIndex_ = Math.min(
           this.findEndIndex_(), this.timeseries_.length - 1);
       this.indexDelta_ = Math.max(
@@ -26,8 +60,7 @@ tr.exportTo('cp', () => {
     findStartIndex_() {
       if (this.minTimestampMs_) {
         return tr.b.findLowIndexInSortedArray(
-            this.timeseries_, ChartTimeseries.getTimestamp,
-            this.minTimestampMs_);
+            this.timeseries_, d => d.timestamp, this.minTimestampMs_);
       }
       if (this.minRevision_) {
         return tr.b.findLowIndexInSortedArray(
@@ -40,8 +73,7 @@ tr.exportTo('cp', () => {
     findEndIndex_() {
       if (this.maxTimestampMs_) {
         return tr.b.findLowIndexInSortedArray(
-            this.timeseries_, ChartTimeseries.getTimestamp,
-            this.maxTimestampMs_);
+            this.timeseries_, d => d.timestamp, this.maxTimestampMs_);
       }
       if (this.maxRevision_) {
         return tr.b.findLowIndexInSortedArray(
@@ -83,11 +115,11 @@ tr.exportTo('cp', () => {
 
     * [Symbol.iterator]() {
       while (!this.allDone_) {
-        const merged = new cp.FastHistogram();
+        const merged = {};
         let minX = Infinity;
         for (const iterator of this.iterators_) {
           if (!iterator.current) continue;
-          merged.addHistogram(iterator.current);
+          mergeData(merged, iterator.current);
           if (!iterator.done) {
             minX = Math.min(minX, ChartTimeseries.getX(iterator.current));
           }
@@ -159,6 +191,7 @@ tr.exportTo('cp', () => {
     zeroYAxis: options => false,
     fixedXAxis: options => false,
     mode: options => 'normalizeUnit',
+    levelOfDetail: options => options.levelOfDetail || cp.LEVEL_OF_DETAIL.XY,
   };
 
   ChartTimeseries.properties = cp.buildProperties(
@@ -207,16 +240,10 @@ tr.exportTo('cp', () => {
 
       for (const lineDescriptor of lineDescriptors) {
         const fetchDescriptors = ChartTimeseries.createFetchDescriptors(
-            lineDescriptor);
+            lineDescriptor, cp.LEVEL_OF_DETAIL.XY);
         for (const fetchDescriptor of fetchDescriptors) {
-          const reader = cp.TimeseriesReader({
-            lineDescriptor,
-            fetchDescriptor,
-            refStatePath: statePath,
-            dispatch,
-            getState,
-          });
-          promises.push(consumeAll(reader));
+          promises.push(consumeAll(new cp.TimeseriesRequest(
+              fetchDescriptor).reader()));
         }
       }
 
@@ -249,51 +276,73 @@ tr.exportTo('cp', () => {
         statePath,
         line,
       });
+
       const rows = [];
+
       if (datum.icon === 'cp:clock') {
         const days = Math.floor(tr.b.convertUnit(
-            new Date() - cp.ChartTimeseries.getTimestamp(datum.hist),
+            new Date() - datum.datum.timestamp,
             tr.b.UnitScale.TIME.MILLI_SEC, tr.b.UnitScale.TIME.DAY));
         rows.push({
-          colspan: 2, color: 'red',
+          colspan: 2, color: datum.iconColor,
           name: `No data uploaded in ${days} day${days === 1 ? '' : 's'}`,
         });
       }
-      rows.push({name: 'value', value: line.unit.format(datum.y)});
-      const commitPos = datum.hist.diagnostics.get(
-          tr.v.d.RESERVED_NAMES.CHROMIUM_COMMIT_POSITIONS);
-      if (commitPos) {
-        const range = new tr.b.math.Range();
-        for (const pos of commitPos) range.addValue(pos);
-        let value = range.min;
-        if (range.range) value += '-' + range.max;
-        rows.push({name: 'chromium', value});
-      }
-      const uploadTimestamp = datum.hist.diagnostics.get(
-          tr.v.d.RESERVED_NAMES.UPLOAD_TIMESTAMP);
-      if (uploadTimestamp) {
+
+      if (datum.datum.alert) {
+        if (datum.datum.alert.bugId) {
+          rows.push({name: 'bug', value: datum.datum.alert.bugId});
+        }
+        const deltaScalar = datum.datum.alert.deltaUnit.format(
+            datum.datum.alert.deltaValue);
+        const percentDeltaScalar = datum.datum.alert.percentDeltaUnit.format(
+            datum.datum.alert.percentDeltaValue);
         rows.push({
-          name: 'upload timestamp',
-          value: uploadTimestamp.toString(),
+          name: datum.datum.alert.improvement ? 'improvement' : 'regression',
+          color: datum.iconColor,
+          value: deltaScalar + ' ' + percentDeltaScalar,
         });
       }
+
+      rows.push({name: 'value', value: line.unit.format(datum.y)});
+
+      rows.push({name: 'revision', value: datum.datum.revision});
+      for (const [name, value] of Object.entries(datum.datum.revisions || {})) {
+        rows.push({name, value});
+      }
+
+      rows.push({
+        name: 'uploaded',
+        value: datum.datum.timestamp.toString(),
+      });
+
       rows.push({name: 'build type', value: line.descriptor.buildType});
+
       if (line.descriptor.testSuites.length === 1) {
         rows.push({
           name: 'test suite',
           value: line.descriptor.testSuites[0],
         });
       }
+
       rows.push({name: 'measurement', value: line.descriptor.measurement});
+
       if (line.descriptor.bots.length === 1) {
         rows.push({name: 'bot', value: line.descriptor.bots[0]});
       }
+
       if (line.descriptor.testCases.length === 1) {
         rows.push({
           name: 'test case',
           value: line.descriptor.testCases[0],
         });
       }
+
+      if (datum.datum.diagnostics) {
+        const value = [...datum.datum.diagnostics.keys()].join(', ');
+        rows.push({name: 'changed', value, color: 'var(--primary-color-dark)'});
+      }
+
       cp.ChartBase.actions.tooltip(statePath, rows)(dispatch, getState);
     },
 
@@ -377,9 +426,8 @@ tr.exportTo('cp', () => {
 
       for (const value of Object.values(action.timeseriesesByLine)) {
         const [lineDescriptor, ...timeserieses] = value;
-        const timeseriesesData = timeserieses.map(ts => ts.data);
         const data = ChartTimeseries.aggregateTimeserieses(
-            lineDescriptor, timeseriesesData, {
+            lineDescriptor, timeserieses, state.levelOfDetail, {
               minRevision: state.minRevision,
               maxRevision: state.maxRevision,
               minTimestamp: state.minTimestamp,
@@ -388,7 +436,7 @@ tr.exportTo('cp', () => {
 
         if (data.length === 0) return state;
 
-        let unit = timeserieses[0].unit;
+        let unit = timeserieses[0][0].unit;
         if (state.mode === 'delta') {
           unit = unit.correspondingDeltaUnit;
           const offset = data[0].y;
@@ -484,19 +532,25 @@ tr.exportTo('cp', () => {
     dispatch,
     getState
   ) => {
+    const state = Polymer.Path.get(getState(), statePath);
+    const revisionOptions = {
+      minRevision: state.minRevision,
+      maxRevision: state.maxRevision,
+      minTimestamp: state.minTimestamp,
+      maxTimestamp: state.maxTimestamp,
+    };
     const readers = [];
-
     for (const lineDescriptor of lineDescriptors) {
       const fetchDescriptors = ChartTimeseries.createFetchDescriptors(
-          lineDescriptor);
+          lineDescriptor, state.levelOfDetail);
       for (const fetchDescriptor of fetchDescriptors) {
-        readers.push(cp.TimeseriesReader({
-          lineDescriptor,
-          fetchDescriptor,
-          refStatePath: statePath,
-          dispatch,
-          getState,
-        }));
+        const fetchOptions = {...fetchDescriptor, ...revisionOptions};
+        readers.push((async function*() {
+          const reader = new cp.TimeseriesRequest(fetchOptions).reader();
+          for await (const timeseries of reader) {
+            yield {timeseries, lineDescriptor};
+          }
+        })());
       }
     }
 
@@ -549,7 +603,7 @@ tr.exportTo('cp', () => {
     return timeseriesesByLine;
   }
 
-  ChartTimeseries.createFetchDescriptors = (lineDescriptor) => {
+  ChartTimeseries.createFetchDescriptors = (lineDescriptor, levelOfDetail) => {
     let testCases = lineDescriptor.testCases;
     if (testCases.length === 0) testCases = [undefined];
     const fetchDescriptors = [];
@@ -563,61 +617,63 @@ tr.exportTo('cp', () => {
             testCase,
             statistic: lineDescriptor.statistic,
             buildType: lineDescriptor.buildType,
-            levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
+            levelOfDetail,
           });
+          // TODO if levelOfDetail === ANNOTATIONS and testCase === undefined,
+          // then add ANNOTATIONS_ONLY fetchDescriptors for all test cases in
+          // this test suite in order to bubble alerts up to summary time
+          // series.
         }
       }
     }
     return fetchDescriptors;
   };
 
-  ChartTimeseries.aggregateTimeserieses = (
-      lineDescriptor,
-      timeserieses,
-      range
-  ) => {
-    function getIcon(hist) {
-      if (hist.alert) return hist.alert.improvement ? 'thumb-up' : 'error';
-      if (!lineDescriptor.icons) return '';
-      // TODO remove lineDescriptor.icons
-      const revisions = [...hist.diagnostics.get(
-          tr.v.d.RESERVED_NAMES.CHROMIUM_COMMIT_POSITIONS)];
-      for (const icon of lineDescriptor.icons) {
-        if (revisions.includes(icon.revision)) return icon.icon;
+  function getIcon(datum) {
+    if (datum.alert) {
+      if (datum.alert.improvement) {
+        return {icon: 'cp:thumb-up', iconColor: 'var(--improvement-color)'};
       }
-      return '';
+      return {
+        icon: 'cp:error',
+        iconColor: datum.alert.bugId ? 'var(--neutral-color-dark)' : 'var(--error-color)',
+      };
     }
+    if (datum.diagnostics) {
+      return {icon: 'cp:book', iconColor: 'var(--primary-color-dark)'};
+    }
+    // The stale data icon cp:clock is set by ChartPair.reducers.updateStale.
+    return {};
+  }
 
+  ChartTimeseries.aggregateTimeserieses = (
+      lineDescriptor, timeserieses, levelOfDetail, range) => {
     const lineData = [];
     const iter = new MultiTimeseriesIterator(
         lineDescriptor, timeserieses, range);
-    for (const [x, hist] of iter) {
-      lineData.push({
-        hist,
-        x,
-        y: hist.running[lineDescriptor.statistic],
-        icon: getIcon(hist),
-      });
+    let books = 0;
+    for (const [x, datum] of iter) {
+      const lineDatum = {datum, x, y: datum[lineDescriptor.statistic]};
+      lineData.push(lineDatum);
+      if (levelOfDetail !== cp.LEVEL_OF_DETAIL.XY) {
+        Object.assign(lineDatum, getIcon(datum));
+      }
+      if (lineDatum.icon === 'cp:book') ++books;
     }
+
+    if (books > (lineData.length / 2)) {
+      // Some timeseries have diagnostics on most points. Displaying book icons
+      // on most points is slow and not helpful, so hide them.
+      for (const lineDatum of lineData) {
+        if (lineDatum.icon === 'cp:book') lineDatum.icon = undefined;
+      }
+    }
+
     lineData.sort((a, b) => a.x - b.x);
     return lineData;
   };
 
-  ChartTimeseries.getX = hist => {
-    // TODO revisionTimestamp
-    const commitPos = hist.diagnostics.get(
-        tr.v.d.RESERVED_NAMES.CHROMIUM_COMMIT_POSITIONS);
-    if (commitPos) {
-      return tr.b.math.Statistics.min(commitPos);
-    }
-    return ChartTimeseries.getTimestamp(hist).getTime();
-  };
-
-  ChartTimeseries.getTimestamp = hist => {
-    const timestamp = hist.diagnostics.get(
-        tr.v.d.RESERVED_NAMES.UPLOAD_TIMESTAMP);
-    return timestamp.minDate;
-  };
+  ChartTimeseries.getX = datum => datum.revision;
 
   cp.ElementBase.register(ChartTimeseries);
 

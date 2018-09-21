@@ -32,14 +32,40 @@ tr.exportTo('cp', () => {
   const CLIENT_ID =
     '62121018386-rhk28ad5lbqheinh05fgau3shotl2t6c.apps.googleusercontent.com';
 
-  class RecentBugsRequest extends cp.RequestBase {
+  class SessionIdRequest extends cp.RequestBase {
     constructor(options) {
       super(options);
+      this.method_ = 'POST';
+      this.headers_.set('Content-type', 'application/x-www-form-urlencoded');
+      this.body_ = 'page_state=' + encodeURIComponent(JSON.stringify(
+          options.sessionState));
+    }
+
+    async localhostResponse_() {
+      return {};
+    }
+
+    get url_() {
+      return '/short_uri';
+    }
+
+    postProcess_(json) {
+      return json.sid;
+    }
+  }
+
+  class RecentBugsRequest extends cp.RequestBase {
+    constructor() {
+      super({});
       this.method_ = 'POST';
     }
 
     get url_() {
       return '/api/alerts/recent_bugs';
+    }
+
+    postProcess_(json) {
+      return json.bugs;
     }
 
     async localhostResponse_() {
@@ -207,10 +233,10 @@ tr.exportTo('cp', () => {
     ready: (statePath, routeParams, authParams) =>
       async(dispatch, getState) => {
         requestIdleCallback(() => {
-          cp.ReadTestSuites()(dispatch, getState);
+          cp.ReadTestSuites();
           cp.PrefetchTestSuiteDescriptors({
             testSuites: PRE_DESCRIBE_TEST_SUITES,
-          })(dispatch, getState);
+          });
         });
 
         dispatch(Redux.CHAIN(
@@ -250,6 +276,7 @@ tr.exportTo('cp', () => {
         }));
 
         if (window.IS_DEBUG) {
+          // In production, this api is only available to chromium members.
           cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState);
         }
       },
@@ -304,20 +331,16 @@ tr.exportTo('cp', () => {
         userEmail: user.getBasicProfile().getEmail(),
       }));
       await Promise.all([
-        cp.ReadReportNames()(dispatch, getState),
+        cp.ReadReportNames(),
         cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState),
-        cp.ReadTestSuites()(dispatch, getState),
+        cp.ReadTestSuites(),
       ]);
     },
 
     getRecentBugs: () => async(dispatch, getState) => {
-      // TODO The AlertsHandler should be able to serve recent bugs without
-      // requiring authorization.
-      const request = new RecentBugsRequest({});
-      const response = await request.response;
-      dispatch(Redux.UPDATE('', {
-        recentPerformanceBugs: response.bugs.map(cp.AlertsSection.transformBug),
-      }));
+      const bugs = await new RecentBugsRequest().response;
+      const recentPerformanceBugs = bugs.map(cp.AlertsSection.transformBug);
+      dispatch(Redux.UPDATE('', {recentPerformanceBugs}));
     },
 
     onSignout: () => async(dispatch, getState) => {
@@ -401,16 +424,13 @@ tr.exportTo('cp', () => {
     saveSession: statePath => async(dispatch, getState) => {
       const rootState = getState();
       const state = Polymer.Path.get(rootState, statePath);
-      cp.readSessionId({
-        sessionState: {
-          ...ChromeperfApp.getSessionState(state),
-          teamName: rootState.teamName,
-        },
-        sessionIdCallback: session =>
-          dispatch(Redux.UPDATE(statePath, {
-            reduxRoutePath: new URLSearchParams({session}),
-          })),
-      })(dispatch, getState);
+      const session = await new SessionIdRequest({sessionState: {
+        ...ChromeperfApp.getSessionState(state),
+        teamName: rootState.teamName,
+      }}).response;
+      dispatch(Redux.UPDATE(statePath, {
+        reduxRoutePath: new URLSearchParams({session}),
+      }));
     },
 
     updateLocation: statePath => async(dispatch, getState) => {
@@ -627,17 +647,10 @@ tr.exportTo('cp', () => {
       chartSectionIds.push(sectionId);
 
       if (chartSectionIds.length === 1 && action.options) {
-        const linkedChartState = {...state.linkedChartState};
-        if (action.options.mode) {
-          linkedChartState.linkedMode = action.options.mode;
-        }
-        if (action.options.fixedXAxis !== undefined) {
-          linkedChartState.linkedFixedXAxis = action.options.fixedXAxis;
-        }
-        if (action.options.zeroYAxis !== undefined) {
-          linkedChartState.linkedZeroYAxis = action.options.zeroYAxis;
-        }
-        state = {...state, linkedChartState};
+        state = {
+          ...state,
+          linkedChartState: cp.buildState(cp.ChartPair.LinkedState, action.options),
+        };
       }
       return {...state, chartSectionIds};
     },

@@ -11,7 +11,6 @@ from dashboard import alerts
 from dashboard import file_bug
 from dashboard.api import api_request_handler
 from dashboard.api import utils as api_utils
-from dashboard.common import descriptor
 from dashboard.common import request_handler
 from dashboard.common import utils
 from dashboard.models import anomaly
@@ -154,27 +153,5 @@ class AlertsHandler(api_request_handler.ApiRequestHandler):
     except request_handler.InvalidInputError as e:
       raise api_request_handler.BadRequestError(e.message)
 
-    anomaly_dicts = alerts.AnomalyDicts(
-        [a for a in alert_list if a.key.kind() == 'Anomaly'])
-    for ad in anomaly_dicts:
-      desc = descriptor.Descriptor.FromTestPathSync(
-          '/'.join([ad['master'], ad['bot'], ad['testsuite'], ad['test']]))
-      ad['descriptor'] = {
-          'testSuite': desc.test_suite,
-          'measurement': desc.measurement,
-          'bot': desc.bot,
-          'testCase': desc.test_case,
-          'statistic': desc.statistic,
-      }
-      del ad['master']
-      del ad['bot']
-      del ad['testsuite']
-      del ad['type']
-      del ad['display_end']
-      del ad['display_start']
-      del ad['date']
-      del ad['percent_changed']
-      del ad['ref_test']
-
-    response['anomalies'] = anomaly_dicts
+    response['anomalies'] = alerts.AnomalyDicts2(alert_list)
     return response

@@ -179,8 +179,6 @@ tr.exportTo('cp', () => {
     title: options => options.title || '',
     isTitleCustom: options => false,
     legend: options => undefined,
-    minRevision: options => options.minRevision,
-    maxRevision: options => options.maxRevision,
     relatedTabs: options => [],
     selectedLineDescriptorHash: options => options.selectedLineDescriptorHash,
     isLoading: options => false,
@@ -261,7 +259,7 @@ tr.exportTo('cp', () => {
 
   ChartSection.actions = {
     connected: statePath => async(dispatch, getState) => {
-      let state = Polymer.Path.get(getState(), statePath);
+      const state = Polymer.Path.get(getState(), statePath);
       ChartSection.actions.loadTestSuites(statePath)(dispatch, getState);
       if (state.testSuite.selectedOptions.length) {
         await ChartSection.actions.describeTestSuites(statePath)(
@@ -271,7 +269,6 @@ tr.exportTo('cp', () => {
         cp.DropdownInput.actions.focus(`${statePath}.testSuite`)(
             dispatch, getState);
       }
-      state = Polymer.Path.get(getState(), statePath);
     },
 
     authChange: statePath => async(dispatch, getState) => {
@@ -281,7 +278,7 @@ tr.exportTo('cp', () => {
     loadTestSuites: statePath => async(dispatch, getState) => {
       const rootState = getState();
       const testSuites = await cp.TeamFilter.get(rootState.teamName).testSuites(
-          await cp.ReadTestSuites()(dispatch, getState));
+          await cp.ReadTestSuites());
       dispatch({
         type: ChartSection.reducers.receiveTestSuites.name,
         statePath,
@@ -1289,10 +1286,10 @@ tr.exportTo('cp', () => {
     !state.measurement ||
     !state.bot ||
     !state.testCase || (
-        state.testSuite.selectedOptions.length === 0 &&
-        state.measurement.selectedOptions.length === 0 &&
-        state.bot.selectedOptions.length === 0 &&
-        state.testCase.selectedOptions.length === 0));
+      state.testSuite.selectedOptions.length === 0 &&
+      state.measurement.selectedOptions.length === 0 &&
+      state.bot.selectedOptions.length === 0 &&
+      state.testCase.selectedOptions.length === 0));
 
   ChartSection.matchesOptions = (state, options) => {
     if (!options ||
@@ -1324,10 +1321,38 @@ tr.exportTo('cp', () => {
           new Set(state.testCase.selectedOptions))) {
         return false;
       }
-      // TODO testSuitesAggregated, botsAggregated, testCasesAggregated
-      // TODO statistics
+      if (options.parameters.statistics && !tr.b.setsEqual(
+          new Set(options.parameters.statistics),
+          new Set(state.statistic.selectedOptions))) {
+        return false;
+      }
+      if (options.parameters.testSuitesAggregated !== undefined &&
+          options.parameters.testSuitesAggregated !=
+          state.testSuite.isAggregated) {
+        return false;
+      }
+      if (options.parameters.botsAggregated !== undefined &&
+          options.parameters.botsAggregated != state.bot.isAggregated) {
+        return false;
+      }
+      if (options.parameters.testCasesAggregated !== undefined &&
+          options.parameters.testCasesAggregated !=
+          state.testCase.isAggregated) {
+        return false;
+      }
     }
-    // TODO minRevision, maxRevision, selectedRelatedTabName
+    if (options.minRevision !== undefined &&
+        options.minRevision !== state.minRevision) {
+      return false;
+    }
+    if (options.maxRevision !== undefined &&
+        options.maxRevision !== state.maxRevision) {
+      return false;
+    }
+    if (options.selectedRelatedTabName !== undefined &&
+        options.selectedRelatedTabName !== state.selectedRelatedTabName) {
+      return false;
+    }
     return true;
   };
 

@@ -74,9 +74,13 @@ def Webpack(temp_dir, spa_path):
   os.environ['WEBPACK_NODE_MODULES'] = modules_path
   os.environ['WEBPACK_THIRD_PARTY'] = third_party_path
 
-  exit_code = subprocess.call([WEBPACK, '--config', config_filename])
-  if exit_code != 0:
-    raise RuntimeError('Webpack failed with exit code', exit_code)
+  proc = subprocess.Popen([WEBPACK, '--config', config_filename],
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  webpack_out, webpack_err = proc.communicate()
+  if proc.returncode != 0:
+    print 'ERROR from webpack:'
+    print webpack_out
+    raise RuntimeError('Webpack failed with exit code', proc.returncode)
 
   return output_path
 
@@ -92,21 +96,25 @@ def Main():
   import dashboard
 
   temp_dir = tempfile.mkdtemp()
-  deployment_paths = dashboard.PathsForDeployment()
-  deployment_paths.append(VulcanizeHistogramsViewer(temp_dir))
-  deployment_paths.append(VulcanizeIndex(temp_dir, dashboard_path))
-  deployment_paths.append(Webpack(temp_dir, spa_path))
-
-  from catapult_build import appengine_deploy
-  version = None
-  if len(sys.argv) > 1:
-    version = sys.argv[1]
-  appengine_deploy.Deploy(deployment_paths, ['v2spa.yaml'], version)
 
   try:
-    shutil.rmtree(temp_dir)
-  except OSError as e:
-    logging.error('Error cleaning up temp dir %s: %s', temp_dir, e)
+    deployment_paths = dashboard.PathsForDeployment()
+    deployment_paths.append(Webpack(temp_dir, spa_path))
+    deployment_paths.append(VulcanizeIndex(temp_dir, dashboard_path))
+    deployment_paths.append(VulcanizeHistogramsViewer(temp_dir))
+
+    from catapult_build import appengine_deploy
+    version = None
+    if len(sys.argv) > 1:
+      version = sys.argv[1]
+    appengine_deploy.Deploy(deployment_paths, ['v2spa.yaml'], version)
+  except RuntimeError:
+    pass
+  finally:
+    try:
+      shutil.rmtree(temp_dir)
+    except OSError as e:
+      logging.error('Error cleaning up temp dir %s: %s', temp_dir, e)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,6 @@ import logging
 
 from google.appengine.ext import ndb
 
-from dashboard.common import bot_configurations
 from dashboard.common import descriptor
 from dashboard.common import stored_object
 from dashboard.common import utils
@@ -99,17 +98,15 @@ class ReportQuery(object):
 
   @ndb.tasklet
   def _ResolveCommitPositions(self):
-    commit_pos_bots, chromium_commit_pos_bots = yield [
+    self._commit_pos_bots, self._chromium_commit_pos_bots = (yield [
         stored_object.GetAsync('bots_with_different_r_commit_pos'),
         stored_object.GetAsync(
-            'bots_with_different_r_chromium_commit_pos')]
-    self._commit_pos_bots, self._chromium_commit_pos_bots = (
-        commit_pos_bots, chromium_commit_pos_bots)
+            'bots_with_different_r_chromium_commit_pos')])
 
     def PropertyNameForBot(bot):
-      if bot in commit_pos_bots:
+      if bot in self._commit_pos_bots:
         return 'r_commit_pos'
-      if bot in chromium_commit_pos_bots:
+      if bot in self._chromium_commit_pos_bots:
         return 'r_chromium_commit_pos'
 
     # Resolve revisions for each bot+suite in parallel before fetching data.

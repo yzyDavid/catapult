@@ -207,7 +207,7 @@ tr.exportTo('cp', () => {
       // set state.columns
       const columns = columnOptions.map((options, columnIndex) => {
         return {
-          options: cp.OptionGroup.groupValues(options),
+          options: cp.OptionGroup.groupValues([...options].sort()),
           selectedOptions: [...selectedColumns[columnIndex]],
         };
       });

@@ -5,7 +5,7 @@
 'use strict';
 
 import Range from './range.js';
-import {CacheRequestBase} from './cache-request-base.js';
+import {CacheRequestBase, READONLY, READWRITE} from './cache-request-base.js';
 
 
 /**
@@ -61,15 +61,10 @@ const STORE_REPORTS = 'reports';
 const STORE_METADATA = 'metadata';
 const STORES = [STORE_REPORTS, STORE_METADATA];
 
-// Constants for IndexedDB options
-const TRANSACTION_MODE_READONLY = 'readonly';
-const TRANSACTION_MODE_READWRITE = 'readwrite';
-
-
 export default class ReportCacheRequest extends CacheRequestBase {
-  constructor(request) {
-    super(request);
-    const {searchParams} = new URL(request.url);
+  constructor(fetchEvent) {
+    super(fetchEvent);
+    const {searchParams} = new URL(fetchEvent.request.url);
 
     const id = searchParams.get('id');
     if (!id) {
@@ -121,7 +116,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
   }
 
   async read(db) {
-    const transaction = db.transaction(STORES, TRANSACTION_MODE_READONLY);
+    const transaction = db.transaction(STORES, READONLY);
 
     // Start all asynchronous actions at once then "await" only the results
     // needed.
@@ -213,7 +208,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
     const {report: networkReport, ...metadata} = networkResults;
     const {rows: networkRows, statistics} = networkReport;
 
-    const transaction = db.transaction(STORES, TRANSACTION_MODE_READWRITE);
+    const transaction = db.transaction(STORES, READWRITE);
     await Promise.all([
       this.writeReports_(transaction, networkResults),
       this.writeMetadata_(transaction, networkResults),

@@ -5,9 +5,10 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
+<script src="/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+<script src="/bower_components/web-component-tester/browser.js"></script>
 <link rel="import" href="/dashboard/spa/simple-redux.html">
 <link rel="import" href="/dashboard/spa/timeseries-cache.html">
-<link rel="import" href="/tracing/core/test_utils.html">
 
 <script type="module" src="/dashboard/spa/sw-utils/cache-request-base.js"></script>
 <script type="module" src="/dashboard/spa/sw-utils/timeseries-cache-request.js"></script>
@@ -22,27 +23,13 @@ global.TimeseriesCacheRequest = TimeseriesCacheRequest;
 
 <script>
 'use strict';
-
-function getColumnsByLevelOfDetail(levelOfDetail, statistic) {
-  switch (levelOfDetail) {
-    case 'xy':
-      return ['revision', 'timestamp', statistic];
-    case 'annotation':
-      return ['revision', 'alert', 'diagnostics', 'revisions'];
-    case 'histogram':
-      return ['revision', 'histogram'];
-    default:
-      throw new Error(`${levelOfDetail} is not a valid Level Of Detail`);
-  }
-}
-
-tr.b.unittest.testSuite(() => {
+suite('TimeseriesCacheRequest', function() {
   /**
    * mockRequest returns a `Request`[1] object mimicking a typical request to
    * the "/api/timeseries2" endpoint. The request is later used by `fetch`.
    * [1]: https://developer.mozilla.org/en-US/docs/Web/API/Request
    *
-   *   type parameters = {
+   *   type options = {
    *     testSuite: string,
    *     measurement: string,
    *     bot: string,
@@ -54,26 +41,21 @@ tr.b.unittest.testSuite(() => {
    *     maxRevision?: number,
    *   }
    */
-  function mockRequest(parameters) {
-    const url = new cp.TimeseriesRequest(parameters).url_;
-    return new Request(url);
+  function mockRequest(options) {
+    return new Request(new cp.TimeseriesRequest(options).url_);
   }
 
   /**
    * mockApiResponse differs from cp.RequestBase#localhostResponse_ by
    * being simpler, predictable, and tunable.
    *
-   *   type parameters = {
-   *     levelOfDetail: string,
-   *     minRevision?: number,
-   *     maxRevision?: number,
-   *   }
+   * levelOfDetail: string,
+   * minRevision?: number,
+   * maxRevision?: number,
    */
-  function mockApiResponse(parameters) {
-    const {levelOfDetail, minRevision = 1, maxRevision = 3} = parameters;
-    const columns = getColumnsByLevelOfDetail(levelOfDetail);
+  function mockApiResponse({levelOfDetail, minRevision = 1, maxRevision = 3}) {
+    const columns = cp.getColumnsByLevelOfDetail(levelOfDetail, 'avg');
     const data = [];
-
     for (let i = minRevision; i <= maxRevision; ++i) {
       const dataPoint = [];
       for (const _ of columns) {
@@ -88,21 +70,11 @@ tr.b.unittest.testSuite(() => {
     };
   }
 
-  function mockFetch(response, {
-    delay = 50,
-    status = 200,
-  } = {}) {
-    const actualFetch = global.fetch;
-    global.fetch = () => new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const blob = new Blob([JSON.stringify(response, null, 2)], {
-          type: 'application/json',
-        });
-        const res = new Response(blob, {status});
-        resolve(res);
-        global.fetch = actualFetch;
-      }, delay);
-    });
+  function mockFetch(response) {
+    global.fetch = async() => {
+      await cp.timeout(30);
+      return testUtils.jsonResponse(response);
+    };
   }
 
   test('mockFetch', async() => {
@@ -111,7 +83,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'statistic',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
     });
     mockFetch({
       improvement_direction: 1,
@@ -137,16 +109,16 @@ tr.b.unittest.testSuite(() => {
 
   test('mockResponse', async() => {
     const response = mockApiResponse({
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
       minRevision: 1,
       maxRevision: 3
     });
     assert.deepEqual(response, {
       improvement_direction: 1,
       data: [
-        [1, 1, 1],
-        [2, 2, 2],
-        [3, 3, 3],
+        [1, 1, 1, 1],
+        [2, 2, 2, 2],
+        [3, 3, 3, 3],
       ],
       units: 'sizeInBytes_smallerIsBetter',
     });
@@ -158,7 +130,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'avg',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
     };
 
     const databaseName = TimeseriesCacheRequest.databaseName(parameters);
@@ -170,14 +142,16 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     const request = mockRequest(parameters);
-    const race = new TimeseriesCacheRequest(request);
+    const race = new TimeseriesCacheRequest({request});
     const results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
   });
 
   test('handles_same_ranges', async() => {
@@ -186,7 +160,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'avg',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
     };
 
     const databaseName = TimeseriesCacheRequest.databaseName(parameters);
@@ -195,29 +169,33 @@ tr.b.unittest.testSuite(() => {
     await testUtils.deleteDatabaseForTest(databaseName);
 
     const request = mockRequest(parameters);
-    const response = mockApiResponse(parameters);
+    let response = mockApiResponse(parameters);
     mockFetch(response);
 
-    let race = new TimeseriesCacheRequest(request);
+    let race = new TimeseriesCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     await testUtils.flushWriterForTest();
+    response = mockApiResponse(parameters);
     mockFetch(response);
 
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
-    assert.lengthOf(results, 2);
-    assert.include(results, {name: 'IndexedDB', result: response});
-    assert.include(results, {name: 'Network', result: response});
+    assert.lengthOf(results, 3);
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.include(results, response);
   });
 
   test('handles_separate_ranges', async() => {
@@ -226,7 +204,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'avg',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
       minRevision: 1,
       maxRevision: 3,
     };
@@ -240,13 +218,15 @@ tr.b.unittest.testSuite(() => {
     let response = mockApiResponse(parameters);
     mockFetch(response);
 
-    let race = new TimeseriesCacheRequest(request);
+    let race = new TimeseriesCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     await testUtils.flushWriterForTest();
     parameters.minRevision = 4;
@@ -256,7 +236,7 @@ tr.b.unittest.testSuite(() => {
 
     mockFetch(response);
 
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
@@ -265,7 +245,9 @@ tr.b.unittest.testSuite(() => {
     // Only results from the network should be returned since the previous range
     // was [1, 3] and the current range is [4, 7].
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
   });
 
   test('handles_overlapping_ranges', async() => {
@@ -274,7 +256,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'avg',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
       minRevision: 1,
       maxRevision: 3,
     };
@@ -288,14 +270,16 @@ tr.b.unittest.testSuite(() => {
     let response = mockApiResponse(parameters);
     mockFetch(response);
 
-    let race = new TimeseriesCacheRequest(request);
+    let race = new TimeseriesCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     parameters.minRevision = 2;
     parameters.maxRevision = 4;
@@ -304,7 +288,7 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     await testUtils.flushWriterForTest();
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
@@ -315,10 +299,14 @@ tr.b.unittest.testSuite(() => {
     parameters.minRevision = 2;
     parameters.maxRevision = 3;
     const cacheResponse = mockApiResponse(parameters);
+    cacheResponse.data = cacheResponse.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
 
     assert.lengthOf(results, 2);
-    assert.include(results, {name: 'IndexedDB', result: cacheResponse});
-    assert.include(results, {name: 'Network', result: response});
+    assert.include(results, cacheResponse);
+    assert.include(results, response);
   });
 
   test('handles_multiple_separate_ranges', async() => {
@@ -328,7 +316,7 @@ tr.b.unittest.testSuite(() => {
       measurement: 'measurement',
       bot: 'bot',
       statistic: 'avg',
-      levelOfDetail: 'xy',
+      levelOfDetail: cp.LEVEL_OF_DETAIL.XY,
       minRevision: 1,
       maxRevision: 1,
     };
@@ -342,14 +330,16 @@ tr.b.unittest.testSuite(() => {
     let response = mockApiResponse(parameters);
     mockFetch(response);
 
-    let race = new TimeseriesCacheRequest(request);
+    let race = new TimeseriesCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     parameters.minRevision = 3;
     parameters.maxRevision = 3;
@@ -358,14 +348,16 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     await testUtils.flushWriterForTest();
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     parameters.minRevision = 2;
     parameters.maxRevision = 2;
@@ -374,14 +366,16 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     await testUtils.flushWriterForTest();
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.deepEqual(results[0], response);
 
     parameters.minRevision = 1;
     parameters.maxRevision = 3;
@@ -390,16 +384,16 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     await testUtils.flushWriterForTest();
-    race = new TimeseriesCacheRequest(request);
+    race = new TimeseriesCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 2);
-    assert.include(results, {name: 'IndexedDB', result: response});
-    assert.include(results, {name: 'Network', result: response});
+    response.data = response.data.map(d => cp.normalize(
+        [...cp.getColumnsByLevelOfDetail(cp.LEVEL_OF_DETAIL.XY, 'avg')], d));
+    assert.include(results, response);
   });
 });
-
 </script>

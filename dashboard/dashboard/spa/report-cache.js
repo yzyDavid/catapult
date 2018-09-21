@@ -16,11 +16,19 @@ tr.exportTo('cp', () => {
     constructor(options) {
       super(options);
       this.name_ = options.name;
+      this.method_ = 'POST';
       this.revisions_ = options.revisions;
       this.queryParams_ = new URLSearchParams();
       this.queryParams_.set('id', options.id);
       this.queryParams_.set('modified', options.modified.getTime());
       this.queryParams_.set('revisions', this.revisions_);
+    }
+
+    async* reader() {
+      const listener = new cp.ResultChannelReceiver(this.url_);
+      const response = await this.response;
+      if (response) yield response;
+      for await (const update of listener) yield update;
     }
 
     get url_() {
@@ -98,99 +106,6 @@ tr.exportTo('cp', () => {
     }
   }
 
-  class ReportCache extends cp.CacheBase {
-    /*
-     * type options = {
-     *   id: number,
-     *   name: string,
-     *   modified: Date,
-     *   revisions: [number|"latest"],
-     * }
-     */
-    constructor(options, dispatch, getState) {
-      super(options, dispatch, getState);
-      this.id_ = options.id;
-      this.name_ = options.name;
-      this.modified_ = options.modified;
-      this.revisions_ = options.revisions;
-    }
-
-    get cacheStatePath_() {
-      return 'reports';
-    }
-
-    computeCacheKey_() {
-      const keys = [
-        this.id_,
-        ...this.revisions_,
-      ];
-      return keys.join('/').replace(/\./g, '_');
-    }
-
-    get isInCache_() {
-      const path = `${this.cacheStatePath_}.${this.cacheKey_}`;
-      return Polymer.Path.get(this.rootState_, path) !== undefined;
-    }
-
-    async readFromCache_() {
-      const path = `${this.cacheStatePath_}.${this.cacheKey_}`;
-      return await Polymer.Path.get(this.rootState_, path);
-    }
-
-    createRequest_() {
-      return new ReportRequest({
-        id: this.id_,
-        name: this.name_,
-        modified: this.modified_,
-        revisions: this.revisions_,
-      });
-    }
-
-    onStartRequest_(request) {
-      this.dispatch_(Redux.UPDATE(this.cacheStatePath_, {
-        [this.cacheKey_]: request.response
-      }));
-    }
-
-    onFinishRequest_(response) {
-      this.dispatch_(Redux.UPDATE(this.cacheStatePath_, {
-        [this.cacheKey_]: response
-      }));
-    }
-
-    async* reader() {
-      this.ensureCacheState_();
-      this.cacheKey_ = this.computeCacheKey_();
-
-      if (this.isInCache_) {
-        yield await this.readFromCache_();
-        return;
-      }
-
-      const request = this.createRequest_();
-      const fullUrl = location.origin + request.url_;
-      const listener = new cp.ServiceWorkerListener(fullUrl);
-
-      this.onStartRequest_(request);
-      const response = await request.response;
-
-      // Cached results will first yield with an empty object then send the
-      // actual result through a BroadcastChannel to avoid useless JSON parsing.
-      // ServiceWorkerListener is listening for messages received on the
-      // BroadcastChannel.
-      if (response) {
-        this.onFinishRequest_(response);
-        yield response;
-      }
-
-      // Wait for the Service Worker to finish all it's tasks.
-      for await (const update of listener) {
-        this.onFinishRequest_(update);
-        yield update;
-      }
-    }
-  }
-
   /*
    * type options = {
    *   id: number,
@@ -199,8 +114,9 @@ tr.exportTo('cp', () => {
    *   revisions: [number|"latest"],
    * }
    */
-  const ReportReader = ({dispatch, getState, ...options}) =>
-    new ReportCache(options, dispatch, getState).reader();
+  const ReportReader = options => new ReportRequest(options).reader();
+  // TODO remove this shortcut
+  // TODO rename this file to ReportRequest
 
   return {
     ReportReader,

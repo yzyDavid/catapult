@@ -5,9 +5,10 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
+<script src="/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+<script src="/bower_components/web-component-tester/browser.js"></script>
 <link rel="import" href="/dashboard/spa/report-cache.html">
 <link rel="import" href="/dashboard/spa/simple-redux.html">
-<link rel="import" href="/tracing/core/test_utils.html">
 
 <script type="module" src="/dashboard/spa/sw-utils/cache-request-base.js"></script>
 <script type="module" src="/dashboard/spa/sw-utils/report-cache-request.js"></script>
@@ -22,8 +23,7 @@ global.ReportCacheRequest = ReportCacheRequest;
 
 <script>
 'use strict';
-
-tr.b.unittest.testSuite(() => {
+suite('ReportCacheRequest', function() {
   /**
    * mockRequest returns a `Request`[1] object mimicking a typical request to
    * the "/api/timeseries2" endpoint. The request is later used by `fetch`.
@@ -138,23 +138,14 @@ tr.b.unittest.testSuite(() => {
     return row;
   }
 
-  function mockFetch(response, {
-    delay = 50,
-    status = 200,
-  } = {}) {
+  function mockFetch(response) {
     const actualFetch = global.fetch;
-    global.fetch = () => new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const blob = new Blob([JSON.stringify(response, null, 2)], {
-          type: 'application/json',
-        });
-        const res = new Response(blob, {status});
-        resolve(res);
-        global.fetch = actualFetch;
-      }, delay);
-    });
+    global.fetch = async() => {
+      global.fetch = actualFetch;
+      await cp.timeout(30);
+      return testUtils.jsonResponse(response);
+    };
   }
-
 
   test('mockFetch', async() => {
     mockFetch({foo: 'bar'});
@@ -211,14 +202,14 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     const request = mockRequest(parameters);
-    const race = new ReportCacheRequest(request);
+    const race = new ReportCacheRequest({request});
     const results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
   });
 
   // After receiving results from the network, the cache will start yielding
@@ -240,26 +231,26 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     const request = mockRequest(parameters);
-    let race = new ReportCacheRequest(request);
+    let race = new ReportCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
 
     mockFetch(response);
     await testUtils.flushWriterForTest();
-    race = new ReportCacheRequest(request);
+    race = new ReportCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 2);
-    assert.include(results, {name: 'IndexedDB', result: response});
-    assert.include(results, {name: 'Network', result: response});
+    assert.include(results, response);
+    assert.include(results, response);
   });
 
   // When template ids change, the cache should not yield non-relevant data.
@@ -290,14 +281,14 @@ tr.b.unittest.testSuite(() => {
     mockFetch(responseA);
 
     const requestA = mockRequest(parameters.a);
-    let race = new ReportCacheRequest(requestA);
+    let race = new ReportCacheRequest({request: requestA});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: responseA});
+    assert.deepEqual(results[0], responseA);
 
     await testUtils.flushWriterForTest();
 
@@ -307,7 +298,7 @@ tr.b.unittest.testSuite(() => {
     // Request a report with a different id.
     const requestB = mockRequest(parameters.b);
     mockFetch(responseB);
-    race = new ReportCacheRequest(requestB);
+    race = new ReportCacheRequest({request: requestB});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
@@ -316,7 +307,7 @@ tr.b.unittest.testSuite(() => {
     // Only results from the network should be returned since the revision range
     // is different.
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: responseB});
+    assert.deepEqual(results[0], responseB);
   });
 
   // If the "modified" query parameter is changed, the database should be wiped
@@ -338,14 +329,14 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     let request = mockRequest(parameters);
-    let race = new ReportCacheRequest(request);
+    let race = new ReportCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
 
     await testUtils.flushWriterForTest();
 
@@ -355,28 +346,28 @@ tr.b.unittest.testSuite(() => {
     mockFetch(response);
 
     request = mockRequest(parameters);
-    race = new ReportCacheRequest(request);
+    race = new ReportCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
 
     await testUtils.flushWriterForTest();
 
     // Similar "modified" dates should return the same results.
     mockFetch(response);
-    race = new ReportCacheRequest(request);
+    race = new ReportCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 2);
-    assert.include(results, {name: 'IndexedDB', result: response});
-    assert.include(results, {name: 'Network', result: response});
+    assert.include(results, response);
+    assert.include(results, response);
   });
 
   // When revisions change, the cache should not yield non-relevant data.
@@ -397,14 +388,14 @@ tr.b.unittest.testSuite(() => {
     let response = mockApiResponse(parameters);
 
     mockFetch(response);
-    let race = new ReportCacheRequest(request);
+    let race = new ReportCacheRequest({request});
     let results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
 
     // Different revision ranges should return new data.
     parameters.revisions = [4, 5, 6];
@@ -413,15 +404,14 @@ tr.b.unittest.testSuite(() => {
 
     request = mockRequest(parameters);
     await testUtils.flushWriterForTest();
-    race = new ReportCacheRequest(request);
+    race = new ReportCacheRequest({request});
     results = [];
     for await (const contestant of race) {
       results.push(contestant);
     }
 
     assert.lengthOf(results, 1);
-    assert.deepEqual(results[0], {name: 'Network', result: response});
+    assert.deepEqual(results[0], response);
   });
 });
-
 </script>

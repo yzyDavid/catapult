@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 from google.appengine.ext import ndb
 
 from dashboard import alerts
@@ -24,21 +22,17 @@ HISTOGRAMS_QUERY_LIMIT = 1000
 ROWS_QUERY_LIMIT = 20000
 
 COLUMNS_REQUIRING_ROWS = {'timestamp', 'revisions'}.union(descriptor.STATISTICS)
-CACHE_SECONDS = 60 * 60 * 20
 
 
 class Timeseries2Handler(api_request_handler.ApiRequestHandler):
 
-  def get(self):
-    self.post()
-
   def _AllowAnonymous(self):
     return True
 
-  def PrivilegedPost(self, *args):
-    return self.UnprivilegedPost(*args)
+  def PrivilegedPost(self):
+    return self.UnprivilegedPost()
 
-  def UnprivilegedPost(self, *_):
+  def UnprivilegedPost(self):
     desc = descriptor.Descriptor(
         test_suite=self.request.get('test_suite'),
         measurement=self.request.get('measurement'),
@@ -60,8 +54,6 @@ class Timeseries2Handler(api_request_handler.ApiRequestHandler):
     except AssertionError:
       # The caller has requested internal-only data but is not authorized.
       raise api_request_handler.NotFoundError
-    self.response.headers['Cache-Control'] = '%s, max-age=%d' % (
-        'private' if query.private else 'public', CACHE_SECONDS)
     return result
 
 
@@ -136,12 +128,12 @@ class TimeseriesQuery(object):
   def _ResolveTimestamp(self, timestamp):
     query = graph_data.Row.query(
         graph_data.Row.parent_test.IN(self._test_keys),
-        graph_data.Row.timestamp < timestamp)
+        graph_data.Row.timestamp <= timestamp)
     query = query.order(-graph_data.Row.timestamp)
     row_keys = query.fetch(1, keys_only=True)
     if not row_keys:
       return None
-    return row_keys[0].integer_id() + 1
+    return row_keys[0].integer_id()
 
   def _CreateTestKeys(self):
     desc = self._descriptor.Clone()
@@ -161,8 +153,6 @@ class TimeseriesQuery(object):
     self._test_metadata_keys = [utils.TestMetadataKey(path) for path in test_paths]
     self._test_metadata_keys.extend(self._unsuffixed_test_metadata_keys)
     test_paths.extend(unsuffixed_test_paths)
-    for test_path in test_paths:
-      logging.info('test_path=%r', test_path)
 
     test_old_keys = [utils.OldStyleTestKey(path) for path in test_paths]
     self._test_keys = test_old_keys + self._test_metadata_keys
@@ -254,6 +244,15 @@ class TimeseriesQuery(object):
 
     with timing.CpuTimeLogger('rows'):
       for row in rows:
+        # Sometimes the dev environment just ignores some filters.
+        if self._min_revision and row.revision < self._min_revision:
+          continue
+        if self._min_timestamp and row.timestamp < self._min_timestamp:
+          continue
+        if self._max_revision and row.revision > self._max_revision:
+          continue
+        if self._max_timestamp and row.timestamp > self._max_timestamp:
+          continue
         datum = self._Datum(row.revision)
         if test_desc.statistic is None:
           datum['avg'] = self.Round(row.value)
@@ -303,7 +302,7 @@ class TimeseriesQuery(object):
         self._private = True
       datum = self._Datum(alert.end_revision)
       # TODO(benjhayden) bisect_status
-      datum['alert'] = alerts.GetAnomalyDict(alert)
+      datum['alert'] = alerts.AnomalyDicts2([alert])[0]
 
   @ndb.tasklet
   def _FetchHistograms(self):

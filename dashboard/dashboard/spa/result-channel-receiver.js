@@ -4,14 +4,11 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  /**
-   * ServiceWorkerListener creates a communication channel between the
-   * application and the service worker.
-   */
-  class ServiceWorkerListener {
+  class ResultChannelReceiver {
     constructor(url) {
+      url = location.origin + url;
       if (navigator.serviceWorker.controller === null &&
-          !ServiceWorkerListener.TESTING) {
+          !ResultChannelReceiver.TESTING) {
         // The request is force refresh (Shift + refresh) or there is no
         // active service worker.
         this.done_ = true;
@@ -32,7 +29,7 @@ tr.exportTo('cp', () => {
 
     handleMessage_({data: {type, payload}}) {
       switch (type) {
-        case 'RESULTS':
+        case 'RESULT':
           this.resolve_({done: false, value: payload});
           return;
         case 'DONE':
@@ -65,12 +62,9 @@ tr.exportTo('cp', () => {
     }
   }
 
-  // Set true when running unit tests so ServiceWorkerListener works without an
+  // Set true when running unit tests so ResultChannelReceiver works without an
   // active Service Worker.
-  ServiceWorkerListener.TESTING = false;
+  ResultChannelReceiver.TESTING = false;
 
-
-  return {
-    ServiceWorkerListener,
-  };
+  return {ResultChannelReceiver};
 });

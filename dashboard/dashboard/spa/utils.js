@@ -565,6 +565,14 @@ tr.exportTo('cp', () => {
     return colors;
   }
 
+  function normalize(columns, cells) {
+    const dict = {};
+    for (let i = 0; i < columns.length; ++i) {
+      dict[columns[i]] = cells[i];
+    }
+    return dict;
+  }
+
   return {
     afterRender,
     animationFrame,
@@ -582,6 +590,7 @@ tr.exportTo('cp', () => {
     measureTable,
     measureText,
     measureTrace,
+    normalize,
     setImmutable,
     sha,
     timeActions,

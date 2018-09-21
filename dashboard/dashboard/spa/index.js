@@ -36,14 +36,20 @@ ga('send', 'pageview');
 
 // Register the Service Worker when in production. Service Workers are not
 // helpful in development mode because all backend responses are being mocked.
-if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+if ('serviceWorker' in navigator && !window.IS_DEBUG) {
   const swChannel = new BroadcastChannel('service-worker');
+  const analyticsClientIdPromise = new Promise(resolve => ga(tracker => resolve(
+      tracker.get('clientId'))));
 
-  (async() => {
+  document.addEventListener('DOMContentLoaded', async() => {
     const [clientId] = await Promise.all([
-      new Promise(resolve => ga(tracker => resolve(tracker.get('clientId')))),
-      navigator.serviceWorker.register('service-worker.js'),
+      analyticsClientIdPromise,
+      navigator.serviceWorker.register(
+          'service-worker.js?' + VULCANIZED_TIMESTAMP.getTime()),
     ]);
+    if (navigator.serviceWorker.controller === null) {
+      location.reload();
+    }
 
     swChannel.postMessage({
       type: 'GOOGLE_ANALYTICS',
@@ -52,7 +58,7 @@ if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
         clientId,
       },
     });
-  })();
+  });
 }
 
 window.addEventListener('load', () => {

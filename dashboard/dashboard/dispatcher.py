@@ -75,7 +75,7 @@ _URL_MAPPING = [
     (r'/api/alerts', api_alerts.AlertsHandler),
     (r'/api/alerts/(.*)', api_alerts.AlertsHandler),
     (r'/api/bugs/(.*)', bugs.BugsHandler),
-    (r'/api/describe/(.*)', describe.DescribeHandler),
+    (r'/api/describe', describe.DescribeHandler),
     (r'/api/list_timeseries/(.*)', list_timeseries.ListTimeseriesHandler),
     (r'/api/report/generate', report_generate.ReportGenerateHandler),
     (r'/api/report/names', report_names.ReportNamesHandler),

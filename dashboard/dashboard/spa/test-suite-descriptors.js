@@ -7,16 +7,13 @@ tr.exportTo('cp', () => {
   class DescribeRequest extends cp.RequestBase {
     constructor(options) {
       super(options);
-      this.testSuite_ = options.testSuite;
+      this.method_ = 'POST';
+      this.body_ = new FormData();
+      this.body_.set('test_suite', options.testSuite);
     }
 
     get url_() {
-      // The TestSuitesHandler doesn't use this query parameter, but it helps
-      // the browser cache understand that it returns different data depending
-      // on whether the user is authorized to access internal data.
-      let internal = '';
-      if (this.headers_.has('Authorization')) internal = '?internal';
-      return `/api/describe/${this.testSuite_}${internal}`;
+      return '/api/describe';
     }
 
     async localhostResponse_() {
@@ -69,53 +66,6 @@ tr.exportTo('cp', () => {
         ],
       };
     }
-
-    postProcess_(json) {
-      if (json.unparsed) {
-        // eslint-disable-next-line no-console
-        console.log(json.unparsed);
-        return undefined;
-      }
-      return json;
-    }
-  }
-
-  class TestSuiteDescriptorCache extends cp.CacheBase {
-    get cacheStatePath_() {
-      let internal = '';
-      if (this.rootState_.userEmail) internal = 'Internal';
-      return 'testSuiteDescriptors' + internal;
-    }
-
-    computeCacheKey_() {
-      return this.options_.testSuite.replace(/\./g, '_');
-    }
-
-    get isInCache_() {
-      return this.rootState_[this.cacheStatePath_][this.cacheKey_] !==
-        undefined;
-    }
-
-    async readFromCache_() {
-      // The cache entry may be a promise: see onStartRequest_().
-      return await this.rootState_[this.cacheStatePath_][this.cacheKey_];
-    }
-
-    createRequest_() {
-      return new DescribeRequest({testSuite: this.options_.testSuite});
-    }
-
-    onStartRequest_(request) {
-      this.dispatch_(Redux.UPDATE(this.cacheStatePath_, {
-        [this.cacheKey_]: request.response,
-      }));
-    }
-
-    onFinishRequest_(result) {
-      this.dispatch_(Redux.UPDATE(this.cacheStatePath_, {
-        [this.cacheKey_]: result,
-      }));
-    }
   }
 
   function mergeDescriptor(merged, descriptor) {
@@ -137,9 +87,9 @@ tr.exportTo('cp', () => {
   }
 
   const ReadTestSuiteDescriptors = options =>
-    async function* (dispatch, getState) {
+    async function* () {
       const promises = options.testSuites.map(testSuite =>
-        new TestSuiteDescriptorCache({testSuite}, dispatch, getState).read());
+        new DescribeRequest({testSuite}).response);
       const mergedDescriptor = {
         measurements: new Set(),
         bots: new Set(),
@@ -156,8 +106,8 @@ tr.exportTo('cp', () => {
       }
     };
 
-  const PrefetchTestSuiteDescriptors = options => async(dispatch, getState) => {
-    const reader = ReadTestSuiteDescriptors(options)(dispatch, getState);
+  const PrefetchTestSuiteDescriptors = async options => {
+    const reader = ReadTestSuiteDescriptors(options)();
     for await (const _ of reader) {
       // The descriptors are not actually needed here, but
       // ReadTestSuiteDescriptors only actually fetches the data if the async
