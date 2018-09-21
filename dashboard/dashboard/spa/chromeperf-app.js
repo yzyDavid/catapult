@@ -88,8 +88,8 @@ tr.exportTo('cp', () => {
         enableNav, showingReportSection, alertsSectionIds, chartSectionIds) {
       return enableNav && (
         showingReportSection ||
-        !this._empty(alertsSectionIds) ||
-        !this._empty(chartSectionIds));
+        !this.isEmpty_(alertsSectionIds) ||
+        !this.isEmpty_(chartSectionIds));
     }
 
     observeReduxRoute_() {

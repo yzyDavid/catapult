@@ -56,7 +56,7 @@ tr.exportTo('cp', () => {
     }
 
     tooltipHidden_(tooltip) {
-      return !tooltip || !tooltip.isVisible || this._empty(tooltip.rows);
+      return !tooltip || !tooltip.isVisible || this.isEmpty_(tooltip.rows);
     }
 
     onDotMouseOut_(event) {

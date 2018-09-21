@@ -107,7 +107,7 @@ tr.exportTo('cp', () => {
 
   class ChartTimeseries extends cp.ElementBase {
     showPlaceholder(isLoading, lines) {
-      return !isLoading && this._empty(lines);
+      return !isLoading && this.isEmpty_(lines);
     }
 
     observeLineDescriptors_() {

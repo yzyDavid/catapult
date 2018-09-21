@@ -248,7 +248,7 @@ found in the LICENSE file.
       </pivot-table>
     </iron-collapse>
 
-    <template is="dom-if" if="[[!_empty(relatedTabs)]]">
+    <template is="dom-if" if="[[!isEmpty_(relatedTabs)]]">
       <iron-collapse id="related_tabs"
                      opened="[[isExpanded]]">
         <cp-tab-bar selected="[[selectedRelatedTabName]]">
@@ -261,13 +261,13 @@ found in the LICENSE file.
 
         <template is="dom-repeat" items="[[relatedTabs]]" as="tab" index-as="tabIndex">
           <iron-collapse
-              opened="[[_eq(tab.name, selectedRelatedTabName)]]"
+              opened="[[isEqual_(tab.name, selectedRelatedTabName)]]"
               class="related_tab">
             <div class="sparkline_container">
               <template is="dom-repeat" items="[[tab.renderedSparklines]]" as="sparkline" index-as="sparklineIndex">
                 <div
                     class="sparkline_tile"
-                    empty$="[[_empty(sparkline.layout.lines)]]"
+                    empty$="[[isEmpty_(sparkline.layout.lines)]]"
                     on-click="onSparklineTap_">
                   <div class="sparkline_name">[[sparkline.name]]</div>
                   <chart-timeseries

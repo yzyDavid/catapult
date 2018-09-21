@@ -33,6 +33,9 @@
 
     async focus() {
       this.nativeInput.focus();
+      // Sometimes there can be so much rendering happening around
+      // connectedCallback and other state updates that the first focus()
+      // doesn't take. Try, try again.
       while (cp.getActiveElement() !== this.nativeInput) {
         await cp.timeout(50);
         this.nativeInput.focus();

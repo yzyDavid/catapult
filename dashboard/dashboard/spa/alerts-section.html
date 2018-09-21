@@ -186,7 +186,7 @@ found in the LICENSE file.
 
       <cp-switch
           id="improvements"
-          disabled="[[!_empty(bug.selectedOptions)]]"
+          disabled="[[!isEmpty_(bug.selectedOptions)]]"
           checked$="[[showingImprovements]]"
           on-change="onToggleImprovements_">
         <template is="dom-if" if="[[showingImprovements]]">
@@ -199,7 +199,7 @@ found in the LICENSE file.
 
       <cp-switch
           id="triaged"
-          disabled="[[!_empty(bug.selectedOptions)]]"
+          disabled="[[!isEmpty_(bug.selectedOptions)]]"
           checked$="[[showingTriaged]]"
           on-change="onToggleTriaged_">
         <template is="dom-if" if="[[showingTriaged]]">
@@ -219,7 +219,7 @@ found in the LICENSE file.
       <span id="recent_bugs_container">
         <raised-button
             id="recent_bugs"
-            disabled$="[[_empty(recentlyModifiedBugs)]]"
+            disabled$="[[isEmpty_(recentlyModifiedBugs)]]"
             on-click="onTapRecentlyModifiedBugs_">
           Recent Bugs
         </raised-button>
@@ -280,16 +280,16 @@ found in the LICENSE file.
     <cp-loading loading$="[[isLoading_(isLoading, preview.isLoading)]]">
     </cp-loading>
 
-    <template is="dom-if" if="[[!_empty(alertGroups)]]">
+    <template is="dom-if" if="[[!isEmpty_(alertGroups)]]">
       <div id="triage_controls"
-           anySelected$="[[!_eq(0, selectedAlertsCount)]]">
+           anySelected$="[[!isEqual_(0, selectedAlertsCount)]]">
         <div id="selected_alerts_count">
           [[selectedAlertsCount]] selected
           alert[[_plural(selectedAlertsCount)]]
         </div>
 
         <div class="button"
-            disabled$="[[_eq(0, selectedAlertsCount)]]"
+            disabled$="[[isEqual_(0, selectedAlertsCount)]]"
             on-click="onCharts_">
           Open Chart[[_plural(selectedAlertsCount)]]
         </div>

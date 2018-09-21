@@ -271,7 +271,7 @@ found in the LICENSE file.
 
                     <template is="dom-if" if="[[showBugColumn]]">
                       <td>
-                        <template is="dom-if" if="[[!_eq(alert.bugId, '')]]">
+                        <template is="dom-if" if="[[!isEqual_(alert.bugId, '')]]">
                           <template is="dom-if" if="[[areAlertGroupsPlaceholders]]">
                             [[alert.bugId]]
                           </template>

@@ -35,7 +35,7 @@ tr.exportTo('cp', () => {
       return sum;
     }
 
-    _eq() {
+    isEqual_() {
       const test = arguments[0];
       for (const arg of Array.from(arguments).slice(1)) {
         if (arg !== test) return false;
@@ -43,7 +43,7 @@ tr.exportTo('cp', () => {
       return true;
     }
 
-    _len(seq) {
+    lengthOf_(seq) {
       if (seq === undefined) return 0;
       if (seq === null) return 0;
       if (seq instanceof Array || typeof(seq) === 'string') return seq.length;
@@ -52,12 +52,12 @@ tr.exportTo('cp', () => {
       return Object.keys(seq).length;
     }
 
-    _multiple(seq) {
-      return this._len(seq) > 1;
+    isMultiple_(seq) {
+      return this.lengthOf_(seq) > 1;
     }
 
-    _empty(seq) {
-      return this._len(seq) === 0;
+    isEmpty_(seq) {
+      return this.lengthOf_(seq) === 0;
     }
 
     _plural(num) {
@@ -79,6 +79,13 @@ tr.exportTo('cp', () => {
 
     // This is used to bind state properties in `buildProperties()` in utils.js.
     identity_(x) { return x; }
+  }
+
+  if (window.location.hostname === 'localhost') {
+    // timeReducer should appear before freezingReducer so that the timing
+    // doesn't include the overhead from freezingReducer. statePathReducer must
+    // be last because it changes the function signature.
+    Redux.DEFAULT_REDUCER_WRAPPERS.splice(1, 0, Redux.freezingReducer);
   }
 
   ElementBase.register = subclass => {

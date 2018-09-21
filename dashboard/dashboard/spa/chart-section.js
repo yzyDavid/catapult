@@ -23,11 +23,11 @@ tr.exportTo('cp', () => {
     }
 
     isShowingPivotTable_(histograms, isExpanded) {
-      return isExpanded && !this._empty(histograms);
+      return isExpanded && !this.isEmpty_(histograms);
     }
 
     isLegendOpen_(isExpanded, legend, histograms) {
-      return isExpanded && !this._empty(legend) && this._empty(histograms);
+      return isExpanded && !this.isEmpty_(legend) && this.isEmpty_(histograms);
     }
 
     testSuiteHref_(testSuites) {

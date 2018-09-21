@@ -5,12 +5,13 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
+<script src="/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+<script src="/bower_components/web-component-tester/browser.js"></script>
 <link rel="import" href="/dashboard/spa/simple-redux.html">
-<link rel="import" href="/tracing/core/test_utils.html">
 
 <script>
 'use strict';
-tr.b.unittest.testSuite(function() {
+suite('simple-redux', function() {
   test('renameReducer', function() {
     function cer() {}
     const renamer = Redux.renameReducer('redu');

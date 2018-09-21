@@ -29,17 +29,17 @@ tr.exportTo('cp', () => {
     isValid_(selectedOptions, alwaysEnabled, options) {
       if (this.isDisabled_(alwaysEnabled, options)) return true;
       if (!this.required) return true;
-      if (!this.requireSingle && !this._empty(selectedOptions)) return true;
+      if (!this.requireSingle && !this.isEmpty_(selectedOptions)) return true;
       if (this.requireSingle && (selectedOptions.length === 1)) return true;
       return false;
     }
 
     showRecommended_(recommended, query) {
-      return !this._empty(recommended) && this._empty(query);
+      return !this.isEmpty_(recommended) && this.isEmpty_(query);
     }
 
     showColumns_(columns, query) {
-      return !this._empty(columns) && this._empty(query);
+      return !this.isEmpty_(columns) && this.isEmpty_(query);
     }
 
     getInputValue_(isFocused, query, selectedOptions) {
@@ -121,7 +121,7 @@ tr.exportTo('cp', () => {
     ...cp.buildProperties('state', DropdownInput.State),
     largeDom: {statePath: 'largeDom'},
     rootFocusTimestamp: {statePath: 'focusTimestamp'},
-    isFocused: {computed: '_eq(focusTimestamp, rootFocusTimestamp)'},
+    isFocused: {computed: 'isEqual_(focusTimestamp, rootFocusTimestamp)'},
   };
 
   DropdownInput.observers = ['observeIsFocused_(isFocused)'];

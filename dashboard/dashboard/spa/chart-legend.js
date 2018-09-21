@@ -23,8 +23,8 @@ tr.exportTo('cp', () => {
       }));
     }
 
-    async onLeafTap_(event) {
-      this.dispatchEvent(new CustomEvent('leaf-tap', {
+    async onLeafClick_(event) {
+      this.dispatchEvent(new CustomEvent('leaf-click', {
         bubbles: true,
         composed: true,
         detail: event.model.item,

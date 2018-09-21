@@ -6,6 +6,7 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/bower_components/polymer/polymer.html">
+<link rel="import" href="/dashboard/spa/utils.html">
 
 <dom-module id="chart-legend">
   <template>
@@ -43,7 +44,7 @@ found in the LICENSE file.
              style$="color: [[item.color]];"
              on-mouseover="onLeafMouseOver_"
              on-mouseout="onLeafMouseOut_"
-             on-click="onLeafTap_">
+             on-click="onLeafClick_">
           [[item.label]]
         </div>
       </template>

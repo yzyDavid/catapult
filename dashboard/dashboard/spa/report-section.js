@@ -265,7 +265,7 @@ tr.exportTo('cp', () => {
     }
 
     numChangeColumns_(statistics) {
-      return 2 * this._len(statistics);
+      return 2 * this.lengthOf_(statistics);
     }
 
     canEdit_(table, userEmail) {

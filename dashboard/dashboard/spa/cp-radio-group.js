@@ -7,16 +7,16 @@
   class CpRadioGroup extends Polymer.Element {
     static get is() { return 'cp-radio-group'; }
 
-    async ready() {
+    ready() {
       super.ready();
       this.addEventListener('change', this.onItemChange_.bind(this));
     }
 
-    async onItemChange_(event) {
+    onItemChange_(event) {
       this.selected = event.target.name;
     }
 
-    async observeSelected_() {
+    observeSelected_(newValue, oldValue) {
       for (const item of this.querySelectorAll('cp-radio')) {
         item.checked = (item.name === this.selected);
       }

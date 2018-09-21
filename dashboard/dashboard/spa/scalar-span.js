@@ -3,33 +3,33 @@
    found in the LICENSE file.
 */
 'use strict';
-(() => {
+tr.exportTo('cp', () => {
   class ScalarSpan extends Polymer.Element {
     static get is() { return 'scalar-span'; }
 
     change_(unit, value) {
-      if (!unit) return '';
-      if (!unit.isDelta) return '';
-      if (unit.improvementDirection === tr.b.ImprovementDirection.DONT_CARE) {
-        return '';
-      }
-      if (value === 0) return '';
-      if (unit.improvementDirection ===
-          tr.b.ImprovementDirection.BIGGER_IS_BETTER) {
-        return this.value > 0 ? 'improvement' : 'regression';
-      }
-      return this.value < 0 ? 'improvement' : 'regression';
-    }
-
-    title_(unit, value) {
-      return this.change_(unit, value);
+      return ScalarSpan.getChange(unit, value);
     }
 
     format_(unit, value, maximumFractionDigits, unitPrefix) {
-      if (!unit) return '';
-      return unit.format(value, {maximumFractionDigits, unitPrefix});
+      return !unit ? '' : unit.format(
+          value, {maximumFractionDigits, unitPrefix});
     }
   }
+
+  ScalarSpan.getChange = (unit, value) => {
+    if (!unit) return '';
+    if (!unit.isDelta) return '';
+    if (unit.improvementDirection === tr.b.ImprovementDirection.DONT_CARE) {
+      return '';
+    }
+    if (value === 0) return '';
+    if (unit.improvementDirection ===
+        tr.b.ImprovementDirection.BIGGER_IS_BETTER) {
+      return value > 0 ? 'improvement' : 'regression';
+    }
+    return value < 0 ? 'improvement' : 'regression';
+  };
 
   ScalarSpan.properties = {
     maximumFractionDigits: {type: Number},
@@ -39,4 +39,6 @@
   };
 
   customElements.define(ScalarSpan.is, ScalarSpan);
-})();
+
+  return {ScalarSpan};
+});

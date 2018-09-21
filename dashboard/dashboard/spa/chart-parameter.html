@@ -34,7 +34,7 @@ found in the LICENSE file.
     </style>
 
     <dropdown-input state-path="[[statePath]]">
-      <template is="dom-if" if="[[!_empty(tags.options)]]">
+      <template is="dom-if" if="[[!isEmpty_(tags.options)]]">
         <div id="dropdown_extra" slot="dropdown_extra">
           <span id="tag_head">
             Tags

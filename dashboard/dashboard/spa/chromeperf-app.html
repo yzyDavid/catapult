@@ -143,7 +143,7 @@ found in the LICENSE file.
 
           <raised-button
               title="Close all charts"
-              disabled$="[[_empty(chartSectionIds)]]"
+              disabled$="[[isEmpty_(chartSectionIds)]]"
               on-click="onCloseAllCharts_">
             <iron-icon icon="cp:close">
             </iron-icon>
@@ -255,7 +255,7 @@ found in the LICENSE file.
 
         <raised-button
             title="Close all charts"
-            disabled$="[[_empty(chartSectionIds)]]"
+            disabled$="[[isEmpty_(chartSectionIds)]]"
             on-click="onCloseAllCharts_">
           <iron-icon icon="cp:close">
           </iron-icon>

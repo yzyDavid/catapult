@@ -302,7 +302,7 @@ found in the LICENSE file.
             <template is="dom-repeat" items="[[tooltip.rows]]" as="row" index-as="rowIndex">
               <tr style$="color: [[row.color]]">
                 <td colspan$="[[row.colspan]]">[[row.name]]</td>
-                <template is="dom-if" if="[[!_eq(row.colspan, 2)]]">
+                <template is="dom-if" if="[[!isEqual_(row.colspan, 2)]]">
                   <td>[[row.value]]</td>
                 </template>
               </tr>
