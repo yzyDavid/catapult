@@ -135,7 +135,7 @@ tr.exportTo('cp', () => {
       selection.removeAllRanges();
       selection.addRange(range);
       document.execCommand('copy');
-      await this.dispatch('toastCopied', this.statePath, true);
+      await this.$.copied.open();
       this.$.scratch.innerText = '';
     }
 
@@ -690,13 +690,6 @@ tr.exportTo('cp', () => {
         dispatch(Redux.UPDATE(statePath, {maxRevision: maxRevisionInput}));
         ReportSection.actions.loadReports(statePath)(dispatch, getState);
       },
-
-    toastCopied: statePath => async(dispatch, getState) => {
-      dispatch(Redux.UPDATE(statePath, {copiedMeasurements: true}));
-      await cp.timeout(5000);
-      // TODO return if a different table was copied during the timeout.
-      dispatch(Redux.UPDATE(statePath, {copiedMeasurements: false}));
-    },
 
     showTooltip: (statePath, tooltip) => async(dispatch, getState) => {
       dispatch(Redux.UPDATE(statePath, {tooltip}));
