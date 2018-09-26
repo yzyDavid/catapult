@@ -164,27 +164,6 @@ tr.exportTo('cp', () => {
       return window.IS_PRODUCTION;
     }
 
-    getChartTitle_(ids) {
-      if (ids === undefined || ids.length === 0) return '';
-      if (ids.length === 1) {
-        const title = this.chartSectionsById[ids[0]].title;
-        if (title) return title;
-      }
-      return ids.length + ' charts';
-    }
-
-    getAlertsTitle_(ids) {
-      if (ids === undefined || ids.length === 0) return '';
-      if (ids.length === 1) {
-        const section = this.alertsSectionsById[ids[0]];
-        if (section) {
-          const title = cp.AlertsSection.getTitle(section);
-          if (title) return title;
-        }
-      }
-      return ids.length + ' alerts-sections';
-    }
-
     onReset_(event) {
       this.dispatch('reset', this.statePath);
     }

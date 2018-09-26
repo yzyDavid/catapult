@@ -8,7 +8,10 @@
     static get is() { return 'cp-toast'; }
   }
   CpToast.properties = {
-    opened: {type: Boolean},
+    opened: {
+      type: Boolean,
+      reflectToAttribute: true,
+    },
   };
   customElements.define(CpToast.is, CpToast);
 })();

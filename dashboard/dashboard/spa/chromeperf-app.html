@@ -93,6 +93,17 @@ found in the LICENSE file.
         font-weight: bold;
       }
 
+      cp-toast {
+        border-radius: 24px;
+        cursor: pointer;
+        text-transform: uppercase;
+        user-select: none;
+      }
+
+      cp-toast iron-icon {
+        color: var(--background-color, white);
+      }
+
       @media (max-width: 1100px) {
         .nav_button_label {
           display: none;
@@ -270,16 +281,16 @@ found in the LICENSE file.
       [[vulcanizedDate]]
     </span>
 
-    <cp-toast opened="[[closedAlertsIds]]">
-      <raised-button on-click="onReopenClosedAlerts_">
-        Reopen [[getAlertsTitle_(closedAlertsIds)]]
-      </raised-button>
+    <cp-toast opened="[[closedAlertsIds]]" on-click="onReopenClosedAlerts_">
+      <iron-icon icon="cp:alert">
+      </iron-icon>
+      Reopen alerts
     </cp-toast>
 
-    <cp-toast opened="[[closedChartIds]]">
-      <raised-button on-click="onReopenClosedChart_">
-        Reopen [[getChartTitle_(closedChartIds)]]
-      </raised-button>
+    <cp-toast opened="[[closedChartIds]]" on-click="onReopenClosedChart_">
+      <iron-icon icon="cp:chart">
+      </iron-icon>
+      Reopen chart
     </cp-toast>
   </template>
 </dom-module>
