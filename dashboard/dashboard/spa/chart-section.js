@@ -437,7 +437,7 @@ tr.exportTo('cp', () => {
 
       // Wait to populateColumns until after the user selects a memory
       // measurement.
-      if (!state.measurement.columns &&
+      if (!state.measurement.columns.length &&
           state.measurement.selectedOptions.filter(
               m => m.startsWith('memory:')).length) {
         cp.DropdownInput.actions.populateColumns(
