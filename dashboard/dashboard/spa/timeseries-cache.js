@@ -20,7 +20,7 @@ tr.exportTo('cp', () => {
    * fetchDescriptors are generated for /api/timeseries2. See
    * Timeseries2Handler.
    * A fetchDescriptor contains a single testPath, columns, and optionally
-   * minRev, maxRev, minTimestampMs, and maxTimestampMs.
+   * minRevision, maxRevision.
    */
 
   const PRIORITY = {
@@ -130,12 +130,6 @@ tr.exportTo('cp', () => {
       }
       if (options.maxRevision) {
         this.queryParams_.set('max_revision', options.maxRevision);
-      }
-      if (options.minTimestamp) {
-        this.queryParams_.set('min_timestamp', options.minTimestamp);
-      }
-      if (options.maxTimestamp) {
-        this.queryParams_.set('max_timestamp', options.maxTimestamp);
       }
     }
 

@@ -901,10 +901,7 @@ tr.exportTo('cp', () => {
           buildType: 'ref',
         });
       }
-      const minTimestampMs = new Date() - MS_PER_MONTH;
-      dispatch(Redux.UPDATE(`${statePath}.preview`, {
-        lineDescriptors, minTimestampMs,
-      }));
+      dispatch(Redux.UPDATE(`${statePath}.preview`, {lineDescriptors}));
 
       const testSuites = new Set();
       for (const descriptor of lineDescriptors) {

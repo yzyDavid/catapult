@@ -43,8 +43,6 @@ tr.exportTo('cp', () => {
 
   class TimeseriesIterator {
     constructor(lineDescriptor, timeseries, range) {
-      this.minTimestampMs_ = range.minTimestampMs;
-      this.maxTimestampMs_ = range.maxTimestampMs;
       this.minRevision_ = range.minRevision;
       this.maxRevision_ = range.maxRevision;
       this.lineDescriptor_ = lineDescriptor;
@@ -58,10 +56,6 @@ tr.exportTo('cp', () => {
     }
 
     findStartIndex_() {
-      if (this.minTimestampMs_) {
-        return tr.b.findLowIndexInSortedArray(
-            this.timeseries_, d => d.timestamp, this.minTimestampMs_);
-      }
       if (this.minRevision_) {
         return tr.b.findLowIndexInSortedArray(
             this.timeseries_, ChartTimeseries.getX,
@@ -71,10 +65,6 @@ tr.exportTo('cp', () => {
     }
 
     findEndIndex_() {
-      if (this.maxTimestampMs_) {
-        return tr.b.findLowIndexInSortedArray(
-            this.timeseries_, d => d.timestamp, this.maxTimestampMs_);
-      }
       if (this.maxRevision_) {
         return tr.b.findLowIndexInSortedArray(
             this.timeseries_, ChartTimeseries.getX,
@@ -220,8 +210,6 @@ tr.exportTo('cp', () => {
     if (a.measurement !== b.measurement) return false;
     if (a.statistic !== b.statistic) return false;
     if (a.buildType !== b.buildType) return false;
-    if (a.minTimestampMs !== b.minTimestampMs) return false;
-    if (a.maxTimestampMs !== b.maxTimestampMs) return false;
     if (a.minRevision !== b.minRevision) return false;
     if (a.maxRevision !== b.maxRevision) return false;
     return true;
@@ -430,8 +418,6 @@ tr.exportTo('cp', () => {
             lineDescriptor, timeserieses, state.levelOfDetail, {
               minRevision: state.minRevision,
               maxRevision: state.maxRevision,
-              minTimestamp: state.minTimestamp,
-              maxTimestamp: state.maxTimestamp,
             });
 
         if (data.length === 0) return state;
@@ -536,8 +522,6 @@ tr.exportTo('cp', () => {
     const revisionOptions = {
       minRevision: state.minRevision,
       maxRevision: state.maxRevision,
-      minTimestamp: state.minTimestamp,
-      maxTimestamp: state.maxTimestamp,
     };
     const readers = [];
     for (const lineDescriptor of lineDescriptors) {
