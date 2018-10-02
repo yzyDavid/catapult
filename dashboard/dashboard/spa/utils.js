@@ -573,6 +573,10 @@ tr.exportTo('cp', () => {
     return dict;
   }
 
+  function denormalize(objects, columnNames) {
+    return objects.map(obj => columnNames.map(col => obj[col]));
+  }
+
   return {
     afterRender,
     animationFrame,
@@ -581,6 +585,7 @@ tr.exportTo('cp', () => {
     buildProperties,
     buildState,
     deepFreeze,
+    denormalize,
     generateColors,
     getActiveElement,
     idle,

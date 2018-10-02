@@ -187,14 +187,16 @@ tr.exportTo('cp', () => {
       const sequenceLength = 100;
       const nowMs = new Date() - 0;
       for (let i = 0; i < sequenceLength; i += 1) {
-        // revision, timestamp, value
-        data.push([
-          i * 100,
-          nowMs - ((sequenceLength - i - 1) * (2592105834 / 50)),
-          parseInt(100 * Math.random()),
-        ]);
+        data.push({
+          revision: i * 100,
+          timestamp: nowMs - ((sequenceLength - i - 1) * (2592105834 / 50)),
+          avg: parseInt(100 * Math.random()),
+          count: 1,
+          std: parseInt(50 * Math.random()),
+          // TODO diagnostics, revisions, alert
+        });
       }
-      return {data, units};
+      return {data: cp.denormalize(data, this.columns_), units};
     }
   }
 

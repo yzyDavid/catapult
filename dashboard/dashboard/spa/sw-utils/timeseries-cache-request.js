@@ -34,11 +34,6 @@ function normalize(table, columnNames) {
   });
 }
 
-// TODO move this to an ES6 module and share with the page.
-function denormalize(objects, columnNames) {
-  return objects.map(obj => columnsNames.map(col => obj[col]));
-}
-
 /**
  * Finds the first index in the array whose value is >= loVal.
  *
