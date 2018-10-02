@@ -7,7 +7,7 @@
 import KeyValueCacheRequest from './key-value-cache-request.js';
 
 export default class DescribeCacheRequest extends KeyValueCacheRequest {
-  async databaseKey() {
+  async getDatabaseKey() {
     const headers = this.fetchEvent.request.headers;
     const maybeInternal = headers.has('Authorization') ? '_internal' : '';
     const body = await this.fetchEvent.request.clone().formData();

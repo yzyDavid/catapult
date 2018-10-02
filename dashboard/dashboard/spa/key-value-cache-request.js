@@ -10,6 +10,13 @@ const STORE_DATA = 'data';
 const EXPIRATION_KEY = '_expiresTime';
 
 export default class KeyValueCacheRequest extends CacheRequestBase {
+  constructor(fetchEvent) {
+    super(fetchEvent);
+    KeyValueCacheRequest.IN_PROGRESS.push(this);
+    this.databaseKey = this.getDatabaseKey();
+    this.response = this.getResponse();
+  }
+
   get timingCategory() {
     return 'keyvalue';
   }
@@ -38,31 +45,47 @@ export default class KeyValueCacheRequest extends CacheRequestBase {
     return 20 * 60 * 60 * 1000;
   }
 
-  async databaseKey() {
-    throw new Error(`${this.constructor.name} must override databaseKey`);
-  }
-
-  async openStore_(mode) {
-    const db = await this.openIDB_(this.databaseName);
-    const transaction = db.transaction([STORE_DATA], mode);
-    return transaction.objectStore(STORE_DATA);
+  async getDatabaseKey() {
+    throw new Error(`${this.constructor.name} must override getDatabaseKey`);
   }
 
   async write_(key, value) {
     const timing = this.time('Write');
-    const dataStore = await this.openStore_(READWRITE);
-    const expiration = new Date() + this.expirationMs;
-    await dataStore.put({value, [EXPIRATION_KEY]: expiration.toISOString()}, key);
+    const db = await this.openIDB_(this.databaseName);
+    const transaction = db.transaction([STORE_DATA], READWRITE);
+    const dataStore = transaction.objectStore(STORE_DATA);
+    const expiration = new Date(new Date().getTime() + this.expirationMs);
+    dataStore.put({value, [EXPIRATION_KEY]: expiration.toISOString()}, key);
+    await transaction.complete;
     timing.end();
+
+    const index = KeyValueCacheRequest.IN_PROGRESS.indexOf(this);
+    KeyValueCacheRequest.IN_PROGRESS.splice(index, 1);
   }
 
   async getResponse() {
-    const key = await this.databaseKey();
-    const dataStore = await this.openStore_(READONLY);
+    const key = await this.databaseKey;
+    const db = await this.openIDB_(this.databaseName);
+    const transaction = db.transaction([STORE_DATA], READONLY);
+    const dataStore = transaction.objectStore(STORE_DATA);
     const entry = await dataStore.get(key);
-    if (entry && (new Date(entry[EXPIRATION_KEY]) < new Date())) {
+    if (entry && (new Date(entry[EXPIRATION_KEY]) > new Date())) {
       return entry.value;
     }
+
+    for (const other of KeyValueCacheRequest.IN_PROGRESS) {
+      if (other !== this &&
+          key === (await other.databaseKey) &&
+          KeyValueCacheRequest.IN_PROGRESS.includes(other)) {
+        // Double-check that other wasn't removed from IN_PROGRESS while
+        // awaiting its databaseKey. Remove `this` from IN_PROGRESS so that
+        // `other` doesn't await `this.response`.
+        const index = KeyValueCacheRequest.IN_PROGRESS.indexOf(this);
+        KeyValueCacheRequest.IN_PROGRESS.splice(index, 1);
+        return await other.response;
+      }
+    }
+
     const response = await this.timePromise(
         'Network', fetch(this.fetchEvent.request));
     const value = await this.timePromise('Parse JSON', response.json());
@@ -71,6 +94,8 @@ export default class KeyValueCacheRequest extends CacheRequestBase {
   }
 
   async respond() {
-    this.fetchEvent.respondWith(this.getResponse().then(jsonResponse));
+    this.fetchEvent.respondWith(this.response.then(jsonResponse));
   }
 }
+
+KeyValueCacheRequest.IN_PROGRESS = [];

@@ -124,11 +124,13 @@ tr.exportTo('cp', () => {
           const td = document.createElement('td');
           tr.appendChild(td);
           const scalar = row.scalars[scalarIndex];
-          if (!isNaN(scalar.value)) {
-            td.innerText = scalar.unit.format(scalar.value, {
-              unitPrefix: scalar.unitPrefix,
-            }).match(/^(-?[,0-9]+\.?[0-9]*)/)[0];
-          }
+          if (isNaN(scalar.value) || !isFinite(scalar.value)) continue;
+          const scalarStr = scalar.unit.format(scalar.value, {
+            unitPrefix: scalar.unitPrefix,
+          });
+          const numberMatch = scalarStr.match(/^(-?[,0-9]+\.?[0-9]*)/);
+          if (!numberMatch) continue;
+          td.innerText = numberMatch[0];
         }
       }
 

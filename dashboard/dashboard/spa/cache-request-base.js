@@ -190,6 +190,7 @@ class WritingQueue {
     this.timeoutEnabled = true;
     this.queue = [];
     this.timeoutId = undefined;
+    this.flushing_ = false;
   }
 
   enqueue(writeFunc) {
@@ -204,23 +205,27 @@ class WritingQueue {
     this.timeoutId = setTimeout(this.flush.bind(this), WRITING_QUEUE_DELAY_MS);
   }
 
-  flush() {
-    const promises = this.queue.map(writeFunc => (async() => {
+  async flush() {
+    if (this.flushing_) return;
+    this.flushing_ = true;
+
+    while (this.queue.length) {
+      // TODO pause flushing when new requests start, resume when they complete.
+      const task = this.queue.shift();
       try {
-        await writeFunc();
+        await task();
       } catch (err) {
+        console.error(err);
         analytics.sendException(err);
       }
-    })());
+    }
 
-    this.queue = [];
+    this.flushing_ = false;
 
     // Record the size of the connection pool to see if LRU eviction would be
     // necessary for the future.
-    const count = CacheRequestBase.connectionPool.size;
-    analytics.sendEvent('IndexedDB', 'Connection Pool Size', count);
-
-    return promises;
+    analytics.sendEvent('IndexedDB', 'Connection Pool Size',
+      CacheRequestBase.connectionPool.size);
   }
 }
 
@@ -260,8 +265,7 @@ export async function flushWriterForTest() {
     clearTimeout(CacheRequestBase.writer.timeoutId);
   }
 
-  const tasks = CacheRequestBase.writer.flush();
-  await Promise.all(tasks);
+  await CacheRequestBase.writer.flush();
 }
 
 

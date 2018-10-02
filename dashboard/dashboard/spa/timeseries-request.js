@@ -138,7 +138,7 @@ tr.exportTo('cp', () => {
       let unit = tr.b.Unit.byJSONName[response.units];
       let conversionFactor = 1;
       if (!unit) {
-        const info = tr.v.LEGACY_UNIT_INFO.get(action.units);
+        const info = tr.v.LEGACY_UNIT_INFO.get(response.units);
         if (info) {
           conversionFactor = info.conversionFactor || 1;
           unit = tr.b.Unit.byName[info.name];

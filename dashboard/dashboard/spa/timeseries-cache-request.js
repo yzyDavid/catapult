@@ -391,20 +391,20 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
 
   async updateAccessTime_() {
     const database = await this.openIDB_(this.databaseName);
-    const transaction = db.transaction([STORE_METADATA], READWRITE);
+    const transaction = database.transaction([STORE_METADATA], READWRITE);
     const metadataStore = transaction.objectStore(STORE_METADATA);
-    await metadataStore.put(new Date(), ACCESS_TIME_KEY);
+    await metadataStore.put(new Date().toISOString(), ACCESS_TIME_KEY);
   }
 
   async writeData_(transaction, data) {
     const timing = this.time('Write - Data');
     const dataStore = transaction.objectStore(STORE_DATA);
-    for (const datum of data) {
+    await Promise.all(data.map(async datum => {
       // Merge with existing data
       const prev = await dataStore.get(datum.revision);
       const next = Object.assign({}, prev, datum);
-      dataStore.put(next, datum.revision);
-    }
+      await dataStore.put(next, datum.revision);
+    }));
     timing.end();
   }
 

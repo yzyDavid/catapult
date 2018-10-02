@@ -92,9 +92,9 @@ def Main():
   _AddToPathIfNeeded(catapult_path)
   tracing_path = os.path.join(catapult_path, 'tracing')
   _AddToPathIfNeeded(tracing_path)
-  spa_path = os.path.join(dashboard_path, 'dashboard', 'spa')
   import dashboard
 
+  spa_path = os.path.join(dashboard_path, 'dashboard', 'spa')
   temp_dir = tempfile.mkdtemp()
 
   try:
