@@ -4,13 +4,13 @@
 */
 'use strict';
 
-import DescribeCacheRequest from './sw-utils/describe-cache-request.js';
-import ReportCacheRequest from './sw-utils/report-cache-request.js';
-import ReportNamesCacheRequest from './sw-utils/report-names-cache-request.js';
-import SessionIdCacheRequest from './sw-utils/session-id-cache-request.js';
-import TestSuitesCacheRequest from './sw-utils/test-suites-cache-request.js';
-import TimeseriesCacheRequest from './sw-utils/timeseries-cache-request.js';
-import analytics from './sw-utils/google-analytics.js';
+import DescribeCacheRequest from './describe-cache-request.js';
+import ReportCacheRequest from './report-cache-request.js';
+import ReportNamesCacheRequest from './report-names-cache-request.js';
+import SessionIdCacheRequest from './session-id-cache-request.js';
+import TestSuitesCacheRequest from './test-suites-cache-request.js';
+import TimeseriesCacheRequest from './timeseries-cache-request.js';
+import analytics from './google-analytics.js';
 
 const channel = new BroadcastChannel('service-worker');
 
