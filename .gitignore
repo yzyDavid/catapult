@@ -38,5 +38,3 @@ catapult_base/catapult_base/bin/
 # Generated fetched binary's timestamp
 # See details in py_utils.cloud_storage.GetIfChanged(file_path, bucket) method.
 .fetchts
-GIT_DIFF_ORIGIN_FILES
-IGNORE_GIT_DIFF_ORIGIN_FILES

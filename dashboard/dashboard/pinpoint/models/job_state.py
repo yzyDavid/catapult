@@ -59,8 +59,10 @@ class JobState(object):
     self._attempts = {}
 
   @property
-  def comparison_mode(self):
-    return self._comparison_mode
+  def metric(self):
+    if self._comparison_mode == 'functional':
+      return 'Failure rate'
+    return self._quests[-1].metric if self._quests else ''
 
   def AddAttempts(self, change):
     if not hasattr(self, '_pin'):

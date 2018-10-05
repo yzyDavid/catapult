@@ -6,18 +6,15 @@ import unittest
 
 from telemetry.internal.results import page_test_results
 from telemetry.page import page as page_module
-from telemetry.web_perf.metrics import rendering_stats
 from telemetry.web_perf.metrics import smoothness
 
 
 class _MockRenderingStats(object):
 
   stats = ['refresh_period', 'frame_timestamps', 'frame_times', 'paint_times',
-           'painted_pixel_counts', 'record_times',
-           'recorded_pixel_counts', 'approximated_pixel_percentages',
-           'checkerboarded_pixel_percentages', 'input_event_latency',
-           'frame_queueing_durations', 'main_thread_scroll_latency',
-           'gesture_scroll_update_latency']
+           'painted_pixel_counts', 'record_times', 'recorded_pixel_counts',
+           'input_event_latency', 'frame_queueing_durations',
+           'main_thread_scroll_latency', 'gesture_scroll_update_latency']
 
   def __init__(self, **kwargs):
     self.input_event_latency = None  # to avoid pylint no-member error
@@ -44,10 +41,10 @@ class SmoothnessMetricUnitTest(unittest.TestCase):
       setattr(stats, stat, [[10, 20], [30, 40, 50]])
     results = page_test_results.PageTestResults()
     results.WillRunPage(self.page)
-    self.metric._PopulateResultsFromStats(results, stats, False, False)
+    self.metric._PopulateResultsFromStats(results, stats, False)
     current_page_run = results.current_page_run
     self.assertTrue(current_page_run.ok)
-    expected_values_count = 8
+    expected_values_count = 6
     self.assertEquals(expected_values_count, len(current_page_run.values))
 
   def testHasEnoughFrames(self):
@@ -60,49 +57,6 @@ class SmoothnessMetricUnitTest(unittest.TestCase):
     has_enough_frames = self.metric._HasEnoughFrames(
         self.not_enough_frames_timestamps)
     self.assertFalse(has_enough_frames)
-
-  def testComputeSurfaceFlingerMetricNoJank(self):
-    stats = _MockRenderingStats(refresh_period=10,
-                                frame_timestamps=[[10, 20], [130, 140, 150]],
-                                frame_times=[[10], [10, 10]])
-    avg_surface_fps, jank_count, max_frame_delay, frame_lengths = (
-        self.metric._ComputeSurfaceFlingerMetric(self.page, stats))
-    self.assertEquals([1, 1, 1], frame_lengths.values)
-    self.assertEquals(1, max_frame_delay.value)
-    self.assertEquals(0, jank_count.value)
-    self.assertEquals(100, avg_surface_fps.value)
-
-  def testComputeSurfaceFlingerMetricJank(self):
-    stats = _MockRenderingStats(
-        refresh_period=10,
-        frame_timestamps=[[10, 20, 50], [130, 140, 150, 170, 180]],
-        frame_times=[[10, 30], [10, 10, 20, 10]])
-    avg_surface_fps, jank_count, max_frame_delay, frame_lengths = (
-        self.metric._ComputeSurfaceFlingerMetric(self.page, stats))
-    self.assertEquals([1, 3, 1, 1, 2, 1], frame_lengths.values)
-    self.assertEquals(3, max_frame_delay.value)
-    self.assertEquals(2, jank_count.value)
-    self.assertEquals(67, avg_surface_fps.value)
-
-  def testComputeFrameTimeMetricWithNotEnoughFrames(self):
-    stats = _MockRenderingStats(
-        refresh_period=10,
-        frame_timestamps=self.not_enough_frames_timestamps,
-        frame_times=[[10, 20], [30, 40, 50]])
-    avg_surface_fps, jank_count, max_frame_delay, frame_lengths = (
-        self.metric._ComputeSurfaceFlingerMetric(self.page, stats))
-    self.assertEquals(None, avg_surface_fps.value)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      avg_surface_fps.none_value_reason)
-    self.assertEquals(None, jank_count.value)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      jank_count.none_value_reason)
-    self.assertEquals(None, max_frame_delay.value)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      max_frame_delay.none_value_reason)
-    self.assertEquals(None, frame_lengths.values)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      frame_lengths.none_value_reason)
 
   def testComputeLatencyMetric(self):
     stats = _MockRenderingStats(frame_timestamps=self.good_timestamps,
@@ -210,50 +164,3 @@ class SmoothnessMetricUnitTest(unittest.TestCase):
     self.assertEquals(None, percentage_smooth_value.value)
     self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
                       percentage_smooth_value.none_value_reason)
-
-  def testComputeMeanPixelsApproximated(self):
-    stats = _MockRenderingStats(
-        frame_timestamps=self.good_timestamps,
-        approximated_pixel_percentages=[[10, 20], [30, 40, 50]])
-    mean_pixels_value = self.metric._ComputeMeanPixelsApproximated(
-        self.page, stats)
-    self.assertEquals(30, mean_pixels_value.value)
-
-  def testComputeMeanPixelsApproximatedWithNotEnoughFrames(self):
-    stats = _MockRenderingStats(
-        frame_timestamps=self.not_enough_frames_timestamps,
-        approximated_pixel_percentages=[[10, 20], [30, 40, 50]])
-    mean_pixels_value = self.metric._ComputeMeanPixelsApproximated(
-        self.page, stats)
-    self.assertEquals(None, mean_pixels_value.value)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      mean_pixels_value.none_value_reason)
-
-  def testComputeMeanPixelsCheckerboarded(self):
-    stats = _MockRenderingStats(
-        frame_timestamps=self.good_timestamps,
-        checkerboarded_pixel_percentages=[[10, 20], [30, 40, 50]])
-    mean_pixels_value = self.metric._ComputeMeanPixelsCheckerboarded(
-        self.page, stats)
-    self.assertEquals(30, mean_pixels_value.value)
-
-  def testComputeMeanPixelsCheckerboardedWithNotEnoughFrames(self):
-    stats = _MockRenderingStats(
-        frame_timestamps=self.not_enough_frames_timestamps,
-        checkerboarded_pixel_percentages=[[10, 20], [30, 40, 50]])
-    mean_pixels_value = self.metric._ComputeMeanPixelsCheckerboarded(
-        self.page, stats)
-    self.assertEquals(None, mean_pixels_value.value)
-    self.assertEquals(smoothness.NOT_ENOUGH_FRAMES_MESSAGE,
-                      mean_pixels_value.none_value_reason)
-
-  def testComputeMeanPixelsCheckerboardedWithNoData(self):
-    stats = _MockRenderingStats(
-        frame_timestamps=self.good_timestamps,
-        checkerboarded_pixel_percentages=None)
-    stats.errors[rendering_stats.CHECKERBOARDED_PIXEL_ERROR] = 'test error'
-    mean_pixels_value = self.metric._ComputeMeanPixelsCheckerboarded(
-        self.page, stats)
-    self.assertEquals(None, mean_pixels_value.value)
-    self.assertEquals('test error',
-                      mean_pixels_value.none_value_reason)

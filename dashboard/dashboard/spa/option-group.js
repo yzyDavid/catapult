@@ -4,11 +4,19 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
+  // See State and RootState below for usage.
   class OptionGroup extends cp.ElementBase {
+    // There may be thousands of options in an option-group. It could cost a lot
+    // of memory and CPU to stamp (create DOM for) all of them. That DOM may or
+    // may not be needed, so we can speed up loading by waiting to stamp it
+    // until the user needs it. OTOH, we can speed up interacting with the
+    // option-group by pre-computing that DOM before the user needs it. This
+    // method decides when to trade off loading latency versus responsivity
+    // versus memory.
     shouldStampSubOptions_(option, query) {
       if (!option) return false;
       if (!option.options) return false;
-      if (option.options.length < 20) return true;
+      if (option.options.length < OptionGroup.TOO_MANY_OPTIONS) return true;
       return this.isExpanded_(option, query);
     }
 
@@ -58,6 +66,42 @@ tr.exportTo('cp', () => {
     }
   }
 
+  // Groups with fewer options than this will always be stamped to the DOM so
+  // that they display quickly. Groups with more options than this will only be
+  // stamped to the DOM when the user expands the group in order to save memory.
+  OptionGroup.TOO_MANY_OPTIONS = 20;
+
+  OptionGroup.State = {
+    // Elements of this array look like {
+    //   isExpanded, label, options, value, valueLowerCase}.
+    // Most callers build options using groupValues() below.
+    options: options => options.options || [],
+
+    optionValues: options => new Set(),
+  };
+
+  OptionGroup.RootState = {
+    // Array of string values.
+    selectedOptions: options => options.selectedOptions || [],
+
+    // Set this to filter options.
+    // An option matches the query if its valueLowerCase contains all of the
+    // space-separated parts of the query.
+    query: options => '',
+  };
+
+  OptionGroup.buildState = options => {
+    return {
+      ...cp.buildState(OptionGroup.State, options),
+      ...cp.buildState(OptionGroup.RootState, options),
+    };
+  };
+
+  OptionGroup.properties = {
+    ...cp.buildProperties('state', OptionGroup.State),
+    ...cp.buildProperties('rootState', OptionGroup.RootState),
+  };
+
   OptionGroup.getAnyGroups = options =>
     (options || []).filter(o => o.options).length > 0;
 
@@ -79,28 +123,6 @@ tr.exportTo('cp', () => {
       if (!option.includes(part)) return false;
     }
     return true;
-  };
-
-  OptionGroup.State = {
-    options: options => options.options || [],
-    optionValues: options => new Set(),
-  };
-
-  OptionGroup.RootState = {
-    selectedOptions: options => options.selectedOptions || [],
-    query: options => '',
-  };
-
-  OptionGroup.buildState = options => {
-    return {
-      ...cp.buildState(OptionGroup.State, options),
-      ...cp.buildState(OptionGroup.RootState, options),
-    };
-  };
-
-  OptionGroup.properties = {
-    ...cp.buildProperties('state', OptionGroup.State),
-    ...cp.buildProperties('rootState', OptionGroup.RootState),
   };
 
   OptionGroup.getValuesFromOption = option => {

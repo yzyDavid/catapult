@@ -40,7 +40,7 @@ def _CreateHistogram(
     device=None, owner=None, stories=None, story_tags=None,
     benchmark_description=None, commit_position=None, summary_options=None,
     samples=None, max_samples=None, is_ref=False, is_summary=None,
-    point_id=None):
+    point_id=None, build_url=None, revision_timestamp=None):
   hists = [histogram_module.Histogram(name, 'count')]
   if max_samples:
     hists[0].max_num_sample_values = max_samples
@@ -99,6 +99,14 @@ def _CreateHistogram(
     histograms.AddSharedDiagnostic(
         reserved_infos.POINT_ID.name,
         generic_set.GenericSet([point_id]))
+  if build_url is not None:
+    histograms.AddSharedDiagnostic(
+        reserved_infos.BUILD_URLS.name,
+        generic_set.GenericSet([['build', build_url]]))
+  if revision_timestamp is not None:
+    histograms.AddSharedDiagnostic(
+        reserved_infos.REVISION_TIMESTAMPS.name,
+        histogram_module.DateRange(revision_timestamp))
   return histograms
 
 
@@ -226,6 +234,26 @@ class AddHistogramsEndToEndTest(AddHistogramsBaseTest):
     # the rows by iterating over a dict.
     mock_graph_revisions.assert_called_once_with(mock.ANY)
     self.assertEqual(len(mock_graph_revisions.mock_calls[0][1][0]), len(rows))
+
+  @mock.patch.object(
+      add_histograms_queue.graph_revisions, 'AddRowsToCacheAsync',
+      mock.MagicMock())
+  @mock.patch.object(
+      add_histograms_queue.find_anomalies, 'ProcessTestsAsync',
+      mock.MagicMock())
+  def testPost_BuildUrls_Added(self):
+    hs = _CreateHistogram(
+        master='master', bot='bot', benchmark='benchmark', commit_position=123,
+        benchmark_description='Benchmark description.', samples=[1, 2, 3],
+        build_url='http://foo')
+    data = zlib.compress(json.dumps(hs.AsDicts()))
+
+    self.PostAddHistogram(data)
+    self.ExecuteTaskQueueTasks('/add_histograms_queue',
+                               add_histograms.TASK_QUEUE_NAME)
+
+    rows = graph_data.Row.query().fetch()
+    self.assertEqual(rows[0].a_build_uri, '[build](http://foo)')
 
   def testPost_NotZlib_Fails(self):
     hs = _CreateHistogram(
@@ -1356,12 +1384,9 @@ class AddHistogramsTest(AddHistogramsBaseTest):
           histograms, utils.TestKey('M/B/Foo'), 12345, False)
 
   def testComputeRevision(self):
-    hist = histogram_module.Histogram('hist', 'count')
-    histograms = histogram_set.HistogramSet([hist])
-    chromium_commit = generic_set.GenericSet([424242])
-    histograms.AddSharedDiagnostic(
-        reserved_infos.CHROMIUM_COMMIT_POSITIONS.name, chromium_commit)
-    self.assertEqual(424242, add_histograms.ComputeRevision(histograms))
+    hs = _CreateHistogram(name='hist', commit_position=424242,
+                          revision_timestamp=123456)
+    self.assertEqual(424242, add_histograms.ComputeRevision(hs))
 
   def testComputeRevision_NotInteger_Raises(self):
     hist = histogram_module.Histogram('hist', 'count')
@@ -1382,12 +1407,28 @@ class AddHistogramsTest(AddHistogramsBaseTest):
       add_histograms.ComputeRevision(histograms)
 
   def testComputeRevision_UsesPointIdIfPresent(self):
-    hs = _CreateHistogram(name='foo', commit_position=123456, point_id=234567)
+    hs = _CreateHistogram(name='foo', commit_position=123456, point_id=234567,
+                          revision_timestamp=345678)
     rev = add_histograms.ComputeRevision(hs)
-    self.assertEqual(rev, 234567)
+    self.assertEqual(234567, rev)
 
   def testComputeRevision_PointIdNotInteger_Raises(self):
     hs = _CreateHistogram(name='foo', commit_position=123456, point_id='abc')
+    with self.assertRaises(api_request_handler.BadRequestError):
+      add_histograms.ComputeRevision(hs)
+
+  def testComputeRevision_UsesRevisionTimestampIfNecessary(self):
+    hs = _CreateHistogram(name='foo', revision_timestamp=123456)
+    rev = add_histograms.ComputeRevision(hs)
+    self.assertEqual(123456, rev)
+
+  def testComputeRevision_RevisionTimestampNotInteger_Raises(self):
+    hs = _CreateHistogram(name='foo', revision_timestamp='abc')
+    with self.assertRaises(api_request_handler.BadRequestError):
+      add_histograms.ComputeRevision(hs)
+
+  def testComputeRevision_NoRevision_Raises(self):
+    hs = _CreateHistogram(name='foo')
     with self.assertRaises(api_request_handler.BadRequestError):
       add_histograms.ComputeRevision(hs)
 
@@ -1407,8 +1448,14 @@ class AddHistogramsTest(AddHistogramsBaseTest):
     histograms.AddSharedDiagnostic(
         reserved_infos.LOG_URLS.name,
         generic_set.GenericSet(['http://foo']))
+    histograms.AddSharedDiagnostic(
+        reserved_infos.BUILD_URLS.name,
+        generic_set.GenericSet(['http://bar']))
     add_histograms._LogDebugInfo(histograms)
-    mock_log.assert_called_once_with('Buildbot URL: %s', "['http://foo']")
+    self.assertEqual(
+        'Buildbot URL: %s' % "['http://foo']", mock_log.call_args_list[0][0][0])
+    self.assertEqual(
+        'Build URL: %s' % "['http://bar']", mock_log.call_args_list[1][0][0])
 
   @mock.patch('logging.info')
   def testLogDebugInfo_NoHistograms(self, mock_log):
@@ -1421,4 +1468,5 @@ class AddHistogramsTest(AddHistogramsBaseTest):
     hist = histogram_module.Histogram('hist', 'count')
     histograms = histogram_set.HistogramSet([hist])
     add_histograms._LogDebugInfo(histograms)
-    mock_log.assert_called_once_with('No LOG_URLS in data.')
+    self.assertEqual('No LOG_URLS in data.', mock_log.call_args_list[0][0][0])
+    self.assertEqual('No BUILD_URLS in data.', mock_log.call_args_list[1][0][0])
