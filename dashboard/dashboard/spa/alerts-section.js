@@ -458,7 +458,7 @@ tr.exportTo('cp', () => {
 
   AlertsSection.State = {
     ...cp.AlertsTable.State,
-    bug: options => cp.DropdownInput.buildState({
+    bug: options => cp.MenuInput.buildState({
       label: 'Bug',
       selectedOptions: options.bugs,
     }),
@@ -474,7 +474,7 @@ tr.exportTo('cp', () => {
     newBug: options => cp.TriageNew.buildState({}),
     preview: options => cp.ChartPair.buildState(options),
     recentlyModifiedBugs: options => [],
-    report: options => cp.DropdownInput.buildState({
+    report: options => cp.MenuInput.buildState({
       label: 'Report',
       selectedOptions: options.reports || [],
     }),
@@ -482,7 +482,7 @@ tr.exportTo('cp', () => {
     selectedAlertPath: options => undefined,
     selectedAlertsCount: options => 0,
     selectedAlertsCount: options => 0,
-    sheriff: options => cp.DropdownInput.buildState({
+    sheriff: options => cp.MenuInput.buildState({
       label: 'Sheriff',
       options: SHERIFFS,
       selectedOptions: options.sheriffs || [],
@@ -554,12 +554,12 @@ tr.exportTo('cp', () => {
 
     onSheriffClear: statePath => async(dispatch, getState) => {
       dispatch(AlertsSection.actions.loadAlerts(statePath));
-      dispatch(cp.DropdownInput.actions.focus(statePath + '.sheriff'));
+      dispatch(cp.MenuInput.actions.focus(statePath + '.sheriff'));
     },
 
     onBugClear: statePath => async(dispatch, getState) => {
       dispatch(AlertsSection.actions.loadAlerts(statePath));
-      dispatch(cp.DropdownInput.actions.focus(statePath + '.bug'));
+      dispatch(cp.MenuInput.actions.focus(statePath + '.bug'));
     },
 
     onBugKeyup: (statePath, bugId) => async(dispatch, getState) => {
@@ -572,7 +572,7 @@ tr.exportTo('cp', () => {
 
     onReportClear: statePath => async(dispatch, getState) => {
       dispatch(AlertsSection.actions.loadAlerts(statePath));
-      dispatch(cp.DropdownInput.actions.focus(statePath + '.report'));
+      dispatch(cp.MenuInput.actions.focus(statePath + '.report'));
     },
 
     onReportKeyup: (statePath, report) => async(dispatch, getState) => {
@@ -635,7 +635,7 @@ tr.exportTo('cp', () => {
           state.bug.selectedOptions.lenght > 0) {
         dispatch(AlertsSection.actions.loadAlerts(statePath));
       } else {
-        dispatch(cp.DropdownInput.actions.focus(statePath + '.sheriff'));
+        dispatch(cp.MenuInput.actions.focus(statePath + '.sheriff'));
       }
     },
 
@@ -840,7 +840,7 @@ tr.exportTo('cp', () => {
         }
       }
       if (sources.length > 0) {
-        dispatch(cp.DropdownInput.actions.blurAll());
+        dispatch(cp.MenuInput.actions.blurAll());
       }
       await Promise.all(sources.map(async body => {
         const request = new AlertsRequest({body});

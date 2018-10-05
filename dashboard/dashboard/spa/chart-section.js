@@ -266,7 +266,7 @@ tr.exportTo('cp', () => {
             dispatch, getState);
         ChartSection.actions.maybeLoadTimeseries(statePath)(dispatch, getState);
       } else {
-        cp.DropdownInput.actions.focus(`${statePath}.testSuite`)(
+        cp.MenuInput.actions.focus(`${statePath}.testSuite`)(
             dispatch, getState);
       }
     },
@@ -337,7 +337,7 @@ tr.exportTo('cp', () => {
       state = Polymer.Path.get(getState(), statePath);
 
       if (state.measurement.selectedOptions.length === 0) {
-        cp.DropdownInput.actions.focus(`${statePath}.measurement`)(
+        cp.MenuInput.actions.focus(`${statePath}.measurement`)(
             dispatch, getState);
       }
     },
@@ -437,7 +437,7 @@ tr.exportTo('cp', () => {
       if (!state.measurement.columns.length &&
           state.measurement.selectedOptions.filter(
               m => m.startsWith('memory:')).length) {
-        cp.DropdownInput.actions.populateColumns(
+        cp.MenuInput.actions.populateColumns(
             `${statePath}.measurement`)(dispatch, getState);
       }
 

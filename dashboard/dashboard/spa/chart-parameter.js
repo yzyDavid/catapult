@@ -16,7 +16,7 @@ tr.exportTo('cp', () => {
   }
 
   ChartParameter.State = {
-    ...cp.DropdownInput.State,
+    ...cp.MenuInput.State,
     canAggregate: options => options.canAggregate || false,
     isAggregated: options => options.isAggregated || false,
     tags: options => cp.OptionGroup.buildState(options.tags || {}),

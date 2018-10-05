@@ -298,7 +298,7 @@ tr.exportTo('cp', () => {
       const state = Polymer.Path.get(getState(), statePath);
       const section = state.alertsSectionsById[sectionId];
       if (cp.AlertsSection.isEmpty(section)) {
-        cp.DropdownInput.actions.focus(
+        cp.MenuInput.actions.focus(
             `${statePath}.alertsSectionsById.${sectionId}.sheriff`
         )(dispatch, getState);
       }

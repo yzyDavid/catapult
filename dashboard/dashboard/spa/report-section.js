@@ -342,7 +342,7 @@ tr.exportTo('cp', () => {
     minRevisionInput: options => options.minRevision,
     maxRevisionInput: options => options.maxRevision,
     sectionId: options => options.sectionId || tr.b.GUID.allocateSimple(),
-    source: options => cp.DropdownInput.buildState({
+    source: options => cp.MenuInput.buildState({
       label: 'Reports (loading)',
       options: [
         ReportSection.DEFAULT_NAME,
@@ -417,7 +417,7 @@ tr.exportTo('cp', () => {
 
       state = Polymer.Path.get(getState(), statePath);
       if (state.source.selectedOptions.length === 0) {
-        cp.DropdownInput.actions.focus(
+        cp.MenuInput.actions.focus(
             statePath + '.source')(dispatch, getState);
       }
     },
