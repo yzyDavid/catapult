@@ -6,7 +6,7 @@ found in the LICENSE file.
 -->
 
 <link rel="import" href="/dashboard/spa/cp-checkbox.html">
-<link rel="import" href="/dashboard/spa/dropdown-input.html">
+<link rel="import" href="/dashboard/spa/menu-input.html">
 
 <dom-module id="chart-parameter">
   <template>
@@ -33,7 +33,7 @@ found in the LICENSE file.
       }
     </style>
 
-    <dropdown-input state-path="[[statePath]]">
+    <menu-input state-path="[[statePath]]">
       <template is="dom-if" if="[[!isEmpty_(tags.options)]]">
         <div id="dropdown_extra" slot="dropdown_extra">
           <span id="tag_head">
@@ -46,7 +46,7 @@ found in the LICENSE file.
           </option-group>
         </div>
       </template>
-    </dropdown-input>
+    </menu-input>
 
     <cp-checkbox
         id="aggregate"

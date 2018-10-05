@@ -5,7 +5,7 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<link rel="import" href="/dashboard/spa/dropdown-input.html">
+<link rel="import" href="/dashboard/spa/menu-input.html">
 
 <dom-module id="pivot-section">
   <template>
@@ -16,7 +16,7 @@ found in the LICENSE file.
         margin-bottom: 8px;
       }
 
-      dropdown-input:not(:first-of-type) {
+      menu-input:not(:first-of-type) {
         margin-left: 8px;
       }
 
@@ -36,11 +36,11 @@ found in the LICENSE file.
     </style>
 
     <div id="controls">
-      <dropdown-input
+      <menu-input
           state-path="[[statePath]].testSuites"
           on-input-keyup="onKeydown_"
           on-option-select="onSelect_">
-      </dropdown-input>
+      </menu-input>
 
       <a id="documentation"
           href="#"
@@ -49,11 +49,11 @@ found in the LICENSE file.
         <iron-icon icon="cp:help"></iron-icon>
       </a>
 
-      <dropdown-input
+      <menu-input
           state-path="[[statePath]].revisions"
           on-input-keyup="onKeydown_"
           on-option-select="onSelect_">
-      </dropdown-input>
+      </menu-input>
 
       <span id="spacer">&nbsp;</span>
 

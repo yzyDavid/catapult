@@ -4,7 +4,7 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  class DropdownInput extends cp.ElementBase {
+  class MenuInput extends cp.ElementBase {
     connectedCallback() {
       super.connectedCallback();
       this.observeIsFocused_();
@@ -18,7 +18,7 @@ tr.exportTo('cp', () => {
       }
     }
 
-    renderDropdown_(hasBeenOpened, largeDom) {
+    renderMenu_(hasBeenOpened, largeDom) {
       return hasBeenOpened || !largeDom;
     }
 
@@ -43,7 +43,7 @@ tr.exportTo('cp', () => {
     }
 
     getInputValue_(isFocused, query, selectedOptions) {
-      return DropdownInput.inputValue(isFocused, query, selectedOptions);
+      return MenuInput.inputValue(isFocused, query, selectedOptions);
     }
 
     async onFocus_(event) {
@@ -51,9 +51,9 @@ tr.exportTo('cp', () => {
     }
 
     async onBlur_(event) {
-      if (event.relatedTarget === this.$.dropdown ||
+      if (event.relatedTarget === this.$.menu ||
           cp.isElementChildOf(event.relatedTarget, this) ||
-          cp.isElementChildOf(event.relatedTarget, this.$.dropdown)) {
+          cp.isElementChildOf(event.relatedTarget, this.$.menu)) {
         this.$.input.focus();
         return;
       }
@@ -92,7 +92,7 @@ tr.exportTo('cp', () => {
     }
   }
 
-  DropdownInput.inputValue = (isFocused, query, selectedOptions) => {
+  MenuInput.inputValue = (isFocused, query, selectedOptions) => {
     if (isFocused) return query;
     if (selectedOptions === undefined) return '';
     if (selectedOptions.length === 0) return '';
@@ -100,7 +100,7 @@ tr.exportTo('cp', () => {
     return `[${selectedOptions.length} selected]`;
   };
 
-  DropdownInput.State = {
+  MenuInput.State = {
     ...cp.OptionGroup.RootState,
     ...cp.OptionGroup.State,
     alwaysEnabled: options => options.alwaysEnabled !== false,
@@ -114,37 +114,34 @@ tr.exportTo('cp', () => {
     required: options => options.required || false,
   };
 
-  DropdownInput.buildState = options => cp.buildState(
-      DropdownInput.State, options);
+  MenuInput.buildState = options => cp.buildState(
+      MenuInput.State, options);
 
-  DropdownInput.properties = {
-    ...cp.buildProperties('state', DropdownInput.State),
+  MenuInput.properties = {
+    ...cp.buildProperties('state', MenuInput.State),
     largeDom: {statePath: 'largeDom'},
     rootFocusTimestamp: {statePath: 'focusTimestamp'},
     isFocused: {computed: 'isEqual_(focusTimestamp, rootFocusTimestamp)'},
   };
 
-  DropdownInput.observers = ['observeIsFocused_(isFocused)'];
+  MenuInput.observers = ['observeIsFocused_(isFocused)'];
 
-  DropdownInput.actions = {
+  MenuInput.actions = {
     focus: inputStatePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.focus.name,
-        // NOT "statePath"! ElementBase.statePathReducer would mess that up.
+        type: MenuInput.reducers.focus.name,
+        // NOT "statePath"! Redux.statePathReducer would mess that up.
         inputStatePath,
       });
     },
 
     blurAll: () => async(dispatch, getState) => {
-      dispatch({
-        type: DropdownInput.reducers.blur.name,
-        statePath: '',
-      });
+      dispatch({type: MenuInput.reducers.focus.name});
     },
 
     blur: statePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.blur.name,
+        type: MenuInput.reducers.blur.name,
         statePath,
       });
     },
@@ -154,7 +151,7 @@ tr.exportTo('cp', () => {
         query: '',
         selectedOptions: [],
       }));
-      cp.DropdownInput.actions.focus(statePath)(dispatch, getState);
+      cp.MenuInput.actions.focus(statePath)(dispatch, getState);
     },
 
     onKeyup: (statePath, query) => async(dispatch, getState) => {
@@ -164,25 +161,25 @@ tr.exportTo('cp', () => {
     onColumnSelect: statePath =>
       async(dispatch, getState) => {
         dispatch({
-          type: DropdownInput.reducers.onColumnSelect.name,
+          type: MenuInput.reducers.onColumnSelect.name,
           statePath,
         });
       },
 
     populateColumns: statePath => async(dispatch, getState) => {
       dispatch({
-        type: DropdownInput.reducers.populateColumns.name,
+        type: MenuInput.reducers.populateColumns.name,
         statePath,
       });
     },
   };
 
-  DropdownInput.reducers = {
+  MenuInput.reducers = {
     populateColumns: (state, action, rootState) => {
       const columnOptions = [];
       for (const option of state.options) {
         for (const name of cp.OptionGroup.getValuesFromOption(option)) {
-          const columns = DropdownInput.parseColumns(name);
+          const columns = MenuInput.parseColumns(name);
           while (columnOptions.length < columns.length) {
             columnOptions.push(new Set());
           }
@@ -197,7 +194,7 @@ tr.exportTo('cp', () => {
         selectedColumns.push(new Set());
       }
       for (const name of state.selectedOptions) {
-        const columns = DropdownInput.parseColumns(name);
+        const columns = MenuInput.parseColumns(name);
         for (let i = 0; i < columns.length; ++i) {
           selectedColumns[i].add(columns[i]);
         }
@@ -225,7 +222,7 @@ tr.exportTo('cp', () => {
       // TODO reverse parseColumns to construct names from selectedColumns.
       for (const option of state.options) {
         for (const value of cp.OptionGroup.getValuesFromOption(option)) {
-          if (DropdownInput.allColumnsSelected(value, selectedColumns)) {
+          if (MenuInput.allColumnsSelected(value, selectedColumns)) {
             selectedOptions.push(value);
           }
         }
@@ -237,7 +234,7 @@ tr.exportTo('cp', () => {
     focus: (rootState, action, rootStateAgain) => {
       const focusTimestamp = window.performance.now();
       rootState = {...rootState, focusTimestamp};
-      if (!action.inputStatePath) return rootState; // Blur all dropdown-inputs
+      if (!action.inputStatePath) return rootState; // Blur all menu-inputs
 
       return cp.setImmutable(
           rootState, action.inputStatePath, inputState => {
@@ -254,7 +251,7 @@ tr.exportTo('cp', () => {
     },
   };
 
-  DropdownInput.parseColumns = name => {
+  MenuInput.parseColumns = name => {
     const parts = name.split(':');
     if (parts[0] !== 'memory') return [];
     if (parts.length < 5) return [];
@@ -270,8 +267,8 @@ tr.exportTo('cp', () => {
     return [browser, process, source, component, size];
   };
 
-  DropdownInput.allColumnsSelected = (name, selectedColumns) => {
-    const columns = DropdownInput.parseColumns(name);
+  MenuInput.allColumnsSelected = (name, selectedColumns) => {
+    const columns = MenuInput.parseColumns(name);
     if (columns.length === 0) return false;
     for (let i = 0; i < columns.length; ++i) {
       if (!selectedColumns[i].includes(columns[i])) return false;
@@ -279,9 +276,6 @@ tr.exportTo('cp', () => {
     return true;
   };
 
-  cp.ElementBase.register(DropdownInput);
-
-  return {
-    DropdownInput,
-  };
+  cp.ElementBase.register(MenuInput);
+  return {MenuInput};
 });

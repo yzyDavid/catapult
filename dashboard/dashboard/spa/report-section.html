@@ -7,7 +7,7 @@ found in the LICENSE file.
 
 <link rel="import" href="/dashboard/spa/cp-loading.html">
 <link rel="import" href="/dashboard/spa/cp-toast.html">
-<link rel="import" href="/dashboard/spa/dropdown-input.html">
+<link rel="import" href="/dashboard/spa/menu-input.html">
 <link rel="import" href="/dashboard/spa/element-base.html">
 <link rel="import" href="/dashboard/spa/raised-button.html">
 <link rel="import" href="/dashboard/spa/report-cache.html">
@@ -135,7 +135,7 @@ found in the LICENSE file.
         width: 250px;
       }
 
-      .edit_form_controls dropdown-input:not(:last-child),
+      .edit_form_controls menu-input:not(:last-child),
       .edit_form_controls cp-input:not(:last-child) {
         margin-right: 8px;
       }
@@ -193,11 +193,11 @@ found in the LICENSE file.
     </style>
 
     <div id="controls">
-      <dropdown-input
+      <menu-input
           id="source"
           state-path="[[statePath]].source"
           on-option-select="onSelectSource_">
-      </dropdown-input>
+      </menu-input>
 
       <raised-button
           id="alerts"
@@ -283,9 +283,9 @@ found in the LICENSE file.
                   </span>
                 </div>
 
-                <dropdown-input
+                <menu-input
                     state-path="[[statePath]].tables.[[tableIndex]].statistic">
-                </dropdown-input>
+                </menu-input>
 
                 <div>
                   <cp-input
@@ -312,23 +312,23 @@ found in the LICENSE file.
                         </span>
                       </td>
                       <td>
-                        <dropdown-input
+                        <menu-input
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testSuite"
                             on-option-select="onTestSuiteSelect_">
-                        </dropdown-input>
+                        </menu-input>
                       </td>
                       <td>
-                        <dropdown-input
+                        <menu-input
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].measurement">
-                        </dropdown-input>
+                        </menu-input>
                       </td>
                       <td>
-                        <dropdown-input
+                        <menu-input
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].bot">
-                        </dropdown-input>
+                        </menu-input>
                       </td>
                       <td>
-                        <dropdown-input
+                        <menu-input
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase">
                           <!-- TODO share with chart-parameter -->
                           <template is="dom-if" if="[[!isEmpty_(row.testCase.tags.options)]]">
@@ -343,7 +343,7 @@ found in the LICENSE file.
                               </option-group>
                             </div>
                           </template>
-                        </dropdown-input>
+                        </menu-input>
                       </td>
                       <td class="template_row_button">
                         <iron-icon
