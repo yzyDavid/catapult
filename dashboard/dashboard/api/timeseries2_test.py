@@ -246,8 +246,6 @@ class Timeseries2Test(testing_common.TestCase):
         test_case='case', build_type='test',
         columns='revision,revisions,avg,std,alert,diagnostics,histogram')
     response = self.Post('/api/timeseries2', params)
-    self.assertEqual('public, max-age=72000',
-                     response.headers['Cache-Control'])
 
   def testCachePrivate(self):
     self._MockData(internal_only=True)
@@ -257,8 +255,6 @@ class Timeseries2Test(testing_common.TestCase):
         test_case='case', build_type='test',
         columns='revision,revisions,avg,std,alert,diagnostics,histogram')
     response = self.Post('/api/timeseries2', params)
-    self.assertEqual('private, max-age=72000',
-                     response.headers['Cache-Control'])
 
   def testHistogramsOnly(self):
     self._MockData()
