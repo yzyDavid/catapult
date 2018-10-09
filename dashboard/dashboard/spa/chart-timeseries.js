@@ -39,6 +39,8 @@ tr.exportTo('cp', () => {
     target.std = Math.sqrt(thisVar + otherVar + (
       thisCount * source.count * deltaMean * deltaMean /
       target.count));
+    if (target.sum === undefined) target.sum = 0;
+    if (source.sum) target.sum += source.sum;
   }
 
   class TimeseriesIterator {

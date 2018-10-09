@@ -887,7 +887,7 @@ tr.exportTo('cp', () => {
         }
         dispatch(cp.ChartTimeseries.actions.prefetch(
             `${statePath}.preview`, lineDescriptors));
-        dispatch(cp.PrefetchTestSuiteDescriptors({testSuites}));
+        cp.PrefetchTestSuiteDescriptors({testSuites});
       },
 
     layoutPreview: statePath => async(dispatch, getState) => {
@@ -907,9 +907,7 @@ tr.exportTo('cp', () => {
       for (const descriptor of lineDescriptors) {
         testSuites.add(descriptor.testSuites[0]);
       }
-      dispatch(cp.PrefetchTestSuiteDescriptors({
-        testSuites: [...testSuites],
-      }));
+      cp.PrefetchTestSuiteDescriptors({testSuites: [...testSuites]});
     },
 
     maybeLayoutPreview: statePath => async(dispatch, getState) => {

@@ -229,11 +229,8 @@ tr.exportTo('cp', () => {
         'count',
         'min',
         'max',
-        'median',
-        'iqr',
-        '90%',
-        '95%',
-        '99%',
+        'sum',
+        /* TODO 'median', 'iqr', '90%', '95%', '99%', */
       ],
     }),
     selectedRelatedTabName: options => options.selectedRelatedTabName || '',
@@ -941,8 +938,10 @@ tr.exportTo('cp', () => {
       if (state.selectedRelatedTabName) {
         const selectedRelatedTabIndex = relatedTabs.findIndex(tab =>
           tab.name === state.selectedRelatedTabName);
-        relatedTabs[selectedRelatedTabIndex].renderedSparklines =
-          relatedTabs[selectedRelatedTabIndex].sparklines;
+        if (selectedRelatedTabIndex >= 0) {
+          relatedTabs[selectedRelatedTabIndex].renderedSparklines =
+            relatedTabs[selectedRelatedTabIndex].sparklines;
+        }
       }
 
       return {...state, relatedTabs};
