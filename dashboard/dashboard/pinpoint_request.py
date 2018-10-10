@@ -6,7 +6,6 @@
 
 import json
 
-from google.appengine.api import users
 from google.appengine.ext import ndb
 
 from dashboard import start_try_job
