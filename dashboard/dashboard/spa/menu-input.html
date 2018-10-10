@@ -37,6 +37,7 @@ found in the LICENSE file.
         box-shadow: var(--elevation-2);
         max-height: 600px;
         overflow: auto;
+        outline: none;
         padding-right: 8px;
         position: absolute;
         z-index: var(--layer-menu, 100);
@@ -83,7 +84,7 @@ found in the LICENSE file.
       </iron-icon>
     </cp-input>
 
-    <div id="menu">
+    <div id="menu" tabindex="0">
       <template is="dom-if" if="[[renderMenu_(hasBeenOpened, largeDom)]]">
         <iron-collapse opened="[[isFocused]]">
           <template is="dom-if" if="[[showRecommended_(recommended, query)]]">

@@ -51,9 +51,7 @@ tr.exportTo('cp', () => {
     }
 
     async onBlur_(event) {
-      if (event.relatedTarget === this.$.menu ||
-          cp.isElementChildOf(event.relatedTarget, this) ||
-          cp.isElementChildOf(event.relatedTarget, this.$.menu)) {
+      if (cp.isElementChildOf(event.relatedTarget, this)) {
         this.$.input.focus();
         return;
       }
