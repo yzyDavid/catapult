@@ -4,8 +4,11 @@
 */
 'use strict';
 
+import {
+  CacheRequestBase, READONLY, READWRITE, jsonResponse,
+} from './cache-request-base.js';
 import Range from './range.js';
-import {CacheRequestBase, READONLY, READWRITE} from './cache-request-base.js';
+import ResultChannelSender from './result-channel-sender.js';
 
 // TODO move to separate file.
 async function* raceAllPromises(promises) {
@@ -94,35 +97,35 @@ function mergeObjectArrays(key, merged, ...arrays) {
   }
 }
 
-/**
- * Timeseries are stored in IndexedDB to optimize the speed of ranged reading.
- * Here is the structure in TypeScript:
- *
- *   type TimeseriesDatabase = {
- *     // Data is optimized for range queries
- *     data: {
- *       [revision: number]: Datum
- *     },
- *
- *     // Maintain the ranges of available data
- *     ranges: [Range],
- *
- *     // Miscellaneous data that doesn't change for each datum
- *     metadata: {
- *       improvement_direction: number,
- *       units: string
- *     }
- *   }
- *
- *   type Datum = {
- *     revision: number,
- *     timestamp?: Date,
- *     [statistic: string]: number
- *   }
- *
- *   type Range = [number, number]
- *
- */
+class TimeseriesSlice {
+  constructor(options) {
+    this.columns = options.columns;
+    this.revisionRange = options.revisionRange;
+    this.testSuite = options.testSuite;
+    this.measurement = options.measurement;
+    this.bot = options.bot;
+    this.testCase = options.testCase;
+    this.buildType = options.buildType;
+    this.responsePromise_ = undefined;
+  }
+
+  intersects(other) {
+    if (this.testSuite !== other.testSuite) return false;
+    if (this.bot !== other.bot) return false;
+    if (this.measurement !== other.measurement) return false;
+    if (this.testCase !== other.testCase) return false;
+    if (this.buildType !== other.buildType) return false;
+  }
+
+  get responsePromise() {
+    if (!this.responsePromise_) this.responsePromise_ = this.fetch_();
+    return this.responsePromise_;
+  }
+
+  async fetch_() {
+    // TODO use TimeseriesRequest?
+  }
+}
 
 const STORE_DATA = 'data';
 const STORE_METADATA = 'metadata';
@@ -134,34 +137,38 @@ const ACCESS_TIME_KEY = '_accessTime';
 export default class TimeseriesCacheRequest extends CacheRequestBase {
   constructor(fetchEvent) {
     super(fetchEvent);
-    TimeseriesCacheRequest.IN_PROGRESS.push(this);
-    const {searchParams} = new URL(fetchEvent.request.url);
+    this.parseRequestPromise = this.parseRequest_();
+  }
 
-    this.statistic_ = searchParams.get('statistic');
-    if (!this.statistic_) {
-      throw new Error('Statistic was not specified');
-    }
+  async parseRequest_() {
+    this.body_ = await this.fetchEvent.request.clone().formData();
 
-    const columns = searchParams.get('columns');
-    if (!columns) {
-      throw new Error('Columns was not specified');
-    }
-    this.columns_ = columns.split(',');
+    if (!this.body_.has('columns')) throw new Error('Missing columns');
+    this.columns_ = this.body_.get('columns').split(',');
 
-    this.maxRevision_ = parseInt(searchParams.get('max_revision')) || undefined;
-    this.minRevision_ = parseInt(searchParams.get('min_revision')) || undefined;
+    this.maxRevision_ = parseInt(this.body_.get('max_revision')) || undefined;
+    this.minRevision_ = parseInt(this.body_.get('min_revision')) || undefined;
     this.revisionRange_ = Range.fromExplicitRange(
         this.minRevision_ || 0, this.maxRevision_ || Number.MAX_SAFE_INTEGER);
 
-    this.testSuite_ = searchParams.get('test_suite') || '';
-    this.measurement_ = searchParams.get('measurement') || '';
-    this.bot_ = searchParams.get('bot') || '';
-    this.testCase_ = searchParams.get('test_case') || '';
-    this.buildType_ = searchParams.get('build_type') || '';
+    this.testSuite_ = this.body_.get('test_suite') || '';
+    this.measurement_ = this.body_.get('measurement') || '';
+    this.bot_ = this.body_.get('bot') || '';
+    this.testCase_ = this.body_.get('test_case') || '';
+    this.buildType_ = this.body_.get('build_type') || '';
   }
 
-  get timingCategory() {
-    return 'Timeseries';
+  async sendResults_() {
+    await this.parseRequestPromise;
+    const channelName = this.fetchEvent.request.url + '?' +
+      new URLSearchParams(this.body_);
+    const sender = new ResultChannelSender(channelName);
+    await sender.send(this.generateResults());
+  }
+
+  respond() {
+    this.fetchEvent.respondWith(this.responsePromise.then(jsonResponse));
+    this.fetchEvent.waitUntil(this.sendResults_());
   }
 
   get databaseName() {
@@ -186,11 +193,11 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
     }
   }
 
-  get raceCacheAndNetwork_() {
+  get generateResults() {
     return async function* () {
-      CacheRequestBase.writer.enqueue(() => this.updateAccessTime_());
-
-      const cacheResult = (await this.readCache_()).result;
+      await this.parseRequestPromise;
+      const cacheResult = await this.readDatabase_();
+      let finalResult = cacheResult;
       let availableRangeByCol = new Map();
       let mergedData = [];
       if (cacheResult && cacheResult.data) {
@@ -230,7 +237,8 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
       // don't fetch from the network.
       if (columns.length === 1) return;
 
-      // If all cols are available for some subrange, then don't fetch that range
+      // If all cols are available for some subrange, then don't fetch that
+      // range.
       let availableRange = this.revisionRange_;
       for (const col of columns) {
         if (col === 'revision') continue;
@@ -254,10 +262,10 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
           continue;
         }
         mergeObjectArrays('revision', mergedData, result.data);
-        yield {...result, data: mergedData};
-        CacheRequestBase.writer.enqueue(() =>
-          this.writeIDB_({result, range, columns}));
+        finalResult = {...result, data: mergedData};
+        yield finalResult;
       }
+      this.scheduleWrite(finalResult);
     };
   }
 
@@ -271,21 +279,25 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
     };
     if (range.min) params.min_revision = range.min;
     if (range.max < Number.MAX_SAFE_INTEGER) params.max_revision = range.max;
-    if (this.testCase_) params.test_case = this.testCase_
+    if (this.testCase_) params.test_case = this.testCase_;
     let url = new URL(this.fetchEvent.request.url);
     url = url.origin + url.pathname + '?' + new URLSearchParams(params);
-    const response = await this.timePromise('Network', fetch(url, {
+    const response = await fetch(url, {
       method: this.fetchEvent.request.method,
       headers: this.fetchEvent.request.headers,
-    }));
-    const responseJson = await this.timePromise('Parse JSON', response.json());
+    });
+    if (!response.ok) {
+      return {};
+    }
+    const responseJson = await response.json();
     if (responseJson.data) {
       responseJson.data = normalize(responseJson.data, columns);
     }
     return responseJson;
   }
 
-  async read(db) {
+  async readDatabase_() {
+    const db = await this.databasePromise;
     const transaction = db.transaction(STORES, READONLY);
 
     const dataPointsPromise = this.getDataPoints_(transaction);
@@ -328,7 +340,7 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
 
   async getMetadata_(transaction, key) {
     const store = transaction.objectStore(STORE_METADATA);
-    return await this.timePromise('Read - Metadata', store.get(key));
+    return await store.get(key);
   }
 
   async getRanges_(transaction) {
@@ -338,14 +350,11 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
       if (col === 'revision') continue;
       promises.push(rangeStore.get(col).then(ranges => [col, ranges]));
     }
-    const timing = this.time('Read - Ranges');
     const rangesByCol = await Promise.all(promises);
-    timing.end();
     return new Map(rangesByCol);
   }
 
   async getDataPoints_(transaction) {
-    const timing = this.time('Read - Datapoints');
     const dataStore = transaction.objectStore(STORE_DATA);
     if (!this.minRevision_ && !this.maxRevision_) {
       const dataPoints = await dataStore.getAll();
@@ -360,7 +369,6 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
     });
 
     await transaction.complete;
-    timing.end();
     return dataPoints;
   }
 
@@ -376,28 +384,38 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
     }
   }
 
-  async write(db, {range, columns, result: {data, ...metadata}}) {
+  async writeDatabase({data, ...metadata}) {
+    const db = await this.databasePromise;
     const transaction = db.transaction(STORES, READWRITE);
     await Promise.all([
+      this.updateAccessTime_(transaction),
       this.writeData_(transaction, data),
-      this.writeRanges_(transaction, data, range, columns),
+      this.writeRanges_(transaction, data),
+      this.writeMetadata_(transaction, metadata),
     ]);
-    this.writeMetadata_(transaction, metadata);
-    await this.timePromise('Write - Queued Tasks', transaction.complete);
-
-    const index = TimeseriesCacheRequest.IN_PROGRESS.indexOf(this);
-    TimeseriesCacheRequest.IN_PROGRESS.splice(index, 1);
+    await transaction.complete;
   }
 
-  async updateAccessTime_() {
-    const database = await this.openIDB_(this.databaseName);
-    const transaction = database.transaction([STORE_METADATA], READWRITE);
+  async writeRanges_(transaction, data) {
+    const revisionRange = Range.fromExplicitRange(
+        this.minRevision_ || 0,
+        data[data.length - 1].revision);
+    const rangeStore = transaction.objectStore(STORE_RANGES);
+    await Promise.all(this.columns_.map(async col => {
+      if (col === 'revision') return;
+      const prevRangesRaw = (await rangeStore.get(col)) || [];
+      const prevRanges = prevRangesRaw.map(Range.fromDict);
+      const newRanges = revisionRange.mergeIntoArray(prevRanges);
+      rangeStore.put(newRanges.map(range => range.toJSON()), col);
+    }));
+  }
+
+  async updateAccessTime_(transaction) {
     const metadataStore = transaction.objectStore(STORE_METADATA);
     await metadataStore.put(new Date().toISOString(), ACCESS_TIME_KEY);
   }
 
   async writeData_(transaction, data) {
-    const timing = this.time('Write - Data');
     const dataStore = transaction.objectStore(STORE_DATA);
     await Promise.all(data.map(async datum => {
       // Merge with existing data
@@ -405,31 +423,6 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
       const next = Object.assign({}, prev, datum);
       await dataStore.put(next, datum.revision);
     }));
-    timing.end();
-  }
-
-  async writeRanges_(transaction, data, range, columns) {
-    const firstDatum = data[0] || {};
-    const lastDatum = data[data.length - 1] || {};
-    const min = firstDatum.revision || range.min || undefined;
-    let max = lastDatum.revision || undefined;
-    if (!max && range.max !== Number.MAX_SAFE_INTEGER) {
-      max = range.max;
-    }
-    if (!min && !max) {
-      throw new Error('Min/max cannot be found; unable to update ranges');
-    }
-    range = Range.fromExplicitRange(min, max);
-    const timing = this.time('Write - Ranges');
-    const rangeStore = transaction.objectStore(STORE_RANGES);
-    await Promise.all(columns.filter(col => col !== 'revision').map(
-        async col => {
-          const prevRangesRaw = (await rangeStore.get(col)) || [];
-          const prevRanges = prevRangesRaw.map(Range.fromDict);
-          const newRanges = range.mergeIntoArray(prevRanges);
-          rangeStore.put(newRanges.map(range => range.toJSON()), col);
-        }));
-    timing.end();
   }
 
   writeMetadata_(transaction, metadata) {
@@ -440,18 +433,6 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
   }
 }
 
-TimeseriesCacheRequest.IN_PROGRESS = [];
-
-/**
- * type options = {
- *   timeseries: string,
- *   testSuite: string,
- *   measurement: string,
- *   bot: string,
- *   testCase?: string,
- *   buildType?: string,
- * }
- */
 TimeseriesCacheRequest.databaseName = ({
   timeseries, testSuite, measurement, bot, testCase = '', buildType = '',
 }) => `timeseries/${testSuite}/${measurement}/${bot}/${testCase}/${buildType}`;

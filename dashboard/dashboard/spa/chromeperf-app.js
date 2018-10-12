@@ -331,7 +331,6 @@ tr.exportTo('cp', () => {
         userEmail: user.getBasicProfile().getEmail(),
       }));
       await Promise.all([
-        cp.ReadReportNames(),
         cp.ChromeperfApp.actions.getRecentBugs()(dispatch, getState),
         cp.ReadTestSuites(),
       ]);
@@ -647,10 +646,9 @@ tr.exportTo('cp', () => {
       chartSectionIds.push(sectionId);
 
       if (chartSectionIds.length === 1 && action.options) {
-        state = {
-          ...state,
-          linkedChartState: cp.buildState(cp.ChartPair.LinkedState, action.options),
-        };
+        const linkedChartState = cp.buildState(
+            cp.ChartPair.LinkedState, action.options);
+        state = {...state, linkedChartState};
       }
       return {...state, chartSectionIds};
     },

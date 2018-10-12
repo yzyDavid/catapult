@@ -46,5 +46,5 @@ const FETCH_HANDLERS = {
 self.addEventListener('fetch', fetchEvent => {
   const cls = FETCH_HANDLERS[new URL(fetchEvent.request.url).pathname];
   if (!cls) return;
-  fetchEvent.waitUntil(new cls(fetchEvent).respond());
+  new cls(fetchEvent).respond();
 });

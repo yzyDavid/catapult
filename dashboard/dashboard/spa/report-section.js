@@ -14,6 +14,7 @@ tr.exportTo('cp', () => {
     68: 561733,
     69: 576753,
     70: 587811,
+    71: 599034,
   };
   const CURRENT_MILESTONE = tr.b.math.Statistics.max(
       Object.keys(CHROMIUM_MILESTONES));
@@ -461,7 +462,7 @@ tr.exportTo('cp', () => {
     },
 
     loadSources: statePath => async(dispatch, getState) => {
-      const reportTemplateInfos = await cp.ReadReportNames();
+      const reportTemplateInfos = await new cp.ReportNamesRequest().response;
       const rootState = getState();
       const teamFilter = cp.TeamFilter.get(rootState.teamName);
       const reportNames = await teamFilter.reportNames(
@@ -491,21 +492,19 @@ tr.exportTo('cp', () => {
         name !== ReportSection.CREATE);
       const requestedReports = new Set(state.source.selectedOptions);
       const revisions = [state.minRevision, state.maxRevision];
-      const reportTemplateInfos = await cp.ReadReportNames();
+      const reportTemplateInfos = await new cp.ReportNamesRequest().response;
       const readers = [];
 
       for (const name of names) {
         for (const templateInfo of reportTemplateInfos) {
           if (templateInfo.name === name) {
-            readers.push(cp.ReportReader({...templateInfo, revisions}));
+            readers.push(new cp.ReportRequest(
+                {...templateInfo, revisions}).reader());
           }
         }
       }
 
-      // Avoid triggering render too rapidly by batching responses.
-      const batchIterator = new cp.BatchIterator(readers);
-
-      for await (const {results, errors} of batchIterator) {
+      for await (const {results, errors} of new cp.BatchIterator(readers)) {
         rootState = getState();
         state = Polymer.Path.get(rootState, statePath);
         if (!tr.b.setsEqual(requestedReports, new Set(
@@ -1119,12 +1118,14 @@ tr.exportTo('cp', () => {
         value: deltaValue,
       });
     }
+    const actualDescriptors = (
+      row.data[minRevision] || row.data[maxRevision] || {}).descriptors;
 
     return {
       labelParts,
       scalars,
       label: row.label,
-      actualDescriptors: row.data[minRevision].descriptors,
+      actualDescriptors,
       testSuite: {
         errorMessage: 'Required',
         label: `Test suites (${testSuites.length})`,

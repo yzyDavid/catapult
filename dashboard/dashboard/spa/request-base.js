@@ -28,6 +28,22 @@ tr.exportTo('cp', () => {
       return this.promise_;
     }
 
+    // Some CacheRequest classes use ResultChannelSender to stream parts of the
+    // requested data as it becomes available.
+    async* reader() {
+      const receiver = new cp.ResultChannelReceiver(
+          this.channelName);
+      const response = await this.response;
+      if (response) yield response;
+      for await (const update of receiver) {
+        yield this.postProcess_(update, true);
+      }
+    }
+
+    get channelName() {
+      return location.origin + this.url_;
+    }
+
     async addAuthorizationHeaders_() {
       const headers = await cp.authorizationHeaders();
       for (const [name, value] of headers) {
@@ -69,7 +85,7 @@ tr.exportTo('cp', () => {
       return {};
     }
 
-    postProcess_(json) {
+    postProcess_(json, isFromChannel = false) {
       return json;
     }
   }

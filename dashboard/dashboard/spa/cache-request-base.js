@@ -5,274 +5,171 @@
 'use strict';
 
 import idb from '/idb/idb.js';
+import TASK_QUEUE from './task-queue.js';
 import Timing from './timing.js';
 import analytics from './google-analytics.js';
 
+// Transaction modes
 export const READONLY = 'readonly';
 export const READWRITE = 'readwrite';
 
+// Wrap an object in a JSON Blob Response to pass to fetchEvent.respondWith().
 export const jsonResponse = response => new Response(new Blob(
-    [JSON.stringify(response)], {type: 'application/json'}))
+    [JSON.stringify(response)], {type: 'application/json'}));
 
-// TODO move to separate module
-class ResultChannelSender {
-  constructor(url) {
-    this.channel_ = new BroadcastChannel(url);
-  }
+const IN_PROGRESS_REQUESTS = new Set();
 
-  async send(asyncGenerator) {
-    for await (const payload of asyncGenerator) {
-      this.channel_.postMessage({type: 'RESULT', payload});
-    }
-    this.channel_.postMessage({type: 'DONE'});
-  }
-};
+// Map from database name to database connection.
+const CONNECTION_POOL = new Map();
 
-/**
- * CacheRequestBase handles all operations for starting a data race between
- * IndexedDB and the network. Developers can extends this class to retrieve
- * and cache results from remote sources, such as APIs.
- */
 export class CacheRequestBase {
   constructor(fetchEvent) {
     this.fetchEvent = fetchEvent;
-    this.asyncIterator_ = this.raceCacheAndNetwork_();
+    this.url = new URL(this.fetchEvent.request.url);
+    this.databasePromise_ = undefined;
+    this.responsePromise_ = undefined;
+    this.writing_ = false;
+
+    IN_PROGRESS_REQUESTS.add(this);
+    TASK_QUEUE.cancelFlush();
   }
 
-  async respond() {
-    this.fetchEvent.respondWith(new Response(new Blob(
-        ['null'], {type: 'application/json'})));
-    await new ResultChannelSender(this.fetchEvent.request.url).send(this);
+  get databasePromise() {
+    if (!this.databasePromise_) this.databasePromise_ = this.openDatabase_();
+    return this.databasePromise_;
   }
 
-  get timingCategory() {
-    // e.g. 'Timeseries', 'Reports', 'FullHistograms'
-    throw new Error(`${this.constructor.name} must override timingCategory`);
+  get responsePromise() {
+    if (!this.responsePromise_) this.responsePromise_ = this.getResponse();
+    return this.responsePromise_;
+  }
+
+  // The page may send multiple requests for the same data without waiting for
+  // completion, or requests may overlap in complex ways. Subclasses can avoid
+  // forwarding identical/overlapping requests to the backend using this method
+  // to find other in-progress requests and wait for their responses.
+  async findInProgressRequest(filter) {
+    for (const other of IN_PROGRESS_REQUESTS) {
+      if ((other !== this) &&
+          (other.url.pathname === this.url.pathname) &&
+          (await filter(other))) {
+        return other;
+      }
+    }
+  }
+
+  onComplete() {
+    // This is automatically called when getResponse() returns if
+    // scheduleWrite() is not called, or when writeDatabase() returns.
+    // However, subclasses may need to call this if they use
+    // findInProgressRequest and block on another request in order to prevent
+    // that request from blocking on this one.
+    // Database writes are batched and delayed until after database reads are
+    // done in order to keep the writes from delaying the reads.
+    IN_PROGRESS_REQUESTS.delete(this);
+    if (IN_PROGRESS_REQUESTS.size === 0) TASK_QUEUE.scheduleFlush();
+  }
+
+  // Subclasses may override this to read a database and/or fetch() from the
+  // backend.
+  async getResponse() {
+    return null;
+  }
+
+  respond() {
+    this.fetchEvent.respondWith(this.responsePromise.then(response => {
+      if (!this.writing_) this.onComplete();
+      return jsonResponse(response);
+    }));
+  }
+
+  async writeDatabase(options) {
+    throw new Error(`${this.constructor.name} must override writeDatabase`);
+  }
+
+  // getResponse() should call this method.
+  scheduleWrite(options) {
+    this.writing_ = true;
+    let complete;
+    this.fetchEvent.waitUntil(new Promise(resolve => {
+      complete = resolve;
+    }));
+
+    TASK_QUEUE.schedule(async() => {
+      try {
+        await this.writeDatabase(options);
+      } finally {
+        this.onComplete();
+        complete();
+        this.writing_ = false;
+      }
+    });
   }
 
   get databaseName() {
-    // e.g. `reports/${this.uniqueIdentifier}`
     throw new Error(`${this.constructor.name} must override databaseName`);
   }
 
   get databaseVersion() {
-    // e.g. 1, 2, 3
-    throw new Error(
-        `${this.constructor.name} must override databaseVersion`);
+    throw new Error(`${this.constructor.name} must override databaseVersion`);
   }
 
   async upgradeDatabase(database) {
-    // See https://github.com/jakearchibald/idb#upgrading-existing-db
-    throw new Error(
-        `${this.constructor.name} must override upgradeDatabase`);
+    throw new Error(`${this.constructor.name} must override upgradeDatabase`);
   }
 
-  async read(database) {
-    throw new Error(`${this.constructor.name} must override read`);
-  }
+  async openDatabase_() {
+    if (!CONNECTION_POOL.has(this.databaseName)) {
+      const connection = await this.timePromise('openDatabase_', idb.open(
+          this.databaseName, this.databaseVersion,
+          db => this.upgradeDatabase(db)));
+      CONNECTION_POOL.set(this.databaseName, connection);
 
-  async write(database, networkResults) {
-    throw new Error(`${this.constructor.name} must override write`);
-  }
-
-  // Child classes should use this method to record performance measures to the
-  // Chrome DevTools and, if available, to Google Analytics.
-  time(action) {
-    return new Timing(this.timingCategory, action, this.fetchEvent.request.url);
-  }
-
-  [Symbol.asyncIterator]() {
-    return this.asyncIterator_;
-  }
-
-  next() {
-    return this.asyncIterator_.next();
-  }
-
-  // TODO(crbug.com/878015): Use async generator methods.
-  get raceCacheAndNetwork_() {
-    return async function* () {
-      const cachePromise = this.readCache_();
-      const networkPromise = this.readNetwork_();
-
-      const winner = await Promise.race([cachePromise, networkPromise]);
-
-      if (winner.name === 'IndexedDB' && winner.result) {
-        yield winner.result;
-      }
-
-      const res = await networkPromise;
-      yield res.result;
-      CacheRequestBase.writer.enqueue(() => this.writeIDB_(res.result));
-    };
-  }
-
-  async readCache_() {
-    const timing = this.time('Cache');
-    const response = await this.readIDB_();
-
-    if (response) {
-      timing.end();
-    } else {
-      timing.remove();
+      // TODO(benjhayden): Monitor this to decide when to evict connections.
+      analytics.sendEvent(
+          'CacheRequestBase', 'CONNECTION_POOL.size', CONNECTION_POOL.size);
     }
-
-    return {
-      name: 'IndexedDB',
-      result: response,
-    };
+    return CONNECTION_POOL.get(this.databaseName);
   }
 
-  async timePromise(name, promise) {
-    const timing = this.time(name);
+  time(action) {
+    return new Timing(
+        this.constructor.name, action, this.fetchEvent.request.url);
+  }
+
+  async timePromise(action, promise) {
+    const timing = this.time(action);
     try {
       return await promise;
     } finally {
       timing.end();
     }
   }
-
-  async readNetwork_() {
-    let timing = this.time('Network');
-    const response = await fetch(this.fetchEvent.request);
-    timing.end();
-
-    timing = this.time('Parse JSON');
-    const json = await response.json();
-    timing.end();
-
-    return {
-      name: 'Network',
-      result: json,
-    };
-  }
-
-  async openIDB_(name) {
-    if (!CacheRequestBase.connectionPool.has(name)) {
-      const timing = this.time('Open');
-      const connection = await idb.open(name, this.databaseVersion,
-          this.upgradeDatabase);
-      CacheRequestBase.connectionPool.set(name, connection);
-      timing.end();
-    }
-    return CacheRequestBase.connectionPool.get(name);
-  }
-
-  async readIDB_() {
-    const database = await this.openIDB_(this.databaseName);
-    const timing = this.time('Read');
-    const results = await this.read(database);
-    timing.end();
-    return results;
-  }
-
-  async writeIDB_(networkResults) {
-    const database = await this.openIDB_(this.databaseName);
-    const timing = this.time('Write');
-    const results = await this.write(database, networkResults);
-    timing.end();
-    return results;
-  }
 }
 
-// Keep a pool of open connections to reduce the latency of recurrent opens.
-// TODO(b/875941): Use LRU eviction for IndexedDB connections.
-CacheRequestBase.connectionPool = new Map();
-
-// Allow reads to be fast by delaying writes by the approximate maximum time
-// taken for the cache to respond.
-const WRITING_QUEUE_DELAY_MS = 3000;
-
-// WritingQueue queues inputs for a write function, which is called in batch
-// after no more inputs are added after a given timeout period.
-class WritingQueue {
-  constructor() {
-    this.timeoutEnabled = true;
-    this.queue = [];
-    this.timeoutId = undefined;
-    this.flushing_ = false;
-  }
-
-  enqueue(writeFunc) {
-    this.queue.push(writeFunc);
-
-    if (!this.timeoutEnabled) return;
-
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
-
-    this.timeoutId = setTimeout(this.flush.bind(this), WRITING_QUEUE_DELAY_MS);
-  }
-
-  async flush() {
-    if (this.flushing_) return;
-    this.flushing_ = true;
-
-    while (this.queue.length) {
-      // TODO pause flushing when new requests start, resume when they complete.
-      const task = this.queue.shift();
-      try {
-        await task();
-      } catch (err) {
-        console.error(err);
-        analytics.sendException(err);
-      }
-    }
-
-    this.flushing_ = false;
-
-    // Record the size of the connection pool to see if LRU eviction would be
-    // necessary for the future.
-    analytics.sendEvent('IndexedDB', 'Connection Pool Size',
-      CacheRequestBase.connectionPool.size);
-  }
+export async function flushWriterForTest() {
+  await TASK_QUEUE.flush();
 }
 
-// Delay writes for increased read performance.
-CacheRequestBase.writer = new WritingQueue();
-
+export function clearInProgressForTest() {
+  IN_PROGRESS_REQUESTS.clear();
+}
 
 export async function deleteDatabaseForTest(databaseName) {
-  if (CacheRequestBase.connectionPool.has(databaseName)) {
-    await CacheRequestBase.connectionPool.get(databaseName).close();
-    CacheRequestBase.connectionPool.delete(databaseName);
+  if (CONNECTION_POOL.has(databaseName)) {
+    await CONNECTION_POOL.get(databaseName).close();
+    CONNECTION_POOL.delete(databaseName);
   }
 
   await idb.delete(databaseName);
 }
 
-/**
- * Tests should disable the WritingQueue's timeout-based writing mechanism.
- * Instead, manually flushing the writer should be used to allow for synchronous
- * assertions. The two utility functions below make this easy:
- *
- *   test('it_does_stuff', async() => {
- *     disableAutomaticWritingForTest('foo');
- *     // Add tasks to the writing queue...
- *     await flushWriterForTest();
- *     // Make some assertions...
- *   });
- *
- */
-
-export function disableAutomaticWritingForTest() {
-  CacheRequestBase.writer.timeoutEnabled = false;
-}
-
-export async function flushWriterForTest() {
-  if (CacheRequestBase.writer.timeoutId) {
-    clearTimeout(CacheRequestBase.writer.timeoutId);
-  }
-
-  await CacheRequestBase.writer.flush();
-}
-
-
 export default {
-  deleteDatabaseForTest,
-  disableAutomaticWritingForTest,
-  flushWriterForTest,
   CacheRequestBase,
+  READONLY,
+  READWRITE,
+  clearInProgressForTest,
+  deleteDatabaseForTest,
+  flushWriterForTest,
   jsonResponse,
 };

@@ -5,34 +5,23 @@
 'use strict';
 tr.exportTo('cp', () => {
   class ReportRequest extends cp.RequestBase {
-    /*
-     * type options = {
-     *   id: number,
-     *   name: string,
-     *   modified: Date,
-     *   revisions: [number|"latest"],
-     * }
-     */
     constructor(options) {
       super(options);
       this.name_ = options.name;
       this.method_ = 'POST';
-      this.revisions_ = options.revisions;
-      this.queryParams_ = new URLSearchParams();
-      this.queryParams_.set('id', options.id);
-      this.queryParams_.set('modified', options.modified.getTime());
-      this.queryParams_.set('revisions', this.revisions_);
-    }
-
-    async* reader() {
-      const listener = new cp.ResultChannelReceiver(this.url_);
-      const response = await this.response;
-      if (response) yield response;
-      for await (const update of listener) yield update;
+      this.body_ = new FormData();
+      this.body_.set('id', options.id);
+      this.body_.set('modified', options.modified.getTime());
+      this.body_.set('revisions', options.revisions);
     }
 
     get url_() {
-      return `/api/report/generate?${this.queryParams_}`;
+      return '/api/report/generate';
+    }
+
+    get channelName() {
+      return (location.origin + this.url_ + '?' +
+              new URLSearchParams(this.body_));
     }
 
     async localhostResponse_() {
@@ -106,20 +95,7 @@ tr.exportTo('cp', () => {
     }
   }
 
-  /*
-   * type options = {
-   *   id: number,
-   *   name: string,
-   *   modified: Date,
-   *   revisions: [number|"latest"],
-   * }
-   */
-  const ReportReader = options => new ReportRequest(options).reader();
-  // TODO remove this shortcut
-  // TODO rename this file to ReportRequest
-
   return {
-    ReportReader,
     ReportRequest,
   };
 });

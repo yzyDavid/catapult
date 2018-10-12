@@ -10,107 +10,138 @@ found in the LICENSE file.
 
 <link rel="import" href="/dashboard/spa/result-channel-receiver.html">
 
-<script>
+<script type="module" src="/dashboard/spa/result-channel-sender.js"></script>
+<script type="module">
 'use strict';
+import ResultChannelSender from './result-channel-sender.js';
+
 suite('ResultChannelReceiver', function() {
-  setup(function() {
-    cp.ResultChannelReceiver.TESTING = true;
+  test('receives two queued messages', async() => {
+    const url = 'receives two queued messages';
+    const sender = new ResultChannelSender(url);
+    const receiver = new cp.ResultChannelReceiver(url);
+    sender.send((async function* () {
+      yield 'foo';
+      yield 'bar';
+    })());
+
+    // Start the receiver after the sender has sent its messages.
+    // The receiver should queue all messages until the caller is ready for
+    // them.
+    const results = [];
+    for await (const result of receiver) {
+      results.push(result);
+    }
+    assert.deepEqual(results, ['foo', 'bar']);
   });
 
-  teardown(function() {
-    cp.ResultChannelReceiver.TESTING = false;
+  test('receives two delayed messages', async() => {
+    const url = 'receives two delayed messages';
+    const sender = new ResultChannelSender(url);
+    const receiver = new cp.ResultChannelReceiver(url);
+
+    // Start the receiver before the sender has sent any messages.
+    // The receiver should block until the sender sends messages.
+    const results = [];
+    const receiverDone = (async() => {
+      for await (const result of receiver) {
+        results.push(result);
+      }
+    })();
+
+    sender.send((async function* () {
+      yield 'foo';
+      yield 'bar';
+    })());
+
+    await receiverDone;
+    assert.deepEqual(results, ['foo', 'bar']);
   });
 
-  test('receives_single_queued_message', async() => {
-    const url = 'receives_single_queued_message';
-    const channel = new BroadcastChannel(location.origin + url);
-    const listener = new cp.ResultChannelReceiver(url);
+  test('receives one queued message and one delayed message', async() => {
+    const url = 'receives one queued message and one delayed message';
+    const receiver = new cp.ResultChannelReceiver(url);
+    const sender = new ResultChannelSender(url);
 
-    channel.postMessage({type: 'RESULT', payload: 'Hello world!'});
+    let resolveDelay;
+    sender.send((async function* () {
+      yield 'foo';
+      await new Promise(resolve => {
+        resolveDelay = resolve;
+      });
+      yield 'bar';
+    })());
+
+    // Start the receiver after the sender has sent one message but before it
+    // has sent the second.
+    // The receiver should yield the first message immediately, then block until
+    // the second message is sent.
+    const results = [];
+    let resolveFirst;
+    const receivedFirst = new Promise(resolve => {
+      resolveFirst = resolve;
+    });
+    const receiverDone = (async() => {
+      for await (const result of receiver) {
+        results.push(result);
+        resolveFirst();
+      }
+    })();
+
+    await receivedFirst;
+    assert.deepEqual(results, ['foo']);
+
+    resolveDelay();
+    await receiverDone;
+    assert.deepEqual(results, ['foo', 'bar']);
+  });
+
+  test('queued unknown message type', async() => {
+    const url = 'unknown message type';
+    const receiver = new cp.ResultChannelReceiver(url);
+    const channel = new BroadcastChannel(url);
+    channel.postMessage({type: 'unknown'});
+    let error;
+    try {
+      for await (const result of receiver) {
+      }
+    } catch (err) {
+      error = err.message;
+    }
+    assert.strictEqual('Unknown message type: unknown', error);
+  });
+
+  test('delayed unknown message type', async() => {
+    const url = 'unknown message type';
+    const receiver = new cp.ResultChannelReceiver(url);
+    const channel = new BroadcastChannel(url);
+    let error;
+    const receiverDone = (async() => {
+      try {
+        for await (const result of receiver) {
+        }
+      } catch (err) {
+        error = err.message;
+      }
+    })();
+    channel.postMessage({type: 'unknown'});
+    await receiverDone;
+    assert.strictEqual('Unknown message type: unknown', error);
+  });
+
+  test('send after close', async() => {
+    const url = 'unknown message type';
+    const receiver = new cp.ResultChannelReceiver(url);
+    const channel = new BroadcastChannel(url);
     channel.postMessage({type: 'DONE'});
-
+    channel.postMessage({type: 'RESULT', payload: 'post facto'});
     const results = [];
-    for await (const result of listener) {
-      results.push(result);
-    }
-
-    assert.deepEqual(results, ['Hello world!']);
-  });
-
-  test('receives_two_queued_messages', async() => {
-    const url = 'receives_two_queued_messages';
-    const channel = new BroadcastChannel(location.origin + url);
-    const listener = new cp.ResultChannelReceiver(url);
-
-    channel.postMessage({ type: 'RESULT', payload: 'foo' });
-    channel.postMessage({ type: 'RESULT', payload: 'bar' });
-    channel.postMessage({ type: 'DONE' });
-
-    const results = [];
-    for await (const result of listener) {
-      results.push(result);
-    }
-
-    assert.deepEqual(results, ['foo', 'bar']);
-  });
-
-  test('receives_single_delayed_message', async() => {
-    const url = 'receives_single_queued_message';
-    const listener = new cp.ResultChannelReceiver(url);
-    const channel = new BroadcastChannel(location.origin + url);
-    const results = [];
-
-    let promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'RESULT', payload: 'Hello world!' });
-    results.push(await promise);
-
-    promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'DONE' });
-    await promise;
-
-    assert.deepEqual(results, ['Hello world!']);
-  });
-
-  test('receives_two_delayed_messages', async() => {
-    const url = 'receives_two_queued_messages';
-    const listener = new cp.ResultChannelReceiver(url);
-    const channel = new BroadcastChannel(location.origin + url);
-    const results = [];
-
-    let promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'RESULT', payload: 'foo' });
-    results.push(await promise);
-
-    promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'RESULT', payload: 'bar' });
-    results.push(await promise);
-
-    promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'DONE' });
-    await promise;
-
-    assert.deepEqual(results, ['foo', 'bar']);
-  });
-
-  test('receives_one_delayed_message_and_one_queued_message', async() => {
-    const url = 'receives_two_queued_messages';
-    const listener = new cp.ResultChannelReceiver(url);
-    const channel = new BroadcastChannel(location.origin + url);
-    const results = [];
-
-    let promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'RESULT', payload: 'foo' });
-    channel.postMessage({ type: 'RESULT', payload: 'bar' });
-    results.push(await promise);
-
-    promise = listener.next().then(result => result.value);
-    results.push(await promise);
-
-    promise = listener.next().then(result => result.value);
-    channel.postMessage({ type: 'DONE' });
-    await promise;
-
-    assert.deepEqual(results, ['foo', 'bar']);
+    const receiverDone = (async() => {
+      for await (const result of receiver) {
+        results.push(result);
+      }
+    })();
+    assert.lengthOf(results, 0);
   });
 });
 </script>

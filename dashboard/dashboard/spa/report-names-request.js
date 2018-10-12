@@ -5,19 +5,13 @@
 'use strict';
 tr.exportTo('cp', () => {
   class ReportNamesRequest extends cp.RequestBase {
-    constructor(options) {
-      super(options);
+    constructor() {
+      super({});
       this.method_ = 'POST';
     }
 
     get url_() {
       return '/api/report/names';
-    }
-
-    async localhostResponse_() {
-      return [
-        {name: cp.ReportSection.DEFAULT_NAME, id: 0, modified: 0},
-      ];
     }
 
     // `modified` comes back as ISO8601, but we need a Date object.
@@ -31,9 +25,5 @@ tr.exportTo('cp', () => {
     }
   }
 
-  const ReadReportNames = async() => await new ReportNamesRequest({}).response;
-
-  return {
-    ReadReportNames,
-  };
+  return {ReportNamesRequest};
 });

@@ -4,21 +4,21 @@
 */
 'use strict';
 
-import {CacheRequestBase, READONLY, READWRITE, jsonResponse} from './cache-request-base.js';
+import {CacheRequestBase, READONLY, READWRITE} from './cache-request-base.js';
 
 const STORE_DATA = 'data';
-const EXPIRATION_KEY = '_expiresTime';
+const EXPIRATION_MS = 20 * 60 * 60 * 1000;
 
 export default class KeyValueCacheRequest extends CacheRequestBase {
-  constructor(fetchEvent) {
-    super(fetchEvent);
-    KeyValueCacheRequest.IN_PROGRESS.push(this);
-    this.databaseKey = this.getDatabaseKey();
-    this.response = this.getResponse();
+  get isAuthorized() {
+    return this.fetchEvent.request.headers.has('Authorization');
   }
 
-  get timingCategory() {
-    return 'keyvalue';
+  get databaseKeyPromise() {
+    if (!this.databaseKeyPromise_) {
+      this.databaseKeyPromise_ = this.getDatabaseKey();
+    }
+    return this.databaseKeyPromise_;
   }
 
   get databaseName() {
@@ -35,67 +35,46 @@ export default class KeyValueCacheRequest extends CacheRequestBase {
     }
   }
 
-  get raceCacheAndNetwork_() {
-    return async function* () {
-      // This class does not race cache vs network. See respond().
-    };
-  }
-
-  get expirationMs() {
-    return 20 * 60 * 60 * 1000;
-  }
-
   async getDatabaseKey() {
     throw new Error(`${this.constructor.name} must override getDatabaseKey`);
   }
 
-  async write_(key, value) {
-    const timing = this.time('Write');
-    const db = await this.openIDB_(this.databaseName);
+  async writeDatabase({key, value}) {
+    const db = await this.databasePromise;
     const transaction = db.transaction([STORE_DATA], READWRITE);
     const dataStore = transaction.objectStore(STORE_DATA);
-    const expiration = new Date(new Date().getTime() + this.expirationMs);
-    dataStore.put({value, [EXPIRATION_KEY]: expiration.toISOString()}, key);
+    const expiration = new Date(new Date().getTime() + EXPIRATION_MS);
+    dataStore.put({value, expiration: expiration.toISOString()}, key);
     await transaction.complete;
-    timing.end();
+  }
 
-    const index = KeyValueCacheRequest.IN_PROGRESS.indexOf(this);
-    KeyValueCacheRequest.IN_PROGRESS.splice(index, 1);
+  async readDatabase_(key) {
+    const db = await this.databasePromise;
+    const transaction = db.transaction([STORE_DATA], READONLY);
+    const dataStore = transaction.objectStore(STORE_DATA);
+    return await dataStore.get(key);
   }
 
   async getResponse() {
-    const key = await this.databaseKey;
-    const db = await this.openIDB_(this.databaseName);
-    const transaction = db.transaction([STORE_DATA], READONLY);
-    const dataStore = transaction.objectStore(STORE_DATA);
-    const entry = await dataStore.get(key);
-    if (entry && (new Date(entry[EXPIRATION_KEY]) > new Date())) {
+    const key = await this.databaseKeyPromise;
+    const otherRequest = await this.findInProgressRequest(async other =>
+      ((await other.databaseKeyPromise) === key));
+    if (otherRequest) {
+      // Be sure to call onComplete() to remove `this` from IN_PROGRESS_REQUESTS
+      // so that `otherRequest.getResponse()` doesn't await
+      // `this.getResponse()`.
+      this.onComplete();
+      return await otherRequest.responsePromise;
+    }
+
+    const entry = await this.readDatabase_(key);
+    if (entry && (new Date(entry.expiration) > new Date())) {
       return entry.value;
     }
 
-    for (const other of KeyValueCacheRequest.IN_PROGRESS) {
-      if (other !== this &&
-          key === (await other.databaseKey) &&
-          KeyValueCacheRequest.IN_PROGRESS.includes(other)) {
-        // Double-check that other wasn't removed from IN_PROGRESS while
-        // awaiting its databaseKey. Remove `this` from IN_PROGRESS so that
-        // `other` doesn't await `this.response`.
-        const index = KeyValueCacheRequest.IN_PROGRESS.indexOf(this);
-        KeyValueCacheRequest.IN_PROGRESS.splice(index, 1);
-        return await other.response;
-      }
-    }
-
-    const response = await this.timePromise(
-        'Network', fetch(this.fetchEvent.request));
-    const value = await this.timePromise('Parse JSON', response.json());
-    CacheRequestBase.writer.enqueue(() => this.write_(key, value));
+    const response = await fetch(this.fetchEvent.request);
+    const value = await response.json();
+    this.scheduleWrite({key, value});
     return value;
   }
-
-  async respond() {
-    this.fetchEvent.respondWith(this.response.then(jsonResponse));
-  }
 }
-
-KeyValueCacheRequest.IN_PROGRESS = [];

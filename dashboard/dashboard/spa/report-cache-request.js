@@ -4,59 +4,11 @@
 */
 'use strict';
 
-import Range from './range.js';
-import {CacheRequestBase, READONLY, READWRITE} from './cache-request-base.js';
+import {
+  CacheRequestBase, READONLY, READWRITE, jsonResponse,
+} from './cache-request-base.js';
+import ResultChannelSender from './result-channel-sender.js';
 
-
-/**
- * Timeseries are stored in IndexedDB to optimize the speed of ranged reading.
- * Here is the structure in TypeScript:
- *
- *   type ReportDatabase = {
- *     // Reports for each row, indexed by revision
- *     reports: {
- *       [revision: number]: [Report]
- *     },
- *
- *     // Data that doesn't change between revisions
- *     metadata: {
- *       rows: [Row],    // List of rows for this template
- *       modified: Date, // If this doesn't match, get rid of existing data.
- *
- *       // General data for the template
- *       editable: boolean,
- *       name: string,
- *       internal: boolean,
- *       owners: [string],
- *       statistics: [string]
- *     }
- *   }
- *
- *   type Row = {
- *     bots: [string],
- *     improvement_direction: number,
- *     label: string,
- *     measurement: string,
- *     testCases: [string],
- *     testSuites: [string],
- *     units: string
- *   }
- *
- *   type Report = {
- *     descriptors: [Descriptor],
- *     statistics: any, // see RunningStatistics.fromDict()
- *     // revision: number, // not being used
- *   }
- *
- *   type Descriptor = {
- *     bot: string,
- *     testCase: string,
- *     testSuite: string
- *   }
- *
- */
-
-// Constants for the database structure
 const STORE_REPORTS = 'reports';
 const STORE_METADATA = 'metadata';
 const STORES = [STORE_REPORTS, STORE_METADATA];
@@ -64,44 +16,89 @@ const STORES = [STORE_REPORTS, STORE_METADATA];
 export default class ReportCacheRequest extends CacheRequestBase {
   constructor(fetchEvent) {
     super(fetchEvent);
-    const {searchParams} = new URL(fetchEvent.request.url);
-
-    const id = searchParams.get('id');
-    if (!id) {
-      throw new Error('ID is not specified for this report request!');
-    }
-
-    this.templateId_ = parseInt(id);
-    if (isNaN(this.templateId_)) {
-      throw new Error('Template ID is not a real number!');
-    }
-
-    const modified = searchParams.get('modified');
-    if (!modified) {
-      throw new Error('Modified is not specified for this report request!');
-    }
-    this.modified_ = parseInt(modified);
-    if (isNaN(this.modified_)) {
-      throw new Error(`Modified is not a valid number: ${modified}`);
-    }
-
-    const revisions = searchParams.get('revisions');
-    if (!revisions) {
-      throw new Error('Revisions is not specified for this report request!');
-    }
-    this.revisions_ = revisions.split(',');
-
-    // Data can be stale if the template was modified after being stored on
-    // IndexedDB. This value is modified in read() and later used in write().
+    this.parseRequestPromise = this.parseRequest_();
     this.isTemplateDifferent_ = false;
   }
 
-  get timingCategory() {
-    return 'Reports';
+  async parseRequest_() {
+    const body = await this.fetchEvent.request.clone().formData();
+
+    if (!body.has('id')) throw new Error('Missing template id');
+    this.templateId = parseInt(body.get('id'));
+
+    if (!body.has('modified')) throw new Error('Missing modified');
+    this.templateModified = parseInt(body.get('modified'));
+
+    if (!body.has('revisions')) throw new Error('Missing revisions');
+    this.revisions = body.get('revisions').split(',');
+  }
+
+  async sendResults_() {
+    await this.parseRequestPromise;
+    let channelName = this.fetchEvent.request.url;
+    channelName += '?' + new URLSearchParams({
+      id: this.templateId,
+      modified: this.templateModified,
+      revisions: this.revisions.join(','),
+    });
+    const sender = new ResultChannelSender(channelName);
+    await sender.send(this.generateResults());
+  }
+
+  respond() {
+    this.fetchEvent.respondWith(this.responsePromise.then(jsonResponse));
+    this.fetchEvent.waitUntil(this.sendResults_());
+  }
+
+  get generateResults() {
+    return async function* () {
+      await this.parseRequestPromise;
+
+      const otherRequest = await this.findInProgressRequest(async other => {
+        try {
+          await other.parseRequestPromise;
+        } catch (invalidOther) {
+          return false;
+        }
+        if (other.templateId !== this.templateId) return false;
+        return (other.revisions.join(',') === this.revisions.join(','));
+      });
+
+      if (otherRequest) {
+        // Be sure to call onComplete() to remove `this` from
+        // IN_PROGRESS_REQUESTS so that `otherRequest.generateResults()` doesn't
+        // await `this.generateResults()`.
+        this.onComplete();
+        this.readNetworkPromise = otherRequest.readNetworkPromise;
+      } else {
+        this.readNetworkPromise = this.readNetwork_();
+      }
+
+      const winner = await Promise.race([
+        this.readDatabase_().then(result => {
+          return {result, source: 'database'};
+        }),
+        this.readNetworkPromise.then(result => {
+          return {result, source: 'network'};
+        }),
+      ]);
+      if (winner.source === 'database' && winner.result) {
+        yield winner.result;
+      }
+
+      const networkResult = await this.readNetworkPromise;
+      yield networkResult;
+      this.scheduleWrite(networkResult);
+    };
+  }
+
+  async readNetwork_() {
+    const response = await fetch(this.fetchEvent.request);
+    return await response.json();
   }
 
   get databaseName() {
-    return ReportCacheRequest.databaseName({id: this.templateId_});
+    return ReportCacheRequest.databaseName({id: this.templateId});
   }
 
   get databaseVersion() {
@@ -115,7 +112,8 @@ export default class ReportCacheRequest extends CacheRequestBase {
     }
   }
 
-  async read(db) {
+  async readDatabase_() {
+    const db = await this.databasePromise;
     const transaction = db.transaction(STORES, READONLY);
 
     // Start all asynchronous actions at once then "await" only the results
@@ -136,7 +134,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
     // stale and needs to be rewritten; otherwise, false.
     const lastModified = await metadataPromises.modified;
     if (typeof lastModified !== 'number') return;
-    if (lastModified !== this.modified_) {
+    if (lastModified !== this.templateModified) {
       this.isTemplateDifferent_ = true;
       return;
     }
@@ -153,7 +151,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
 
     return {
       editable: await metadataPromises.editable,
-      id: this.templateId_,
+      id: this.templateId,
       internal: await metadataPromises.internal,
       name: await metadataPromises.name,
       owners: await metadataPromises.owners,
@@ -168,7 +166,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
   mergeRowsWithReports_(rows, reportsByRevision) {
     return rows.map((row, rowIndex) => {
       const data = {};
-      for (const revision of this.revisions_) {
+      for (const revision of this.revisions) {
         if (!Array.isArray(reportsByRevision[revision])) continue;
         if (!reportsByRevision[revision][rowIndex]) continue;
         data[revision] = reportsByRevision[revision][rowIndex];
@@ -181,30 +179,24 @@ export default class ReportCacheRequest extends CacheRequestBase {
   }
 
   async getReports_(transaction) {
-    const timing = this.time('Read - Reports');
     const reportStore = transaction.objectStore(STORE_REPORTS);
-
     const reportsByRevision = {};
-    await Promise.all(this.revisions_.map(async(revision) => {
+    await Promise.all(this.revisions.map(async(revision) => {
       const reports = await reportStore.get(revision);
       if (reports) {
         reportsByRevision[revision] = reports;
       }
     }));
-
-    timing.end();
     return reportsByRevision;
   }
 
   async getMetadata_(transaction, key) {
-    const timing = this.time('Read - Metadata');
     const metadataStore = transaction.objectStore(STORE_METADATA);
-    const result = await metadataStore.get(key);
-    timing.end();
-    return result;
+    return await metadataStore.get(key);
   }
 
-  async write(db, networkResults) {
+  async writeDatabase(networkResults) {
+    const db = await this.databasePromise;
     const {report: networkReport, ...metadata} = networkResults;
     const {rows: networkRows, statistics} = networkReport;
 
@@ -214,16 +206,13 @@ export default class ReportCacheRequest extends CacheRequestBase {
       this.writeMetadata_(transaction, networkResults),
     ]);
 
-    const timing = this.time('Write - Queued Tasks');
     await transaction.complete;
-    timing.end();
   }
 
   async writeReports_(transaction, networkResults) {
     const reportStore = transaction.objectStore(STORE_REPORTS);
 
-    // When the report template changes, reports may pertain to different
-    // benchmarks.
+    // When the report template changes, cached data may no longer be relevant.
     if (this.isTemplateDifferent_) {
       await reportStore.clear();
     }
@@ -254,7 +243,7 @@ export default class ReportCacheRequest extends CacheRequestBase {
 
     metadataStore.put(rows, 'rows');
     metadataStore.put(statistics, 'statistics');
-    metadataStore.put(this.modified_, 'modified');
+    metadataStore.put(this.templateModified, 'modified');
 
     for (const [key, value] of Object.entries(metadata)) {
       metadataStore.put(value, key);

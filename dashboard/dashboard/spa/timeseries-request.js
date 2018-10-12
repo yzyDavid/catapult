@@ -4,69 +4,34 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  /*
-   * A lineDescriptor describes a single line in the chart-base.
-   * A lineDescriptor must specify
-   *  * at least one testSuite
-   *  * at least one bot
-   *  * exactly one measurement
-   *  * exactly one statistic
-   *  * zero or more testCases
-   *  * buildType (enum 'test' or 'ref')
-   * When multiple testSuites, bots, or testCases are specified, the timeseries
-   * are merged using RunningStatistics.merge().
-   *
-   * In order to load the data for a lineDescriptor, one or more
-   * fetchDescriptors are generated for /api/timeseries2. See
-   * Timeseries2Handler.
-   * A fetchDescriptor contains a single testPath, columns, and optionally
-   * minRevision, maxRevision.
-   */
-
-  const PRIORITY = {
-    // Requests with priority=PREFETCH are not directly blocking the user, so
-    // they can wait until either
-    // 0. a user gesture increases their priority (e.g. opening a sparkline
-    //    tab), or
-    // 1. the priority queue is empty, or
-    // 2. they are canceled.
-    PREFETCH: 1,
-
-    // Additional priorities may be added to support, for example, guessing
-    // which PREFETCH requests are more or less likely to become USER requests,
-    // or prioritizing requests for earlier sections over requests for sections
-    // that are lower on the page.  Priority numbers won't be serialized
-    // anywhere, so they can be changed when those features are added, so
-    // there's no need to leave room between constants.
-
-    // Requests with priority=USER are directly blocking the user, so always
-    // pass them directly to the network.
-    USER: 2,
-  };
-
   const LEVEL_OF_DETAIL = Object.freeze({
     XY: 'XY',
-    ANNOTATIONS_ONLY: 'ANNOTATIONS_ONLY',
+    ALERTS: 'ALERTS',
     ANNOTATIONS: 'ANNOTATIONS',
     HISTOGRAM: 'HISTOGRAM',
   });
 
   function getColumnsByLevelOfDetail(levelOfDetail, statistic) {
     switch (levelOfDetail) {
-      case LEVEL_OF_DETAIL.XY: return new Set(['revision', 'timestamp', statistic, 'count']);
-      case LEVEL_OF_DETAIL.ANNOTATIONS_ONLY: return new Set(['revision', 'alert', 'diagnostics']);
+      case LEVEL_OF_DETAIL.XY:
+        return new Set(['revision', 'timestamp', statistic, 'count']);
+      case LEVEL_OF_DETAIL.ALERTS:
+        return new Set(['revision', 'alert']);
       case LEVEL_OF_DETAIL.ANNOTATIONS:
         return new Set([
           ...getColumnsByLevelOfDetail(LEVEL_OF_DETAIL.XY, statistic),
-          ...getColumnsByLevelOfDetail(LEVEL_OF_DETAIL.ANNOTATIONS_ONLY, statistic),
-          'revisions',
+          ...getColumnsByLevelOfDetail(LEVEL_OF_DETAIL.ALERTS, statistic),
+          'diagnostics', 'revisions',
         ]);
-      case LEVEL_OF_DETAIL.HISTOGRAMS: return new Set(['revision', 'histogram']);
-      default: throw new Error(`${levelOfDetail} is not a valid Level Of Detail`);
+      case LEVEL_OF_DETAIL.HISTOGRAMS:
+        return new Set(['revision', 'histogram']);
+      default:
+        throw new Error(`${levelOfDetail} is not a valid Level Of Detail`);
     }
   }
 
-  function transformDatum(row, columns, unit, conversionFactor, doNormalize=true) {
+  function transformDatum(
+      row, columns, unit, conversionFactor, doNormalize = true) {
     // `row` is either an array of values directly from /api/timeseries2, or a
     // dictionary from TimeseriesCacheRequest, depending on doNormalize.
     const datum = (doNormalize ? cp.normalize(columns, row) : row);
@@ -81,59 +46,41 @@ tr.exportTo('cp', () => {
   }
 
   class TimeseriesRequest extends cp.RequestBase {
-    /*
-     * type options = {
-     *   testSuite: string,
-     *   measurement: string,
-     *   bot: string,
-     *   testCase?: string,
-     *   statistic: string,
-     *   buildType?: any,
-     *
-     *   columns: [string],
-     *   levelOfDetail: cp.LEVEL_OF_DETAIL,
-     *
-     *   // Commit revision range
-     *   minRevision?: number,
-     *   maxRevision?: number,
-     * }
-     */
     constructor(options) {
       super(options);
       this.method_ = 'POST';
       this.measurement_ = options.measurement;
-      this.queryParams_ = new URLSearchParams();
-      this.queryParams_.set('test_suite', options.testSuite);
-      this.queryParams_.set('measurement', options.measurement);
-      this.queryParams_.set('bot', options.bot);
-
-      if (options.testCase) {
-        this.queryParams_.set('test_case', options.testCase);
-      }
+      this.body_ = new FormData();
+      this.body_.set('test_suite', options.testSuite);
+      this.body_.set('measurement', options.measurement);
+      this.body_.set('bot', options.bot);
+      if (options.testCase) this.body_.set('test_case', options.testCase);
 
       this.statistic_ = options.statistic || 'avg';
       if (options.statistic) {
-        this.queryParams_.set('statistic', options.statistic);
+        this.body_.set('statistic', options.statistic);
       }
 
-      // Question(Sam): What is buildType?
-      if (options.buildType) {
-        this.queryParams_.set('build_type', options.buildType);
-      }
+      if (options.buildType) this.body_.set('build_type', options.buildType);
 
       this.columns_ = [...getColumnsByLevelOfDetail(
           options.levelOfDetail, this.statistic_)];
-      this.queryParams_.set('columns', this.columns_.join(','));
+      this.body_.set('columns', this.columns_.join(','));
 
       if (options.minRevision) {
-        this.queryParams_.set('min_revision', options.minRevision);
+        this.body_.set('min_revision', options.minRevision);
       }
       if (options.maxRevision) {
-        this.queryParams_.set('max_revision', options.maxRevision);
+        this.body_.set('max_revision', options.maxRevision);
       }
     }
 
-    postProcess_(response, doNormalize=true) {
+    get channelName() {
+      return (location.origin + this.url_ + '?' +
+              new URLSearchParams(this.body_));
+    }
+
+    postProcess_(response, isFromChannel = false) {
       if (!response) return;
       let unit = tr.b.Unit.byJSONName[response.units];
       let conversionFactor = 1;
@@ -154,20 +101,11 @@ tr.exportTo('cp', () => {
       // across levels of detail. (Merging data across timeseries is handled by
       // MultiTimeseriesIterator using mergeData().)
       return response.data.map(row => transformDatum(
-          row, this.columns_, unit, conversionFactor, doNormalize));
-    }
-
-    async* reader() {
-      const receiver = new cp.ResultChannelReceiver(this.url_);
-      const response = await this.response;
-      if (response) yield response;
-      for await (const update of receiver) {
-        yield this.postProcess_(update, false);
-      }
+          row, this.columns_, unit, conversionFactor, !isFromChannel));
     }
 
     get url_() {
-      return `/api/timeseries2?${this.queryParams_}`;
+      return '/api/timeseries2';
     }
 
     async localhostResponse_() {

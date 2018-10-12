@@ -6,65 +6,44 @@
 tr.exportTo('cp', () => {
   class ResultChannelReceiver {
     constructor(url) {
-      url = location.origin + url;
-      if (navigator.serviceWorker.controller === null &&
-          !ResultChannelReceiver.TESTING) {
-        // The request is force refresh (Shift + refresh) or there is no
-        // active service worker.
-        this.done_ = true;
-        return;
-      }
-
-      this.done_ = false;
-
       this.messageQueue_ = [];
-      this.queueResult_ = result => this.messageQueue_.push(result);
-      this.nextPromise_ = undefined;
-      this.resolve_ = this.queueResult_;
-
+      this.onMessage_ = undefined;
       this.handleMessage_ = this.handleMessage_.bind(this);
       this.channel_ = new BroadcastChannel(url);
       this.channel_.addEventListener('message', this.handleMessage_);
     }
 
-    handleMessage_({data: {type, payload}}) {
+    handleMessage_({data}) {
+      this.messageQueue_.push(data);
+      if (this.onMessage_) this.onMessage_();
+    }
+
+    async next() {
+      if (this.messageQueue_.length === 0) {
+        await new Promise(resolve => {
+          this.onMessage_ = resolve;
+        });
+        this.onMessage_ = undefined;
+      }
+      const {type, payload} = this.messageQueue_.shift();
       switch (type) {
         case 'RESULT':
-          this.resolve_({done: false, value: payload});
-          return;
+          return {done: false, value: payload};
+
         case 'DONE':
-          this.resolve_({done: true, value: payload});
-          this.done_ = true;
           this.channel_.removeEventListener('message', this.handleMessage_);
           this.channel_.close();
-          return;
+          return {done: true};
+
         default:
-          throw new Error(`Unknown Service Worker message type: ${type}`);
+          throw new Error(`Unknown message type: ${type}`);
       }
     }
 
     [Symbol.asyncIterator]() {
       return this;
     }
-
-    async next() {
-      if (this.done_) return {done: true};
-      if (this.nextPromise_) return await this.nextPromise_;
-      if (this.messageQueue_.length) return this.messageQueue_.shift();
-
-      this.nextPromise_ = new Promise(resolve => {
-        this.resolve_ = resolve;
-      });
-      const result = await this.nextPromise_;
-      this.resolve_ = this.queueResult_;
-      this.nextPromise_ = undefined;
-      return result;
-    }
   }
-
-  // Set true when running unit tests so ResultChannelReceiver works without an
-  // active Service Worker.
-  ResultChannelReceiver.TESTING = false;
 
   return {ResultChannelReceiver};
 });
