@@ -253,11 +253,10 @@ export default class TimeseriesCacheRequest extends CacheRequestBase {
           this.revisionRange_, availableRange);
 
       const networkPromises = missingRanges.map((range, index) =>
-        this.readNetwork_(range, columns).then(result => {
-          return {result, range, columns};
-        }));
-      for await (const {result, range, columns} of raceAllPromises(
-          networkPromises)) {
+        this.readNetwork_(range, columns));
+      // TODO refactor networkPromises into TimeseriesSlices.
+      // TODO merge/split these Slices with those from other requests.
+      for await (const result of raceAllPromises(networkPromises)) {
         if (!result || result.error || !result.data || !result.data.length) {
           continue;
         }
