@@ -879,15 +879,16 @@ tr.exportTo('cp', () => {
     prefetchPreviewAlertGroup_: (statePath, alertGroup) =>
       async(dispatch, getState) => {
         if (!alertGroup) return;
-        const testSuites = [];
+        const testSuites = new Set();
         const lineDescriptors = [];
         for (const alert of alertGroup.alerts) {
-          testSuites.push(alert.testSuite);
+          testSuites.add(alert.testSuite);
           lineDescriptors.push(AlertsSection.computeLineDescriptor(alert));
         }
         dispatch(cp.ChartTimeseries.actions.prefetch(
             `${statePath}.preview`, lineDescriptors));
-        cp.PrefetchTestSuiteDescriptors({testSuites});
+        await Promise.all([...testSuites].map(testSuite =>
+          new cp.DescribeRequest({testSuite}).response));
       },
 
     layoutPreview: statePath => async(dispatch, getState) => {
@@ -907,7 +908,8 @@ tr.exportTo('cp', () => {
       for (const descriptor of lineDescriptors) {
         testSuites.add(descriptor.testSuites[0]);
       }
-      cp.PrefetchTestSuiteDescriptors({testSuites: [...testSuites]});
+      await Promise.all([...testSuites].map(testSuite =>
+        new cp.DescribeRequest({testSuite}).response));
     },
 
     maybeLayoutPreview: statePath => async(dispatch, getState) => {

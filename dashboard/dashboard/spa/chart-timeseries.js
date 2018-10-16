@@ -26,12 +26,14 @@ tr.exportTo('cp', () => {
     }
 
     target.revision = Math.min(target.revision, source.revision);
-    if (source.timestamp < target.timestamp) target.timestamp = source.timestamp;
+    if (source.timestamp < target.timestamp) {
+      target.timestamp = source.timestamp;
+    }
 
     const deltaMean = target.avg - source.avg;
     target.avg = (
-        (target.avg * target.count) + (source.avg * source.count)) /
-        (target.count + source.count);
+      (target.avg * target.count) + (source.avg * source.count)) /
+      (target.count + source.count);
     const thisVar = target.std * target.std;
     const otherVar = source.std * source.std;
     const thisCount = target.count;
@@ -531,7 +533,7 @@ tr.exportTo('cp', () => {
           lineDescriptor, state.levelOfDetail);
       for (const fetchDescriptor of fetchDescriptors) {
         const fetchOptions = {...fetchDescriptor, ...revisionOptions};
-        readers.push((async function*() {
+        readers.push((async function* () {
           const reader = new cp.TimeseriesRequest(fetchOptions).reader();
           for await (const timeseries of reader) {
             yield {timeseries, lineDescriptor};
@@ -540,10 +542,7 @@ tr.exportTo('cp', () => {
       }
     }
 
-    // Batch responses together to avoid rendering too many times.
-    const batchIterator = new cp.BatchIterator(readers);
-
-    for await (const {results, errors} of batchIterator) {
+    for await (const {results, errors} of new cp.BatchIterator(readers)) {
       const state = Polymer.Path.get(getState(), statePath);
       if (!state) {
         // This chart is no longer in the redux store.
@@ -622,7 +621,8 @@ tr.exportTo('cp', () => {
       }
       return {
         icon: 'cp:error',
-        iconColor: datum.alert.bugId ? 'var(--neutral-color-dark)' : 'var(--error-color)',
+        iconColor: datum.alert.bugId ?
+          'var(--neutral-color-dark)' : 'var(--error-color)',
       };
     }
     if (datum.diagnostics) {

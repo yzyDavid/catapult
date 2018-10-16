@@ -232,11 +232,10 @@ tr.exportTo('cp', () => {
   ChromeperfApp.actions = {
     ready: (statePath, routeParams, authParams) =>
       async(dispatch, getState) => {
-        requestIdleCallback(() => {
+        requestIdleCallback(async() => {
           cp.ReadTestSuites();
-          cp.PrefetchTestSuiteDescriptors({
-            testSuites: PRE_DESCRIBE_TEST_SUITES,
-          });
+          await Promise.all(PRE_DESCRIBE_TEST_SUITES.map(testSuite =>
+            new cp.DescribeRequest({testSuite}).response));
         });
 
         dispatch(Redux.CHAIN(

@@ -308,10 +308,9 @@ tr.exportTo('cp', () => {
       // couple of seconds to serve them from memcache, so fetch them in
       // parallel.
       const testSuites = new Set(state.testSuite.selectedOptions);
-      const descriptorStream = cp.ReadTestSuiteDescriptors({
-        testSuites: state.testSuite.selectedOptions,
-      })(dispatch, getState);
-      for await (const descriptor of descriptorStream) {
+      const descriptors = state.testSuite.selectedOptions.map(testSuite =>
+        new cp.DescriptorRequest({testSuite}).response);
+      for await (const descriptor of new cp.BatchIterator(descriptors)) {
         state = Polymer.Path.get(getState(), statePath);
         if (!state.testSuite || !tr.b.setsEqual(
             testSuites, new Set(state.testSuite.selectedOptions))) {
