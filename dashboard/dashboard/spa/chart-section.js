@@ -284,17 +284,18 @@ tr.exportTo('cp', () => {
     },
 
     describeTestSuites: statePath => async(dispatch, getState) => {
+      const mergedDescriptor = {
+        measurements: new Set(),
+        bots: new Set(),
+        testCases: new Set(),
+        testCaseTags: new Map(),
+      };
       let state = Polymer.Path.get(getState(), statePath);
       if (state.testSuite.selectedOptions.length === 0) {
         dispatch({
           type: ChartSection.reducers.receiveDescriptor.name,
           statePath,
-          descriptor: {
-            measurements: new Set(),
-            bots: new Set(),
-            testCases: new Set(),
-            testCaseTags: new Map(),
-          },
+          descriptor: mergedDescriptor,
         });
         dispatch({
           type: ChartSection.reducers.finalizeParameters.name,
@@ -309,8 +310,8 @@ tr.exportTo('cp', () => {
       // parallel.
       const testSuites = new Set(state.testSuite.selectedOptions);
       const descriptors = state.testSuite.selectedOptions.map(testSuite =>
-        new cp.DescriptorRequest({testSuite}).response);
-      for await (const descriptor of new cp.BatchIterator(descriptors)) {
+        new cp.DescribeRequest({testSuite}).response);
+      for await (const {results, errors} of new cp.BatchIterator(descriptors)) {
         state = Polymer.Path.get(getState(), statePath);
         if (!state.testSuite || !tr.b.setsEqual(
             testSuites, new Set(state.testSuite.selectedOptions))) {
@@ -319,10 +320,15 @@ tr.exportTo('cp', () => {
           // handled by a new dispatch of this action creator.
           return;
         }
+        // TODO display errors
+        for (const descriptor of results) {
+          if (!descriptor) continue;
+          cp.DescribeRequest.mergeDescriptor(mergedDescriptor, descriptor);
+        }
         dispatch({
           type: ChartSection.reducers.receiveDescriptor.name,
           statePath,
-          descriptor,
+          descriptor: mergedDescriptor,
         });
       }
       dispatch({
@@ -678,6 +684,7 @@ tr.exportTo('cp', () => {
         tags: {
           ...state.testCase.tags,
           map: descriptor.testCaseTags,
+          optionValues: new Set(descriptor.testCaseTags.keys()),
           options: cp.OptionGroup.groupValues(descriptor.testCaseTags.keys()),
         },
       });

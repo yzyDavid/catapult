@@ -178,7 +178,7 @@ found in the LICENSE file.
         color: var(--error-color);
       }
 
-      .dropdown_extra {
+      .menu_extra {
         align-items: center;
         border-right: 1px solid black;
         display: flex;
@@ -333,7 +333,7 @@ found in the LICENSE file.
                             state-path="[[statePath]].tables.[[tableIndex]].rows.[[rowIndex]].testCase">
                           <!-- TODO share with chart-parameter -->
                           <template is="dom-if" if="[[!isEmpty_(row.testCase.tags.options)]]">
-                            <div class="dropdown_extra" slot="dropdown_extra">
+                            <div class="menu_extra" slot="menu_extra">
                               <span class="tag_head">
                                 Tags
                               </span>

@@ -5,7 +5,7 @@
 'use strict';
 tr.exportTo('cp', () => {
   class RequestBase {
-    constructor(options) {
+    constructor(options = {}) {
       this.promise_ = undefined;
 
       this.method_ = 'GET';
