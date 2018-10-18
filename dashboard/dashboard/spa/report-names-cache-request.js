@@ -8,8 +8,6 @@ import KeyValueCacheRequest from './key-value-cache-request.js';
 
 export default class ReportNamesCacheRequest extends KeyValueCacheRequest {
   async getDatabaseKey() {
-    const headers = this.fetchEvent.request.headers;
-    const maybeInternal = headers.has('Authorization') ? '_internal' : '';
-    return `report_names${maybeInternal}`;
+    return `report_names${this.isAuthorized ? '_internal' : ''}`;
   }
 }

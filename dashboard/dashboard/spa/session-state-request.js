@@ -4,22 +4,16 @@
 */
 'use strict';
 tr.exportTo('cp', () => {
-  class ReportNamesRequest extends cp.RequestBase {
+  class SessionStateRequest extends cp.RequestBase {
     constructor(options) {
       super(options);
-      this.method_ = 'POST';
+      this.sessionId_ = options.sessionId;
     }
 
     get url_() {
-      return '/api/report/names';
-    }
-
-    postProcess_(json) {
-      return json.map(info => {
-        return {...info, modified: new Date(info.modified)};
-      });
+      return `/short_uri?v2=true&sid=${this.sessionId_}`;
     }
   }
 
-  return {ReportNamesRequest};
+  return {SessionStateRequest};
 });

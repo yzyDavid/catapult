@@ -62,7 +62,8 @@ export default class KeyValueCacheRequest extends CacheRequestBase {
     if (otherRequest) {
       // Be sure to call onComplete() to remove `this` from IN_PROGRESS_REQUESTS
       // so that `otherRequest.getResponse()` doesn't await
-      // `this.getResponse()`.
+      // `this.getResponse()`, which would cause both of these requests to
+      // deadlock.
       this.onComplete();
       return await otherRequest.responsePromise;
     }

@@ -18,41 +18,8 @@ tr.exportTo('cp', () => {
     'system_health.memory_mobile',
   ];
 
-  class SessionStateRequest extends cp.RequestBase {
-    constructor(options) {
-      super(options);
-      this.sessionId_ = options.sessionId;
-    }
-
-    get url_() {
-      return `/short_uri?v2=true&sid=${this.sessionId_}`;
-    }
-  }
-
   const CLIENT_ID =
     '62121018386-rhk28ad5lbqheinh05fgau3shotl2t6c.apps.googleusercontent.com';
-
-  class SessionIdRequest extends cp.RequestBase {
-    constructor(options) {
-      super(options);
-      this.method_ = 'POST';
-      this.headers_.set('Content-type', 'application/x-www-form-urlencoded');
-      this.body_ = 'page_state=' + encodeURIComponent(JSON.stringify(
-          options.sessionState));
-    }
-
-    async localhostResponse_() {
-      return {};
-    }
-
-    get url_() {
-      return '/short_uri';
-    }
-
-    postProcess_(json) {
-      return json.sid;
-    }
-  }
 
   class RecentBugsRequest extends cp.RequestBase {
     constructor() {
@@ -347,7 +314,7 @@ tr.exportTo('cp', () => {
 
     restoreSessionState: (statePath, sessionId) =>
       async(dispatch, getState) => {
-        const request = new SessionStateRequest({sessionId});
+        const request = new cp.SessionStateRequest({sessionId});
         const sessionState = await request.response;
         if (sessionState.teamName) {
           dispatch(Redux.UPDATE('', {teamName: sessionState.teamName}));
@@ -422,7 +389,7 @@ tr.exportTo('cp', () => {
     saveSession: statePath => async(dispatch, getState) => {
       const rootState = getState();
       const state = Polymer.Path.get(rootState, statePath);
-      const session = await new SessionIdRequest({sessionState: {
+      const session = await new cp.SessionIdRequest({sessionState: {
         ...ChromeperfApp.getSessionState(state),
         teamName: rootState.teamName,
       }}).response;

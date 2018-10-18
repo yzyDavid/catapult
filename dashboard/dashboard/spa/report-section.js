@@ -21,30 +21,6 @@ tr.exportTo('cp', () => {
   const MIN_MILESTONE = tr.b.math.Statistics.min(
       Object.keys(CHROMIUM_MILESTONES));
 
-  class ReportTemplateRequest extends cp.RequestBase {
-    constructor(options) {
-      super(options);
-      this.method_ = 'POST';
-      this.body_ = new FormData();
-      this.body_.set('template', JSON.stringify({
-        url: options.url,
-        statistics: options.statistics,
-        rows: options.rows,
-      }));
-      this.body_.set('name', options.name);
-      this.body_.set('owners', options.owners.join(','));
-      this.body_.set('id', options.id);
-    }
-
-    get url_() {
-      return `/api/report/template`;
-    }
-
-    async localhostResponse_() {
-      return {};
-    }
-  }
-
   class ReportSection extends cp.ElementBase {
     ready() {
       super.ready();
@@ -644,7 +620,7 @@ tr.exportTo('cp', () => {
       let rootState = getState();
       let state = Polymer.Path.get(rootState, statePath);
       const table = state.tables[tableIndex];
-      const request = new ReportTemplateRequest({
+      const request = new cp.ReportTemplateRequest({
         id: table.id,
         name: table.name,
         owners: table.owners.split(',').map(o => o.replace(/ /g, '')),
