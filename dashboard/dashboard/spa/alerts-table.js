@@ -113,7 +113,7 @@ tr.exportTo('cp', () => {
       await this.dispatch('selectAlert', this.statePath,
           event.model.parentModel.alertGroupIndex,
           event.model.alertIndex,
-          event.shiftKey);
+          event.detail.event.shiftKey);
       this.dispatchEvent(new CustomEvent('selected', {
         bubbles: true,
         composed: true,

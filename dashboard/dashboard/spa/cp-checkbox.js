@@ -11,6 +11,7 @@
       this.dispatchEvent(new CustomEvent('change', {
         bubbles: true,
         composed: true,
+        detail: {event},
       }));
     }
   }
