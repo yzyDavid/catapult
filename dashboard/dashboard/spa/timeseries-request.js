@@ -30,18 +30,21 @@ tr.exportTo('cp', () => {
     }
   }
 
-  function transformDatum(
-      row, columns, unit, conversionFactor, doNormalize = true) {
-    // `row` is either an array of values directly from /api/timeseries2, or a
-    // dictionary from TimeseriesCacheRequest, depending on doNormalize.
-    const datum = (doNormalize ? cp.normalize(columns, row) : row);
+  function transformDatum(datum, unit, conversionFactor) {
+    datum.timestamp = new Date(datum.timestamp);
+
+    datum.unit = unit;
+    if (datum.avg) datum.avg *= conversionFactor;
+    if (datum.std) datum.std *= conversionFactor;
+    if (datum.sum) datum.sum *= conversionFactor;
+
     if (datum.alert) datum.alert = cp.AlertsSection.transformAlert(datum.alert);
     if (datum.diagnostics) {
       datum.diagnostics = tr.v.d.DiagnosticMap.fromDict(datum.diagnostics);
     }
-    datum.timestamp = new Date(datum.timestamp);
-    datum.unit = unit;
-    datum.avg *= conversionFactor;
+    if (datum.histogram) {
+      datum.histogram = tr.v.Histogram.fromDict(datum.histogram);
+    }
     return datum;
   }
 
@@ -101,7 +104,8 @@ tr.exportTo('cp', () => {
       // across levels of detail. (Merging data across timeseries is handled by
       // MultiTimeseriesIterator using mergeData().)
       return response.data.map(row => transformDatum(
-          row, this.columns_, unit, conversionFactor, !isFromChannel));
+          (isFromChannel ? row : cp.normalize(this.columns_, row)),
+          unit, conversionFactor));
     }
 
     get url_() {

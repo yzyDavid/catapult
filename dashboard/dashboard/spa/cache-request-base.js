@@ -99,9 +99,9 @@ export class CacheRequestBase {
       try {
         await this.writeDatabase(options);
       } finally {
+        this.writing_ = false;
         this.onComplete();
         complete();
-        this.writing_ = false;
       }
     });
   }
