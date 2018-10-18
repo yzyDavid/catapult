@@ -32,7 +32,7 @@ tr.exportTo('d', function() {
       return false;
     }
     if (groupBugs && (a.bug_id !== b.bug_id)) return false;
-    if (!a.relatedNames && !b.relatedNames) return a.testsuite === b.testsuite;
+    if (!a.relatedNames && !b.relatedNames) return a.descriptor.testSuite === b.descriptor.testSuite;
     return isRelated(a, b);
   }
 
