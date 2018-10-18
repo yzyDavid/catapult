@@ -1086,7 +1086,7 @@ tr.exportTo('cp', () => {
     if (legendItems.length === 1) legendItems = legendItems[0].children;
 
     function stripSharedPrefix(items) {
-      if (items === undefined) return;
+      if (!items || !items.length) return;
       let sharedPrefixLength = items[0].label.length;
       for (let i = 1; i < items.length; ++i) {
         for (let c = 0; c < sharedPrefixLength; ++c) {

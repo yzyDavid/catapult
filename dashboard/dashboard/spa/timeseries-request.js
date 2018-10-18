@@ -34,6 +34,7 @@ tr.exportTo('cp', () => {
     datum.timestamp = new Date(datum.timestamp);
 
     datum.unit = unit;
+    if (!datum.count) datum.count = 1;
     if (datum.avg) datum.avg *= conversionFactor;
     if (datum.std) datum.std *= conversionFactor;
     if (datum.sum) datum.sum *= conversionFactor;
