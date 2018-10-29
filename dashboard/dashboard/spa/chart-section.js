@@ -175,7 +175,6 @@ tr.exportTo('cp', () => {
   ChartSection.State = {
     sectionId: options => options.sectionId || tr.b.GUID.allocateSimple(),
     ...cp.ChartPair.State,
-    lineDescriptors: options => [],
     title: options => options.title || '',
     isTitleCustom: options => false,
     legend: options => undefined,
