@@ -2,12 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import contextlib
 import pandas  # pylint: disable=import-error
 import sqlite3
 
+from common import utils
 from soundwave import dashboard_api
 from soundwave import pandas_sqlite
+from soundwave import studies
 from soundwave import tables
 from soundwave import worker_pool
 
@@ -23,31 +24,9 @@ def _FetchBugsWorker(args):
   worker_pool.Process = Process
 
 
-@contextlib.contextmanager
-def _ApiAndDbSession(args):
-  """Context manage a session with API and DB connections.
-
-  Ensures API has necessary credentials and DB tables have been initialized.
-  """
-  api = dashboard_api.PerfDashboardCommunicator(args)
-  con = sqlite3.connect(args.database_file)
-
-  # Tell sqlite to use a write-ahead log, which drastically increases its
-  # concurrency capabilities. This helps prevent 'database is locked' exceptions
-  # when we have many workers writing to a single database. This mode is sticky,
-  # so we only need to set it once and future connections will automatically
-  # use the log. More details are available at https://www.sqlite.org/wal.html.
-  con.execute('PRAGMA journal_mode=WAL')
-
-  try:
-    tables.CreateIfNeeded(con)
-    yield api, con
-  finally:
-    con.close()
-
-
 def FetchAlertsData(args):
-  with _ApiAndDbSession(args) as (api, con):
+  api = dashboard_api.PerfDashboardCommunicator(args)
+  with tables.DbSession(args.database_file) as con:
     # Get alerts.
     num_alerts = 0
     bug_ids = set()
@@ -119,15 +98,19 @@ def FetchTimeseriesData(args):
   def _MatchesAllFilters(test_path):
     return all(f in test_path for f in args.filters)
 
-  with _ApiAndDbSession(args) as (api, con):
+  api = dashboard_api.PerfDashboardCommunicator(args)
+  with tables.DbSession(args.database_file) as con:
     # Get test_paths.
     if args.benchmark is not None:
       api = dashboard_api.PerfDashboardCommunicator(args)
-      test_paths = api.ListTestPaths(args.benchmark, sheriff=args.sheriff)
+      test_paths = api.dashboard.ListTestPaths(
+          args.benchmark, sheriff=args.sheriff)
     elif args.input_file is not None:
       test_paths = list(_ReadTestPathsFromFile(args.input_file))
+    elif args.study is not None:
+      test_paths = list(args.study.IterTestPaths(api))
     else:
-      raise NotImplementedError('Expected --benchmark or --input-file')
+      raise ValueError('No source for test paths specified')
 
     # Apply --filter's to test_paths.
     if args.filters:
@@ -147,3 +130,16 @@ def FetchTimeseriesData(args):
       'Fetching data of %d timeseries: ' % len(test_paths),
       _FetchTimeseriesWorker, args, test_paths)
   print '[%.1f test paths per second]' % (len(test_paths) / total_seconds)
+
+  if args.output_csv is not None:
+    print
+    print 'Post-processing data for study ...'
+    dfs = []
+    with tables.DbSession(args.database_file) as con:
+      for test_path in test_paths:
+        df = tables.timeseries.GetTimeSeries(con, test_path)
+        dfs.append(df)
+    df = studies.PostProcess(pandas.concat(dfs, ignore_index=True))
+    with utils.OpenWrite(args.output_csv) as f:
+      df.to_csv(f, index=False)
+    print 'Wrote timeseries data to:', args.output_csv

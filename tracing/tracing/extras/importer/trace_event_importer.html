@@ -124,6 +124,7 @@ tr.exportTo('tr.e.importer', function() {
   const SUBTRACE_FIELDS = new Set([
     'powerTraceAsString',
     'systemTraceEvents',
+    'androidProcessDump',
   ]);
 
   // The complete list of fields on the trace that should not be treated as
@@ -1640,7 +1641,7 @@ tr.exportTo('tr.e.importer', function() {
         }
 
         if (event.cat === 'blink.user_timing') {
-          const matched = /([^\/:]+):([^\/:]+)\/?(.*)/.exec(event.name);
+          const matched = /([^\/:]+):([^\/]+)\/?(.*)/.exec(event.name);
           if (matched !== null) {
             const key = matched[1] + ':' + event.cat;
             event.args = JSON.parse(Base64.atob(matched[3]) || '{}');
