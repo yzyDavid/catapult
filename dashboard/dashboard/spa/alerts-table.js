@@ -277,6 +277,7 @@ tr.exportTo('cp', () => {
         }
         if (toggleAll) {
           alerts = alerts.map(alert => {
+            if (!state.showingTriaged && alert.bugId) return alert;
             return {
               ...alert,
               isSelected,

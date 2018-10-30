@@ -964,7 +964,7 @@ tr.exportTo('cp', () => {
       const alertGroups = [];
       for (const group of state.alertGroups) {
         const alerts = group.alerts.filter(a => !alertKeys.has(a.key));
-        if (alerts.length) {
+        if (alerts.filter(a => !a.bugId).length) {
           alertGroups.push({...group, alerts});
         }
       }
